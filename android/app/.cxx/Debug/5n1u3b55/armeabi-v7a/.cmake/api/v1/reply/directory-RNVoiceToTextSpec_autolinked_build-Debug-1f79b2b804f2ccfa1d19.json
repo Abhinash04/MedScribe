@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "RNVoiceToTextSpec_autolinked_build",
+		"source" : "D:/Anuvadini/MedScribe/node_modules/@appcitor/react-native-voice-to-text/android/generated/jni"
+	}
+}
