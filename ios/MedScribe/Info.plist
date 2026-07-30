@@ -36,6 +36,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MedScribe uses the microphone to record your dictation of patient details.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>MedScribe converts your dictation into text to build the patient record.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
