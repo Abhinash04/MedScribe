@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
+    "android": "react-native run-android --active-arch-only",
+    "android:all-abis": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "test:extraction": "node scripts/test-extraction.mjs",
