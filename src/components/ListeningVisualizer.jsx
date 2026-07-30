@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -8,33 +9,65 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { amplitudeShared } from '../services/speechService';
 import { colors, spacing } from '../theme';
 
-const WaveBar = ({ delay = 0, initialHeight = 16, maxHeight = 48 }) => {
-  const heightVal = useSharedValue(initialHeight);
+/**
+ * Android's SpeechRecognizer reports volume as raw RMS dB, roughly -2 at the
+ * noise floor and ~10 at speaking volume. Map that onto 0..1.
+ */
+const RMS_FLOOR = -2;
+const RMS_CEILING = 10;
 
-  useEffect(() => {
-    heightVal.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(maxHeight, { duration: 450 + Math.random() * 200 }),
-          withTiming(initialHeight, { duration: 450 + Math.random() * 200 }),
-        ),
-        -1,
-        true,
-      ),
-    );
-  }, [delay, heightVal, initialHeight, maxHeight]);
+/**
+ * One spectrum bar. Height tracks the live microphone level rather than a
+ * random walk, so the visualizer reflects what the microphone actually hears.
+ */
+const WaveBar = ({ factor, minHeight, maxHeight, isActive }) => {
+  // Derives height on the UI thread straight from the shared amplitude.
+  // Nothing here goes through React state, so microphone updates at
+  // 10-20x/second cost zero renders.
+  const animStyle = useAnimatedStyle(() => {
+    if (!isActive) {
+      return { height: withTiming(minHeight, { duration: 300 }) };
+    }
 
-  const animStyle = useAnimatedStyle(() => ({
-    height: heightVal.value,
-  }));
+    const ratio =
+      (amplitudeShared.value - RMS_FLOOR) / (RMS_CEILING - RMS_FLOOR);
+    const level = Math.min(Math.max(ratio, 0), 1);
+    const scaled = Math.min(level * factor, 1);
+
+    return {
+      height: withTiming(minHeight + (maxHeight - minHeight) * scaled, {
+        duration: 120,
+      }),
+    };
+  }, [factor, minHeight, maxHeight, isActive]);
 
   return <Animated.View style={[styles.waveBar, animStyle]} />;
 };
 
-const ListeningVisualizer = () => {
+// Per-bar gain, so a uniform input level still produces an organic silhouette.
+const BAR_CONFIG = [
+  { factor: 0.75, minHeight: 12, maxHeight: 36 },
+  { factor: 1.15, minHeight: 14, maxHeight: 54 },
+  { factor: 0.95, minHeight: 12, maxHeight: 42 },
+  { factor: 1.35, minHeight: 16, maxHeight: 60 },
+  { factor: 1.05, minHeight: 14, maxHeight: 48 },
+  { factor: 0.85, minHeight: 12, maxHeight: 38 },
+  { factor: 1.2, minHeight: 14, maxHeight: 50 },
+];
+
+/**
+ * Listening stage for the recording screen (SRS FR-2 feedback).
+ *
+ * Microphone level is read from the `amplitudeShared` Reanimated value rather
+ * than passed as a prop — see the note in `speechService`.
+ *
+ * @param {boolean} isActive False while processing/finished — freezes the
+ *   animation instead of pulsing forever after recording has stopped.
+ */
+const ListeningVisualizer = ({ isActive = true }) => {
   const pulseScale1 = useSharedValue(1);
   const pulseOpacity1 = useSharedValue(0.4);
   const pulseScale2 = useSharedValue(1);
@@ -42,7 +75,23 @@ const ListeningVisualizer = () => {
   const micFloat = useSharedValue(0);
 
   useEffect(() => {
-    // Pulse aura 1
+    if (!isActive) {
+      cancelAnimation(pulseScale1);
+      cancelAnimation(pulseOpacity1);
+      cancelAnimation(pulseScale2);
+      cancelAnimation(pulseOpacity2);
+      cancelAnimation(micFloat);
+
+      pulseScale1.value = withTiming(1, { duration: 400 });
+      pulseOpacity1.value = withTiming(0.15, { duration: 400 });
+      pulseScale2.value = withTiming(1, { duration: 400 });
+      pulseOpacity2.value = withTiming(0.08, { duration: 400 });
+      micFloat.value = withTiming(0, { duration: 400 });
+      return;
+    }
+
+    // Ambient aura — a steady presence cue independent of input level, so the
+    // stage never looks frozen during a pause between sentences.
     pulseScale1.value = withRepeat(
       withSequence(
         withTiming(1.35, { duration: 1800 }),
@@ -60,7 +109,6 @@ const ListeningVisualizer = () => {
       true,
     );
 
-    // Pulse aura 2 (offset)
     pulseScale2.value = withDelay(
       600,
       withRepeat(
@@ -84,7 +132,6 @@ const ListeningVisualizer = () => {
       ),
     );
 
-    // Floating mic translateY animation
     micFloat.value = withRepeat(
       withSequence(
         withTiming(-8, { duration: 1500 }),
@@ -93,7 +140,14 @@ const ListeningVisualizer = () => {
       -1,
       true,
     );
-  }, [micFloat, pulseOpacity1, pulseOpacity2, pulseScale1, pulseScale2]);
+  }, [
+    isActive,
+    micFloat,
+    pulseOpacity1,
+    pulseOpacity2,
+    pulseScale1,
+    pulseScale2,
+  ]);
 
   const aura1Style = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale1.value }],
@@ -127,15 +181,21 @@ const ListeningVisualizer = () => {
         </Animated.View>
       </View>
 
-      {/* Audio Waveform Bar Spectrum */}
-      <View style={styles.waveSpectrumRow}>
-        <WaveBar delay={0} initialHeight={12} maxHeight={36} />
-        <WaveBar delay={120} initialHeight={20} maxHeight={54} />
-        <WaveBar delay={240} initialHeight={16} maxHeight={42} />
-        <WaveBar delay={80} initialHeight={28} maxHeight={60} />
-        <WaveBar delay={300} initialHeight={18} maxHeight={48} />
-        <WaveBar delay={180} initialHeight={14} maxHeight={38} />
-        <WaveBar delay={50} initialHeight={22} maxHeight={50} />
+      {/* Live microphone level spectrum */}
+      <View
+        style={styles.waveSpectrumRow}
+        accessibilityRole="image"
+        accessibilityLabel="Microphone input level"
+      >
+        {BAR_CONFIG.map((bar, index) => (
+          <WaveBar
+            key={index}
+            factor={bar.factor}
+            minHeight={bar.minHeight}
+            maxHeight={bar.maxHeight}
+            isActive={isActive}
+          />
+        ))}
       </View>
     </View>
   );
@@ -144,14 +204,14 @@ const ListeningVisualizer = () => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
     paddingVertical: spacing.xl,
   },
   centerStage: {
     width: 180,
     height: 180,
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
     marginVertical: spacing.lg,
   },
   auraRingOuter: {
@@ -176,7 +236,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.secondaryAccent,
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
     elevation: 8,
     shadowColor: colors.secondaryAccent,
     shadowOffset: { width: 0, height: 4 },
@@ -231,7 +291,7 @@ const styles = StyleSheet.create({
   waveSpectrumRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
     height: 64,
     marginTop: spacing.xl,
     gap: 8,

@@ -144,7 +144,7 @@ const BUTTON_SIZE = 120;
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
     width: BUTTON_SIZE * 2,
     height: BUTTON_SIZE * 2,
     marginVertical: spacing.lg,
