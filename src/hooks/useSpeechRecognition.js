@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import {
   DEFAULT_ERROR_MESSAGE,
@@ -7,6 +7,7 @@ import {
   RECORDING_STATE,
   RESTART_DELAY_MS,
   SPEECH_ERROR_CODE,
+  SPEECH_ERROR_MESSAGES,
   backoffDelay,
   isTransientError,
   resolveErrorMessage,
@@ -20,7 +21,9 @@ import {
   toRecordingState,
 } from '../services/permissionService';
 import * as speech from '../services/speechService';
-import useRecordingStore from '../store/useRecordingStore';
+import useRecordingStore, {
+  selectFullTranscript,
+} from '../store/useRecordingStore';
 
 const NO_SPEECH_MESSAGE =
   'No speech detected. Check that your microphone is working and try again.';
@@ -37,7 +40,6 @@ const NO_SPEECH_MESSAGE =
  */
 export default function useSpeechRecognition() {
   const status = useRecordingStore(state => state.status);
-  const chunks = useRecordingStore(state => state.chunks);
   const partialText = useRecordingStore(state => state.partialText);
   const errorMessage = useRecordingStore(state => state.errorMessage);
 
@@ -54,7 +56,9 @@ export default function useSpeechRecognition() {
     speech.amplitudeShared.value = 0;
   }, []);
 
-  const transcript = useMemo(() => chunks.join(' ').trim(), [chunks]);
+  // Uses the shared selector rather than re-deriving the join/trim, so the
+  // transcript stays consistent with what ReportScreen reads.
+  const transcript = useRecordingStore(selectFullTranscript);
 
   const mountedRef = useRef(false);
   const shouldContinueRef = useRef(false);
@@ -295,7 +299,11 @@ export default function useSpeechRecognition() {
 
       shouldContinueRef.current = false;
       clearTimers();
-      setError(resolveErrorMessage(code) || message, code);
+      // `resolveErrorMessage` always returns a string (it falls back to
+      // DEFAULT_ERROR_MESSAGE), so `|| message` was dead code and the native
+      // message was never surfaced. Prefer our copy when the code is mapped,
+      // otherwise fall back to whatever the engine reported.
+      setError(SPEECH_ERROR_MESSAGES[code] || message || resolveErrorMessage(code), code);
     },
     [
       resetAmplitude,
@@ -323,9 +331,23 @@ export default function useSpeechRecognition() {
     consecutiveTransientRef.current = 0;
     setStatus(RECORDING_STATE.CHECKING_PERMISSION);
 
-    let result = await checkMicPermission();
-    if (result === RESULTS.DENIED) {
-      result = await requestMicPermission();
+    // beginSession is called fire-and-forget from the mount effect, so an
+    // unhandled rejection here would strand the UI on CHECKING_PERMISSION
+    // with no button and no way out.
+    let result;
+    try {
+      result = await checkMicPermission();
+      if (result === RESULTS.DENIED) {
+        result = await requestMicPermission();
+      }
+    } catch (error) {
+      if (mountedRef.current) {
+        setError(
+          error?.message ||
+            'Could not check microphone permission. Please try again.',
+        );
+      }
+      return;
     }
 
     if (!mountedRef.current) {
@@ -346,7 +368,7 @@ export default function useSpeechRecognition() {
     shouldContinueRef.current = true;
     setStatus(RECORDING_STATE.LISTENING);
     await safeStart();
-  }, [clearTimers, reset, setStatus, safeStart]);
+  }, [clearTimers, reset, setStatus, setError, safeStart]);
 
   const stop = useCallback(async () => {
     if (!shouldContinueRef.current) {
