@@ -33,9 +33,14 @@ const ReportScreen = ({ navigation }) => {
 
   const handleBack = useCallback(() => navigation.goBack(), [navigation]);
 
+  const resetRecording = useRecordingStore(state => state.reset);
+
   const handleNewDictation = useCallback(() => {
+    // Explicit rather than relying on RecordingScreen resetting on mount —
+    // that ordering works today but is an accident, not a contract.
+    resetRecording();
     navigation.navigate('Home');
-  }, [navigation]);
+  }, [resetRecording, navigation]);
 
   return (
     <ScreenContainer>

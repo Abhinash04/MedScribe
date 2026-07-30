@@ -9,9 +9,9 @@ const AppHeader = ({ title = 'MedScribe', showBack = false, onBackPress }) => {
         <TouchableOpacity
           style={styles.backButton}
           onPress={onBackPress}
-          accessibilityLabel="Go back to home screen"
+          accessibilityLabel="Go back"
           accessibilityRole="button"
-          accessibilityHint="Returns to home screen"
+          accessibilityHint="Returns to the previous screen"
           activeOpacity={0.7}
         >
           <View style={styles.backArrowIcon}>
@@ -116,7 +116,12 @@ const styles = StyleSheet.create({
     top: 10,
     transform: [{ rotate: '45deg' }],
   },
+  // Mirrors backButton's absolute positioning. As a static element it could
+  // not balance an absolutely-positioned button, so longer titles such as
+  // "Patient Report" sat off-centre.
   placeholderRight: {
+    position: 'absolute',
+    right: 0,
     width: 40,
     height: 40,
   },

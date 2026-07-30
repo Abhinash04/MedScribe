@@ -75,12 +75,23 @@ const RecordingControls = ({
   }
 
   if (status === RECORDING_STATE.ERROR) {
+    // A failure part-way through must not discard what was already captured.
+    // "Try again" resets the store, so when there is text worth keeping the
+    // primary action is to carry it forward instead.
     return (
-      <View style={styles.row}>
+      <View style={styles.column}>
+        {hasTranscript ? (
+          <ControlButton
+            label="Continue to report"
+            onPress={onContinue}
+            hint="Builds a report from the text captured before the error"
+          />
+        ) : null}
         <ControlButton
           label={hasTranscript ? 'Record again' : 'Try again'}
+          variant={hasTranscript ? 'secondary' : 'primary'}
           onPress={onRetry}
-          hint="Restarts speech recognition"
+          hint="Discards the current transcript and restarts recognition"
         />
       </View>
     );
