@@ -235,10 +235,15 @@ const processors = {
 
     // LAST valid number — "9876543218... correction, 9876543210".
     //
-    // Separators are bounded to a single space/hyphen so two adjacent numbers
-    // ("9876543210 9812345678") cannot be swallowed as one 20-digit run, and
-    // the digit count is capped at 13 (E.164 max) for the same reason.
-    const grouped = [...text.matchAll(/(\+?\d(?:[\s-]?\d){9,14})/g)]
+    // \b prevents starting mid-number, so digits inside one number cannot seed
+    // a bogus partial match. The trailing (?![\s-]?\d) rejects a candidate that
+    // runs into a following number, which lets the scan skip past the first and
+    // match the second cleanly — without it a greedy 20-digit match was made,
+    // then dropped by the length filter, losing BOTH numbers.
+    //
+    // Uses \b rather than a (?<!\d) lookbehind on purpose: Hermes has had gaps
+    // in lookbehind support and this ships to a Hermes runtime.
+    const grouped = [...text.matchAll(/(\+?\b\d(?:[\s-]?\d){9,12}(?![\s-]?\d))/g)]
       .map(m => m[1].replace(/[^\d+]/g, ''))
       .filter(d => {
         const digits = d.replace(/\D/g, '').length;

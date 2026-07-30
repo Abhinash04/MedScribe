@@ -73,7 +73,7 @@ export function extractPatientFields(transcript) {
 
   // Unmarked fallbacks run last and only over text no marker claimed, so a
   // bare "female" inside an address cannot be mistaken for the gender field.
-  candidates.push(...collectFallbacks(text, markers));
+  candidates.push(...collectFallbacks(text, markers, segments));
 
   const resolved = resolveConflicts(candidates);
   const record = { ...empty };
@@ -92,9 +92,9 @@ export function extractPatientFields(transcript) {
   return record;
 }
 
-function collectFallbacks(text, markers) {
+function collectFallbacks(text, markers, segments) {
   const found = [];
-  const gaps = unclaimedRanges(text, markers);
+  const gaps = unclaimedRanges(text, markers, segments);
 
   for (const [field, config] of Object.entries(FIELD_MARKERS)) {
     if (!config.fallbacks?.length) {

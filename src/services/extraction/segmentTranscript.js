@@ -115,7 +115,7 @@ function findSentenceEnd(text, from, limit) {
  * otherwise a "male" inside an address, or the middle of a phone number, gets
  * mistaken for a field of its own.
  */
-export function unclaimedRanges(text, markers) {
+export function unclaimedRanges(text, markers, segments = []) {
   if (!markers.length) {
     return text.length ? [{ start: 0, end: text.length }] : [];
   }
@@ -130,7 +130,15 @@ export function unclaimedRanges(text, markers) {
     cursor = Math.max(cursor, marker.start);
   }
 
-  // Text after the final marker belongs to that marker's segment, not to the
-  // unclaimed pool, so nothing is appended here.
+  // Text after the final marker normally belongs to that marker's segment.
+  // But once sentence-boundary termination was added, the last segment often
+  // stops at a full stop — and anything past it was in neither the segment nor
+  // this pool, so trailing unmarked values (a bare PIN, a bare phone number)
+  // became invisible to the fallbacks. Claim that tail exactly once.
+  const lastSegment = segments[segments.length - 1];
+  if (lastSegment && lastSegment.end < text.length) {
+    ranges.push({ start: lastSegment.end, end: text.length });
+  }
+
   return ranges;
 }
