@@ -27,7 +27,7 @@ MedScribe is a React Native (Android) application that lets doctors create struc
 
 The intended pipeline, per the SRS:
 
-```
+```text
 Dictate  →  Transcribe  →  Extract patient fields  →  Structured report
  (FR-2)      (FR-3/4)          (FR-5)                  (FR-6/7/8)
 ```
@@ -118,7 +118,7 @@ New phrasing is a **row in `src/constants/fieldMarkers.js`**, never a logic chan
 
 ### Layering
 
-```
+```text
 RecordingScreen (UI state machine)
       │
       ├── useSpeechRecognition  ← owns the whole session
@@ -167,7 +167,7 @@ The library forwards raw Android `SpeechRecognizer` error codes. They are split 
 
 Six stage modules under `src/services/extraction/`, plus `extractionService.js` as a thin orchestrator:
 
-```
+```text
 Transcript
    ↓  normalizeTranscript    fillers stripped, whitespace collapsed, + index map
    ↓  detectMarkers          every field introducer, with positions
@@ -187,7 +187,7 @@ Candidate extraction (between segmentation and post-processing) is the **designa
 ```js
 { value: 'Viral infection', confidence: 0.95, source: 'diagnosed with',
   start: 244, end: 281 }   // offsets into the ORIGINAL transcript
-```
+```text
 
 `confidence` is **marker specificity, not probability** — nothing is calibrated. Bands are documented in `fieldMarkers.js`. Values below `LOW_CONFIDENCE_THRESHOLD` render an `UNCERTAIN` badge, so a hedged "probably dengue" never reads as confidently as an explicit diagnosis.
 
@@ -252,7 +252,7 @@ MedScribe/
     ├── Antigravity_Plan.md          # Historical — Phase 1 plan
     ├── Antigravity_walkthrogh.md    # Historical — Phase 1 walkthrough
     └── handoff.md                   # This file
-```
+```text
 
 ---
 
@@ -383,7 +383,7 @@ Two compounding causes:
 
 ```kotlin
 putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())   // should be .toLanguageTag()
-```
+```text
 
 The library's own `setRecognitionLanguage()` cannot work around this — `startListening()` calls `initializeSpeechRecognizer()` on every start, rebuilding the intent from `Locale.getDefault()` and discarding any language previously set. Since the auto-restart loop restarts constantly, that API is useless here.
 

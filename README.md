@@ -109,9 +109,15 @@ Then add to **Path**:
 %ANDROID_HOME%\emulator
 ```
 
-**macOS / Linux (`~/.zshrc` or `~/.bashrc`):**
+**macOS (`~/.zshrc`):**
 ```bash
 export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator
+```
+
+**Linux (`~/.bashrc` or `~/.zshrc`):**
+```bash
+export ANDROID_HOME=$HOME/Android/Sdk
 export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator
 ```
 
@@ -125,6 +131,8 @@ adb --version
 ---
 
 ## Installation
+
+Replace `<repository-url>` below with this repository's actual clone URL (copy it from your Git host's **Clone** button):
 
 ```bash
 git clone <repository-url>
@@ -180,10 +188,10 @@ npx react-native run-android --deviceId 0015935AE000363 # deprecated, still func
 export ANDROID_SERIAL=0015935AE000363        # PowerShell: $env:ANDROID_SERIAL="..."
 ```
 
-> **Speed tip.** The default build compiles all four ABIs. Building only your device's architecture cuts build time roughly 4×:
+> **Speed tip.** `npm run android` **already** passes `--active-arch-only`, so it builds only your device's architecture — no action needed.
+>
+> The four-ABI cost applies to the plain Gradle path and to `npm run android:all-abis`. If you invoke Gradle directly, restrict it yourself:
 > ```bash
-> npx react-native run-android --active-arch-only
-> # or, calling Gradle directly:
 > cd android && ./gradlew app:installDebug -PreactNativeArchitectures=arm64-v8a
 > ```
 > Most modern phones are `arm64-v8a`; confirm with `adb shell getprop ro.product.cpu.abi`.

@@ -15,8 +15,7 @@ let passed = 0;
 let failed = 0;
 const failures = [];
 
-const valueOf = field =>
-  field ? (Array.isArray(field.value) ? field.value : field.value) : null;
+const valueOf = field => (field ? field.value : null);
 
 function check(name, actual, expected) {
   const ok = JSON.stringify(actual) === JSON.stringify(expected);
