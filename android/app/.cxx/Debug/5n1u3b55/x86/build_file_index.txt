@@ -1,9 +1,0 @@
-D:\Anuvadini\MedScribe\node_modules\@appcitor\react-native-voice-to-text\android\generated\jni\CMakeLists.txt
-D:\Anuvadini\MedScribe\node_modules\@react-native-vector-icons\material-design-icons\android\build\generated\source\codegen\jni\CMakeLists.txt
-D:\Anuvadini\MedScribe\node_modules\react-native-gesture-handler\android\CMakeLists.txt
-D:\Anuvadini\MedScribe\node_modules\react-native-reanimated\android\build\generated\source\codegen\jni\CMakeLists.txt
-D:\Anuvadini\MedScribe\node_modules\react-native-safe-area-context\android\src\main\jni\CMakeLists.txt
-D:\Anuvadini\MedScribe\node_modules\react-native-screens\android\src\main\jni\CMakeLists.txt
-D:\Anuvadini\MedScribe\node_modules\react-native-vector-icons\android\build\generated\source\codegen\jni\CMakeLists.txt
-D:\Anuvadini\MedScribe\node_modules\react-native-worklets\android\build\generated\source\codegen\jni\CMakeLists.txt
-D:\Anuvadini\MedScribe\node_modules\react-native\ReactAndroid\cmake-utils\default-app-setup\CMakeLists.txt

@@ -58,7 +58,9 @@ android/.gradle/
 android/local.properties
 android/*.iml
 android/app/*.iml
-android/.cxx/
+# Matches android/.cxx/ and android/app/.cxx/ — the latter is where the NDK
+# actually writes, and the old anchored pattern silently missed it.
+**/.cxx/
 android/.kotlin/
 *.hprof
 *.keystore
