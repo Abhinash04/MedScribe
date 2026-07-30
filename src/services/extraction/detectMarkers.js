@@ -57,23 +57,34 @@ export function detectMarkers(text) {
 const CONFIDENCE_GAP = 0.2;
 
 function suppressWeakInsideStrong(markers, text) {
-  return markers.filter((marker, index) => {
-    if (index === 0) {
-      return true;
+  const kept = [];
+  // Compare against the last marker actually RETAINED, not markers[index - 1].
+  // Once a marker is suppressed it is no longer part of the output, so
+  // measuring the gap against it would be measuring against something that
+  // does not exist downstream.
+  let previous = null;
+
+  for (const marker of markers) {
+    if (previous === null) {
+      kept.push(marker);
+      previous = marker;
+      continue;
     }
 
-    // Only the immediately preceding marker is considered. Scanning further
-    // back is wrong for unpunctuated speech, where the entire transcript is a
-    // single "sentence" and one early strong marker would suppress every
-    // later weak one.
-    const earlier = markers[index - 1];
+    // Only the immediately preceding kept marker is considered. Scanning
+    // further back is wrong for unpunctuated speech, where the entire
+    // transcript is a single "sentence" and one early strong marker would
+    // suppress every later weak one.
+    const sentenceBreak = /[.;?!]/.test(text.slice(previous.start, marker.start));
+    const withinGap = previous.confidence - marker.confidence < CONFIDENCE_GAP;
 
-    if (/[.;?!]/.test(text.slice(earlier.start, marker.start))) {
-      return true;
+    if (sentenceBreak || withinGap) {
+      kept.push(marker);
+      previous = marker;
     }
+  }
 
-    return earlier.confidence - marker.confidence < CONFIDENCE_GAP;
-  });
+  return kept;
 }
 
 /**

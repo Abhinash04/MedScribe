@@ -1,13 +1,14 @@
-import { FIELD_MARKERS } from '../../constants/fieldMarkers.js';
-
 /**
  * Stage 7 — pick one candidate per field.
  *
  * Policy, in order:
- *   1. Last occurrence wins. A doctor restating a field is normally correcting
- *      themselves ("age 22... sorry, 42"), so the later value is the intended
- *      one. This is a deliberate choice, not an accident of iteration order.
- *   2. Ties broken by field priority, then by confidence.
+ *   1. Higher confidence wins. Without this a weak late marker ("advised to
+ *      undergo CBC") overrides an explicit early one ("prescribing
+ *      paracetamol 500mg").
+ *   2. At equal confidence, the LATER occurrence wins. A doctor restating a
+ *      field is normally correcting themselves ("age 22... sorry, 42"), and a
+ *      repeated marker carries equal confidence, so this is what makes
+ *      self-correction work.
  *
  * @param {Array} candidates validated candidates
  * @returns {Object} field key -> winning candidate
@@ -42,11 +43,7 @@ function shouldReplace(current, next) {
   }
 
   // Equal confidence — later in the transcript wins (self-correction).
-  if (next.start !== current.start) {
-    return next.start > current.start;
-  }
-
-  const currentPriority = FIELD_MARKERS[current.field]?.priority ?? 0;
-  const nextPriority = FIELD_MARKERS[next.field]?.priority ?? 0;
-  return nextPriority > currentPriority;
+  // Candidates for one field cannot share a start offset, so there is no
+  // further tie to break.
+  return next.start > current.start;
 }

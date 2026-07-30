@@ -66,12 +66,15 @@ function buildSegments(text, markers) {
   });
 }
 
+/** Short titles whose trailing period is not a sentence end. */
+const ABBREVIATIONS = /(?:^|\s)(?:dr|mr|mrs|ms|prof|st)$/i;
+
 /**
  * First sentence-terminating punctuation in [from, limit), or `limit`.
  *
  * Decimals and abbreviations must not count: "500.5 mg" and "Dr. Rao" are not
  * sentence ends. A terminator only counts when followed by whitespace or the
- * end of the slice, and not preceded by a digit.
+ * end of the slice, not preceded by a digit, and not closing a known title.
  */
 function findSentenceEnd(text, from, limit) {
   for (let i = from; i < limit; i += 1) {
@@ -88,6 +91,11 @@ function findSentenceEnd(text, from, limit) {
     // end — self-correction handling needs the whole span. Check both
     // neighbours so every dot of the run is skipped, not just the first.
     if (text[i + 1] === '.' || text[i - 1] === '.') {
+      continue;
+    }
+
+    // Titles are not sentence ends — "Dr. Rao advised rest" is one segment.
+    if (char === '.' && ABBREVIATIONS.test(text.slice(Math.max(0, i - 4), i))) {
       continue;
     }
 

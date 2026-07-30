@@ -7,11 +7,14 @@
  */
 
 const validators = {
+  // Unicode-aware: an ASCII-only class rejected real patient names such as
+  // José and Björn. \p{L} covers accented Latin without broadening the
+  // validator beyond letters.
   personName: value =>
     typeof value === 'string' &&
     value.length >= 2 &&
     value.length <= 60 &&
-    /^[A-Za-z][A-Za-z\s.'-]*$/.test(value),
+    /^\p{L}[\p{L}\s.'-]*$/u.test(value),
 
   age: value => {
     const parsed = parseInt(value, 10);

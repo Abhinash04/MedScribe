@@ -84,11 +84,32 @@ const trimLeading = value => {
   return out;
 };
 
+/**
+ * Title-cases a name while preserving meaningful internal capitals.
+ *
+ * Blindly lowercasing after the first letter turns "McDonald" into "Mcdonald"
+ * and "O'Brien" into "O'brien". Each apostrophe/hyphen-delimited sub-token is
+ * capitalised instead, and existing internal capitals are left alone unless
+ * the whole word is upper case (recognizers sometimes emit "HEMA SHARMA").
+ */
+const capitalizeToken = token => {
+  if (!token) {
+    return token;
+  }
+  const normalized = token === token.toUpperCase() ? token.toLowerCase() : token;
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 const titleCase = value =>
   trimLeading(value)
     .split(' ')
     .filter(Boolean)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map(word =>
+      word
+        .split(/(['’-])/)
+        .map(part => (/['’-]/.test(part) ? part : capitalizeToken(part)))
+        .join(''),
+    )
     .join(' ');
 
 const sentenceCase = value => {
@@ -213,9 +234,16 @@ const processors = {
     const text = trimLeading(afterLastCorrection(raw));
 
     // LAST valid number — "9876543218... correction, 9876543210".
-    const grouped = [...text.matchAll(/(\+?\d[\d\s-]{7,17}\d)/g)]
+    //
+    // Separators are bounded to a single space/hyphen so two adjacent numbers
+    // ("9876543210 9812345678") cannot be swallowed as one 20-digit run, and
+    // the digit count is capped at 13 (E.164 max) for the same reason.
+    const grouped = [...text.matchAll(/(\+?\d(?:[\s-]?\d){9,14})/g)]
       .map(m => m[1].replace(/[^\d+]/g, ''))
-      .filter(d => d.replace(/\D/g, '').length >= 10);
+      .filter(d => {
+        const digits = d.replace(/\D/g, '').length;
+        return digits >= 10 && digits <= 13;
+      });
     if (grouped.length) {
       return grouped[grouped.length - 1];
     }
