@@ -2,7 +2,7 @@
 
 **Voice-powered medical documentation for Android.**
 
-MedScribe lets doctors create patient records by dictating instead of typing. It captures speech through the device microphone, converts it to text on-device, and (from Phase 3 onward) will extract patient fields into a structured clinical report.
+MedScribe lets doctors create patient records by dictating instead of typing. It captures speech through the device microphone, converts it to text on-device, extracts the patient details, and renders a structured clinical report.
 
 > MedScribe is a **documentation aid only**. It performs no diagnosis and makes no medical decisions.
 
@@ -36,10 +36,13 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 - **Live transcript** — confirmed text renders solid, the recognizer's interim guess trails it in muted italics.
 - **Real-time audio visualizer** — driven by actual microphone RMS levels, not a canned animation.
 - **Graceful error handling** — transient recognizer errors are retried silently; genuine failures surface in plain language.
+- **Patient-field extraction** — pulls the eleven clinical fields out of the transcript deterministically. Works regardless of the order the doctor dictates in, and handles conversational phrasing, clinical shorthand (`c/o`, `h/o`, `Rx`), filler words, self-correction ("age 32… sorry, 22") and romanised Hindi.
+- **Structured report** — a preview with an N-of-11 summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, and values inferred from a hedged phrase are flagged **UNCERTAIN**.
+- **Transcript inspection** — the report can reveal the original dictation, which is the fastest way to tell a transcription gap from an extraction gap.
 
 ### Planned
 
-Patient-field extraction, structured report generation, missing-field handling, and report preview. See [Roadmap](#roadmap).
+Continuous recognition without restart gaps, and improved accuracy on `en-IN` devices. See [Roadmap](#roadmap).
 
 ---
 
@@ -253,21 +256,33 @@ MedScribe/
 │   │   ├── ListeningVisualizer.jsx  #   Aura + spectrum driven by real mic levels
 │   │   ├── PermissionGate.jsx       #   Denied / blocked / unavailable screens
 │   │   ├── RecordingControls.jsx    #   State-aware action buttons
+│   │   ├── ReportField.jsx          #   One report row, "Not Available" handling
 │   │   ├── ScreenContainer.jsx      #   Safe-area + status-bar wrapper
 │   │   ├── SectionTitle.jsx         #   Title + subtitle block
 │   │   └── TranscriptView.jsx       #   Live transcript (final + interim)
 │   ├── constants/
-│   │   └── recordingStates.js       # State machine, error maps, timings
+│   │   ├── recordingStates.js       # State machine, error maps, timings
+│   │   ├── patientFields.js         # The 11 report fields and their order
+│   │   └── fieldMarkers.js          # Marker vocabulary — add new phrasing here
 │   ├── hooks/
 │   │   └── useSpeechRecognition.js  # Session orchestrator: permission → record → transcript
 │   ├── navigation/
-│   │   └── RootNavigator.jsx        # Native stack: Home → Recording
+│   │   └── RootNavigator.jsx        # Native stack: Home → Recording → Report
 │   ├── screens/
 │   │   ├── HomeScreen.jsx
-│   │   └── RecordingScreen.jsx
+│   │   ├── RecordingScreen.jsx
+│   │   └── ReportScreen.jsx         # Structured report preview
 │   ├── services/
 │   │   ├── permissionService.js     # Microphone permission handling
-│   │   └── speechService.js         # Speech engine isolation layer
+│   │   ├── speechService.js         # Speech engine isolation layer
+│   │   ├── extractionService.js     # Field extraction orchestrator
+│   │   └── extraction/              # One module per pipeline stage
+│   │       ├── normalizeTranscript.js
+│   │       ├── detectMarkers.js
+│   │       ├── segmentTranscript.js
+│   │       ├── postProcessors.js
+│   │       ├── validators.js
+│   │       └── resolveConflicts.js
 │   ├── store/
 │   │   └── useRecordingStore.js     # Zustand recording state
 │   └── theme/
@@ -275,6 +290,8 @@ MedScribe/
 │       ├── spacing.js
 │       ├── typography.js
 │       └── index.js
+├── scripts/
+│   └── test-extraction.mjs          # Extraction fixture suite (no test framework)
 ├── android/
 ├── docs/
 │   ├── MedSrcibe_SRS.md             # Requirements specification
@@ -314,6 +331,7 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run android` | Build, install and launch. Uses `--active-arch-only` — builds only the connected device's ABI (~4× faster, ~½ the APK size). |
 | `npm run android:all-abis` | Build all four ABIs for a universal APK. Slow; only needed for release or an unknown target device. |
 | `npm run ios` | iOS build. **Unverified — never built.** |
+| `npm run test:extraction` | 245 assertions over the field-extraction pipeline. Runs under plain Node, no test framework. |
 | `npm run lint` | ESLint across the project. |
 | `npm test` | Jest. **Currently broken** — see below. |
 
@@ -396,6 +414,15 @@ adb wait-for-device shell getprop sys.boot_completed   # returns 1 when ready
    adb shell pm query-services -a android.speech.RecognitionService
    ```
 3. Network connectivity — some recognizer models require it.
+
+### The report is missing fields
+
+Tap **"Show original dictation"** on the report screen first. That single step tells you which of two very different problems you have:
+
+- **Words are missing from the transcript** — the recognizer dropped them during a restart gap. No extraction change can recover a field whose introducer phrase was never transcribed. Dictate with a brief pause between sentences, and see the recognizer-restart limitation in [`docs/handoff.md`](docs/handoff.md).
+- **The transcript is complete but fields are empty** — the phrasing has no matching marker. Add a row to `src/constants/fieldMarkers.js`; no pipeline logic needs changing.
+
+Fields the doctor genuinely never mentioned correctly show **Not Available** — that is FR-7 behaviour, not a bug.
 
 ### Transcription is inaccurate or mixes languages
 
@@ -483,7 +510,13 @@ npm start -- --reset-cache
 | :-- | :-- | :-- |
 | **1** | Design system, components, navigation | Complete |
 | **2** | Permissions, speech-to-text, live transcript | Complete |
-| **3** | Patient-field extraction, structured report, preview | Planned |
+| **3** | Patient-field extraction, structured report, preview | Complete |
+
+**Next up**, in priority order:
+
+1. **Close the recognizer restart gaps.** The microphone is deaf for ~0.5–1.5 s after each pause while the recognizer restarts, so words are dropped from real dictation. This is the largest gap between test results and real-world quality — extraction scores 165/165 on clean text, but cannot recover a field whose marker was never transcribed.
+2. **Promote the 15 realistic dictation samples to committed fixtures**, so a regression in any dictation style is caught automatically.
+3. **Improve `en-IN` recognition accuracy**, which is currently bounded by a library bug rather than by this codebase.
 
 Longer term (per the SRS): AI-assisted entity extraction, ICD-10 coding, PDF export, EHR integration, multi-language recognition, cloud sync, patient history, offline recognition.
 
