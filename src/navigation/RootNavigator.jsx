@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
 import RecordingScreen from '../screens/RecordingScreen';
+import ReportScreen from '../screens/ReportScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -19,6 +20,7 @@ const RootNavigator = () => {
     >
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Recording" component={RecordingScreen} />
+      <Stack.Screen name="Report" component={ReportScreen} />
     </Stack.Navigator>
   );
 };
