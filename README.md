@@ -2,7 +2,7 @@
 
 **Voice-powered medical documentation for Android.**
 
-MedScribe lets doctors create patient records by dictating instead of typing. It captures speech through the device microphone, converts it to text using the Android system speech recognizer, extracts the patient details, and renders a structured clinical report — which the doctor then reviews, corrects, saves to a local database, and exports as a PDF.
+MedScribe lets doctors create patient records by dictating instead of typing. It captures speech through the device microphone, converts it to text using the Android system speech recognizer, hands the transcript back for review and correction, extracts the patient details, and renders a structured clinical report — which the doctor then reviews, corrects, saves to a local database, and exports as a PDF.
 
 > MedScribe is a **documentation aid only**. It performs no diagnosis and makes no medical decisions.
 
@@ -30,19 +30,25 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 
 ### Available now
 
-- **Dark, clinical UI** — design-token theme built for consultation-room readability.
+- **Light, clinical UI** — a design-token system built for consultation-room readability under bright light, documented in [`DESIGN.md`](DESIGN.md).
 - **Animated microphone** — Reanimated idle breathing and press feedback.
 - **Full runtime permission flow** — handles granted, denied, permanently blocked (with a working "Open Settings" action), and no-engine-available.
-- **Continuous dictation** — Android's speech recognizer stops at the first pause, so MedScribe automatically restarts it and accumulates the results. The doctor can pause naturally between sentences; only an explicit **Stop** ends the session.
+- **Continuous dictation** — Android's speech recognizer stops at the first pause, so MedScribe automatically restarts it and accumulates the results. The doctor can pause naturally between sentences; only an explicit **Pause** or **Stop** ends the listening.
+- **Pause and resume** — pause mid-consultation to examine the patient, then resume. The transcript, the extracted fields and the elapsed time are all preserved; resuming appends to what was already dictated rather than starting over.
+- **Session status and timer** — a live pill (Listening / Paused / Processing / Stopped) and an MM:SS duration that excludes paused time.
+- **One audio cue, not a beep per sentence** — the Android recognizer plays its own tone every time it restarts, which is once per sentence during continuous dictation. MedScribe plays a single cue when a session starts or resumes and mutes those system tones for the rest of the session.
+- **Live field preview** — patient name, age, gender, symptoms and diagnosis appear as they are recognised, so a missed field is visible while the patient is still in the room.
 - **Live transcript** — confirmed text renders solid, the recognizer's interim guess trails it in muted italics.
 - **Real-time audio visualizer** — driven by actual microphone RMS levels, not a canned animation.
 - **Graceful error handling** — transient recognizer errors are retried silently; genuine failures surface in plain language.
 - **Patient-field extraction** — pulls the eleven clinical fields out of the transcript deterministically. Works regardless of the order the doctor dictates in, and handles conversational phrasing, clinical shorthand (`c/o`, `h/o`, `Rx`), filler words, self-correction ("age 32… sorry, 22") and romanised Hindi.
 - **Structured report** — a preview with an N-of-11 summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, and values inferred from a hedged phrase are flagged **UNCERTAIN**.
+- **Transcript review step** — dictation lands on a review screen before any report is generated. Correct the whole transcript in one editor, or work sentence by sentence with per-utterance edit and delete, then resume dictating or generate the report.
+- **Automatic session saving** — the in-flight dictation is written to the database as it grows. If the app is force-stopped, killed by the OS or the battery dies, the next visit to the recording screen offers to restore it.
 - **Transcript inspection** — the report can reveal the original dictation, which is the fastest way to tell a transcription gap from an extraction gap.
 - **Editable report fields** — the generated report is a draft, not a verdict. Every field is an input: tap it and type. Symptoms are a list with add and remove. Fields the doctor changed are flagged **EDITED**, and empty fields can be filled in from scratch.
 - **Save Report** — persists the original dictation, the extraction, the doctor's edits, the status and the timestamps together.
-- **Doctor Dashboard** — the launch screen. Lists every saved report newest-first with patient name, date and time, diagnosis and a Draft/Final pill. Tap one to reopen it for editing; long-press to delete.
+- **Doctor Dashboard** — the launch screen. A start-recording card and a round microphone button open a new consultation; overview tiles count total, today, draft and finalized reports; saved reports list newest-first with initials, relative timestamp, diagnosis and a Draft/Final pill. Quick actions search by patient or diagnosis and filter to pending drafts. Tap a report to reopen it for editing; long-press to delete.
 - **Local database** — SQLite, so reports survive closing the app, force-stopping it, and rebooting the phone.
 - **Finalize** — marks a report `Final` once the doctor is satisfied. Finalized reports still open and still save; the pill records intent rather than locking the record.
 - **PDF export** — renders any report as an A4 document (patient details, medical history, symptoms, diagnosis, prescription, remarks, generation timestamp) and hands it to the system share sheet for printing, mailing or filing.
@@ -56,17 +62,22 @@ Continuous recognition without restart gaps, and improved accuracy on `en-IN` de
 ## How a Consultation Flows
 
 ```text
-Dashboard  →  New Dictation  →  Record  →  Report  →  Edit  →  Save  →  Dashboard
-                                                        └──→  Download PDF
+Dashboard → New Dictation → Record → Transcript Review → Report → Edit → Save → Dashboard
+                               ↑            │                                      └──→ Download PDF
+                               └────────────┘
+                             Resume dictation
 ```
 
 1. **Open the app.** The Dashboard lists every previously saved report.
-2. **New Dictation** → dictate the consultation → **Continue**.
-3. The structured report is generated and populated.
-4. **Review and correct** any field — the extraction is a starting point, not the record.
-5. **Save Report.** It appears on the Dashboard immediately.
-6. Optionally **Download PDF** to print, mail or file it.
-7. **Tap any saved report** to reopen it with its original dictation and every edit intact, and keep working.
+2. **New Dictation** → dictate the consultation, pausing and resuming as needed → **Stop**, and confirm.
+3. **Review the transcript.** Fix anything the recognizer misheard, in the full editor or sentence by sentence. **Resume Dictation** goes back for more and appends to what is already there — it never starts a fresh transcript.
+4. **Generate Report.** The structured report is extracted from the reviewed transcript.
+5. **Review and correct** any field — the extraction is a starting point, not the record.
+6. **Save Report.** It appears on the Dashboard immediately.
+7. Optionally **Download PDF** to print, mail or file it.
+8. **Tap any saved report** to reopen it with its original dictation and every edit intact, and keep working.
+
+Correcting the transcript before extraction is deliberate: a misheard word fixed at step 3 is one edit, while the same word reaching the report can be wrong in several fields at once.
 
 Single doctor, no login. Multi-doctor and authentication are Roadmap items, not omissions.
 
@@ -268,6 +279,7 @@ Values below are declared in `android/build.gradle` and `android/gradle.properti
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
 <queries>
   <intent>
@@ -277,6 +289,8 @@ Values below are declared in `android/build.gradle` and `android/gradle.properti
 ```
 
 The `<queries>` block is **required on API 30+** for the app to see the system speech recognizer at all.
+
+`MODIFY_AUDIO_SETTINGS` is a normal permission, granted at install with no prompt. It lets the app mute the streams the system recognizer plays its start and end tones on, which is the only way to stop a beep between every dictated sentence. Muting the ring, notification and alarm group additionally requires Do-Not-Disturb access — **the app never requests it**, and simply skips any stream the system refuses.
 
 > **Any change to `AndroidManifest.xml` requires a full native rebuild.** Metro fast-refresh will not pick it up.
 
@@ -293,30 +307,38 @@ MedScribe/
 │   │   ├── AnimatedMicButton.jsx    #   Hero microphone with Reanimated feedback
 │   │   ├── AppHeader.jsx            #   Brand header + optional back button
 │   │   ├── ListeningVisualizer.jsx  #   Aura + spectrum driven by real mic levels
+│   │   ├── LiveFieldsPreview.jsx    #   Fields recognised so far, shown while dictating
+│   │   ├── MicGlyph.jsx             #   Microphone icon drawn from Views (no icon font)
 │   │   ├── PermissionGate.jsx       #   Denied / blocked / unavailable screens
 │   │   ├── RecordingControls.jsx    #   State-aware action buttons
 │   │   ├── ReportField.jsx          #   One report row — editable when given onChange
 │   │   ├── ScreenContainer.jsx      #   Safe-area + status-bar wrapper
 │   │   ├── SectionTitle.jsx         #   Title + subtitle block
+│   │   ├── SessionRecoveryModal.jsx #   Restore or discard an interrupted dictation
+│   │   ├── StopConfirmationModal.jsx#   Confirm before ending a session
 │   │   └── TranscriptView.jsx       #   Live transcript (final + interim)
 │   ├── constants/
 │   │   ├── recordingStates.js       # State machine, error maps, timings
 │   │   ├── patientFields.js         # The 11 report fields and their order
 │   │   └── fieldMarkers.js          # Marker vocabulary — add new phrasing here
 │   ├── db/
-│   │   ├── database.js              # SQLite connection + schema migrations
+│   │   ├── database.js              # SQLite connection + migrations (reports, active_sessions)
 │   │   └── reportsRepository.js     # Report CRUD SQL queries
 │   ├── hooks/
 │   │   └── useSpeechRecognition.js  # Session orchestrator: permission → record → transcript
 │   ├── navigation/
-│   │   └── RootNavigator.jsx        # Native stack: Dashboard → Recording → Report
+│   │   └── RootNavigator.jsx        # Dashboard → Recording → TranscriptReview → Report
 │   ├── screens/
-│   │   ├── DashboardScreen.jsx      # Launch screen: saved reports + New Dictation
-│   │   ├── RecordingScreen.jsx
+│   │   ├── DashboardScreen.jsx      # Launch screen: overview, quick actions, saved reports
+│   │   ├── RecordingScreen.jsx      # Status, timer, live fields, pause / resume / stop
+│   │   ├── TranscriptReviewScreen.jsx  # Correct the transcript before extraction
 │   │   └── ReportScreen.jsx         # Editable draft, Save, Finalize, Download PDF
 │   ├── services/
 │   │   ├── permissionService.js     # Microphone permission handling
 │   │   ├── speechService.js         # Speech engine isolation layer
+│   │   ├── dictationSessionManager.js  # Session orchestrator: timer, cues, autosave, live fields
+│   │   ├── audioFeedbackService.js  # Audio cue + system-tone suppression isolation layer
+│   │   ├── sessionPersistenceService.js  # Debounced autosave and recovery of a live session
 │   │   ├── extractionService.js     # Field extraction orchestrator
 │   │   ├── reportDraft.js           # Extraction → editable draft (pure)
 │   │   ├── reportDocument.js        # Draft → PDF payload (pure)
@@ -329,12 +351,13 @@ MedScribe/
 │   │       ├── validators.js
 │   │       └── resolveConflicts.js
 │   ├── specs/
-│   │   └── NativePdfExporter.js     # TurboModule spec (React Native codegen input)
+│   │   ├── NativePdfExporter.js     # TurboModule spec (React Native codegen input)
+│   │   └── NativeAudioCue.js        # TurboModule spec: cues + system-tone suppression
 │   ├── store/
 │   │   ├── useRecordingStore.js     # Zustand recording state
 │   │   └── useReportsStore.js       # Zustand saved-report state
 │   ├── utils/
-│   │   └── datetime.js              # Display timestamps and PDF filename stamps
+│   │   └── datetime.js              # Display + relative timestamps, PDF filename stamps
 │   └── theme/
 │       ├── colors.js
 │       ├── spacing.js
@@ -346,7 +369,9 @@ MedScribe/
 ├── android/
 │   └── app/src/main/
 │       ├── java/com/medscribe/pdf/  # Kotlin PDF exporter TurboModule
+│       ├── java/com/medscribe/audio/ # Kotlin audio cue + stream muting TurboModule
 │       └── res/xml/file_paths.xml   # FileProvider paths for sharing exported PDFs
+├── DESIGN.md                        # Design system: colour, type, spacing, components
 ├── docs/
 │   ├── MedSrcibe_SRS.md             # Requirements specification
 │   └── handoff.md                   # Architecture, decisions, known issues — read this
@@ -389,7 +414,7 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run android:all-abis` | Build all four ABIs for a universal APK. Slow; only needed for release or an unknown target device. |
 | `npm run ios` | iOS build. **Unverified — never built.** |
 | `npm run test:extraction` | 245 assertions over the field-extraction pipeline. Runs under plain Node, no test framework. |
-| `npm run test:report` | 60 assertions over the editable draft and the PDF payload. Also plain Node. |
+| `npm run test:report` | 67 assertions over the editable draft, the PDF payload and the dashboard timestamps. Also plain Node. |
 | `npm run lint` | ESLint across the project. |
 | `npm test` | Jest. **Currently broken** — see below. |
 
@@ -488,6 +513,28 @@ adb wait-for-device shell getprop sys.boot_completed   # returns 1 when ready
    adb shell pm query-services -a android.speech.RecognitionService
    ```
 3. Network connectivity — some recognizer models require it.
+
+### A beep still plays between every sentence
+
+That tone comes from the **system** speech recognition service, not from MedScribe — Android restarts the recognizer after every utterance and it announces each session. The app mutes the streams that carry it for the duration of a dictation, but which stream a given OEM uses varies.
+
+`suppressSystemTones` resolves with the list of streams it actually managed to mute (`music,system,notification` on a stock device). Check it in logcat:
+
+```bash
+adb logcat -s AudioCueModule ReactNativeJS
+```
+
+A short list means the system refused some streams. Muting the ring, notification and alarm group requires Do-Not-Disturb access, which the app deliberately never requests — asking a doctor to hand over DND control to silence a beep is not a reasonable trade.
+
+### The device volume seems stuck down
+
+It should not be possible to leave the phone muted. Five independent paths restore the streams: the app's own pause/stop/unmount calls, the native lifecycle callbacks (which cover a JS crash or a Metro reload), a 120-second watchdog inside the module, a flag written to `SharedPreferences` before the first mute and checked on the next launch, and Android's own per-client cleanup when a process dies.
+
+If it ever does happen, that is a real bug — note the device model and the Android version, since stream routing is where OEMs differ most.
+
+### It offers to restore an unfinished dictation
+
+Expected after a crash, a force-stop or the OS killing the app mid-consultation: the transcript is saved as it grows, so it survives. **Restore** continues that session with its transcript and elapsed time intact; **Discard** deletes it. The prompt is answered before the microphone starts, so neither choice can race the recogniser.
 
 ### The report is missing fields
 
@@ -621,6 +668,7 @@ npm start -- --reset-cache
 | **2** | Permissions, speech-to-text, live transcript | Complete |
 | **3** | Patient-field extraction, structured report, preview | Complete |
 | **4** | Editable fields, save, doctor dashboard, SQLite persistence, PDF export | Complete |
+| **5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete on host checks; the audio module still needs device verification |
 
 **Next up**, in priority order:
 
@@ -629,6 +677,8 @@ npm start -- --reset-cache
 3. **Improve `en-IN` recognition accuracy**, which is currently bounded by a library bug rather than by this codebase.
 
 Recently closed, so nobody re-files it: leaving the Recording screen and returning used to strand the app on a permanent "Speech recognition unavailable". Fixed and verified on device — details in [`docs/handoff.md`](docs/handoff.md).
+
+Phase 5 ships without device confirmation of one thing: which audio stream carries the recogniser tone on the target hardware. Everything else in that phase is exercised by the host suites, but stream routing can only be checked on a real phone — see the troubleshooting entry above for how to read it out of logcat.
 
 Longer term (per the SRS): AI-assisted entity extraction, ICD-10 coding, EHR integration, multi-language recognition, cloud sync, offline recognition. **Multiple doctors and authentication** join that list — the schema carries no `doctor_id` yet, and the database is not encrypted at rest, both of which need addressing before real patient data.
 
@@ -642,3 +692,4 @@ PDF export, patient history and report editing before save were delivered in Pha
 | :-- | :-- |
 | [`docs/handoff.md`](docs/handoff.md) | Architecture, design decisions, conventions, known issues. **Read before modifying the speech pipeline.** |
 | [`docs/MedSrcibe_SRS.md`](docs/MedSrcibe_SRS.md) | Requirements specification. |
+| [`DESIGN.md`](DESIGN.md) | Design system: colour tokens, typography, spacing, component patterns. |

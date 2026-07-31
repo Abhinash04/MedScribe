@@ -35,8 +35,10 @@ Dictate  →  Transcribe  →  Extract patient fields  →  Structured report
 Phase 4 continues that line past the preview the SRS stops at:
 
 ```text
-… → Structured report → Review & edit → Save → Dashboard → Reopen / Export PDF
+… → Transcript review → Structured report → Review & edit → Save → Dashboard → Reopen / Export PDF
 ```
+
+Phase 5 adds the transcript review step in front of extraction, and makes the dictation itself controllable: pause, resume, a live status and timer, automatic saving of the in-flight session, and a single audio cue in place of the system recogniser's beep between every sentence.
 
 **Scope boundary:** the application is a *documentation aid only*. It performs no diagnosis and makes no medical decisions (SRS §1.2). Editable fields do not change that — the doctor is the author of every value; the app only proposes.
 
@@ -53,6 +55,7 @@ Full requirements live in [`MedSrcibe_SRS.md`](./MedSrcibe_SRS.md). The two Anti
 | **Phase 3** | Field extraction + structured report | Complete |
 | **Hardening** | Post-Phase-3 correctness pass | Complete, verified on hardware |
 | **Phase 4** | Editable reports, SQLite persistence, doctor dashboard, PDF export | Complete, verified on hardware |
+| **Phase 5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete; host checks green, audio module unverified on hardware |
 
 The hardening round is five commits: `c02369d` (extraction pipeline correctness), `b0c9b6f` (permission rejection + native error surfacing), `9d4ddff` (transcript preserved on error, reset on new dictation), `3095391` (phone numbers + trailing unmarked values), `c59877d` (recording restarts after leaving the screen).
 
@@ -63,6 +66,8 @@ Phase 4 turns the one-shot pipeline into a documentation system. The generated r
 Re-verified on the same device on **2026-07-31**, including the cycle that `c59877d` fixes: enter the Recording screen → press back without dictating → tap the mic again. That path previously dead-ended on a permanent "Speech recognition unavailable" and now starts a normal session. See [§7](#️-unmount-calls-stop-never-destroy) for why.
 
 This matters: **dictation cannot be tested on the Android emulator at all.** See [§9](#9-known-limitations--future-considerations). Any future agent that tries to validate speech features on an emulator will waste hours reaching a dead end that has already been investigated and ruled out.
+
+**What Phase 5 has and has not been proven on:** `npm run lint` is clean, `test:report` passes 67 assertions and `test:extraction` 245, and the release APK builds with both native modules compiled in. What no host check can cover is which audio stream the recogniser's tone plays on — that varies by OEM, and `suppressSystemTones` resolves with the list it actually muted precisely so it can be read out of logcat on the device. Treat beep suppression as implemented-but-unconfirmed until someone runs it on the Oppo A059.
 
 Extraction is measured against fixtures rather than the device, since it is pure and deterministic:
 
@@ -108,6 +113,21 @@ Phase 4 goes beyond the original FR list — the SRS stops at *preview*, and the
 | Persistence | SQLite via `@op-engineering/op-sqlite`. Survives force-stop and reinstall-free relaunch. |
 | Finalize | `draft` → `final`. Finalized reports stay openable and editable — the pill records intent, it is not a lock. |
 | PDF export | A4 document rendered by an in-app Kotlin TurboModule, handed to the system share sheet (SRS §8). |
+
+Phase 5 turns the recording step from a one-shot capture into a controllable session:
+
+| Capability | Description |
+| :-- | :-- |
+| Pause / Resume | Pause stops the recogniser and freezes the timer; resume appends to the same transcript. Stop is confirmed through a dialog, since an accidental tap used to end a consultation. |
+| Status + timer | A live pill (Listening / Paused / Processing / Stopped) and an MM:SS duration that excludes paused time. |
+| Utterance model | The store holds `segments` — `{ id, text, originalText, confidence, timestamp, edited }` — instead of flat strings. `chunks` remains as a derived mirror so existing readers did not have to change. |
+| Transcript review | A screen between recording and extraction: a full-text editor, or a sentence-by-sentence breakdown with per-utterance edit and delete. "Resume Dictation" returns to recording without discarding anything. |
+| Live field preview | Extraction runs debounced against the transcript so far, so a missed field is visible while the patient is still present. |
+| Session autosave | The live session is written to `active_sessions` on a 2 s debounce and cleared when the report is generated. |
+| Crash recovery | Entering the recording screen with an unfinished session offers Restore or Discard, and the recogniser does not start until that is answered. |
+| Audio cues | One cue at start and resume; the system recogniser's per-utterance tones are muted for the rest of the session. |
+
+**FR-4 now spans two screens** — the live transcript during dictation and the review screen after it. Extraction reads whatever the doctor approved on the second, never the raw recogniser output.
 
 **FR-1 now means the Dashboard**, not the old landing screen. `HomeScreen.jsx` was deleted; `AnimatedMicButton` and `SectionTitle` are still in use by `DashboardScreen`.
 
@@ -187,6 +207,29 @@ Three invariants. Each mirrors a convention this codebase already follows, and e
 - **`pdfService.js` is the only module that touches the native exporter.** No screen imports the TurboModule.
 - **`reportDraft.js` and `reportDocument.js` are pure and RN-free**, with explicit `.js` import extensions, so they run under plain Node exactly like the extraction pipeline — which is what makes `scripts/test-report.mjs` possible with zero test dependencies.
 
+### Layering, Phase 5
+
+```text
+RecordingScreen / TranscriptReviewScreen
+      │
+      ├── useSpeechRecognition        ← recogniser lifecycle, permission, restart loop
+      │        └── dictationSessionManager   ← session lifecycle
+      │                 ├── speechService            (engine driver only)
+      │                 ├── audioFeedbackService     → AudioCue TurboModule
+      │                 ├── sessionPersistenceService → active_sessions
+      │                 ├── extractionService        (debounced live fields)
+      │                 └── useRecordingStore        (segments, status, duration)
+      │
+      └── LiveFieldsPreview / TranscriptView / RecordingControls / modals
+```
+
+The split matters more than the box count:
+
+- **`speechService` remains a pure engine driver.** It starts, stops and normalizes events. It knows nothing about sessions, timers or persistence — which is what keeps an offline or on-device recogniser a one-file swap.
+- **`dictationSessionManager` owns everything that is true of a *session* rather than a *recogniser*:** the duration timer, the audio cues, the debounced autosave and the debounced live extraction. It is a plain singleton with no React dependency, so it can be driven from a voice command or a background trigger later without a hook to host it.
+- **`useSpeechRecognition` still owns the recogniser lifecycle** — permission, the restart loop, error classification, teardown — and delegates session concerns to the manager. Pause and resume are hook actions because they must also cancel the restart timer, which only the hook holds.
+- **The amplitude rule from Phase 2 is unchanged and still binding**: RMS goes to a Reanimated shared value, never to the store. The duration timer follows the same principle — the store holds no ticking value.
+
 ### The `reports` schema
 
 Migration 1, in `src/db/database.js`:
@@ -214,6 +257,27 @@ Two decisions here look redundant and are not:
 The id comes from a small `makeId()` (timestamp + random suffix). `crypto.randomUUID` is **not** assumed to exist on Hermes.
 
 **Migrations are append-only.** `MIGRATIONS` is an ordered array driven by `PRAGMA user_version`; index 0 takes a fresh database to version 1. Editing a migration that has already shipped will not re-run on an installed app — add a new entry instead.
+
+### The `active_sessions` schema
+
+Migration 2, added in Phase 5:
+
+```sql
+CREATE TABLE active_sessions (
+  id               TEXT PRIMARY KEY,   -- 'sess_<base36 timestamp>'
+  segments_json    TEXT NOT NULL,      -- the utterance array, verbatim
+  live_fields_json TEXT,               -- last live extraction result
+  duration_seconds INTEGER NOT NULL DEFAULT 0,
+  updated_at       INTEGER NOT NULL    -- epoch ms
+);
+```
+
+- **One row per session, with the utterances as JSON**, rather than a row per utterance. A session is only ever read whole, so an upsert of one row costs one write per debounce tick instead of N inserts, and it matches the `extracted_json` / `edited_json` convention already in `reports`. Each save rewrites the whole blob — irrelevant at consultation length.
+- **The row is transient by design.** It is deleted when the report is generated or the doctor discards a recovered session. A row that outlives its session means the app died, which is exactly the condition the recovery prompt exists for.
+- **Writes are debounced 2 s and every failure is swallowed.** Autosave is insurance; it must never be able to interrupt a dictation in progress.
+- `sessionPersistenceService` calls `runMigrations()` before every query through its own `openSessionDb()` helper, because dictation can be the first thing that touches the database on a fresh install — the reports store is not guaranteed to have run first.
+
+**Migration 0 must never be edited.** The array is append-only, driven by `PRAGMA user_version`; an installed app at version 1 only runs index 1 to reach version 2.
 
 ### The auto-restart loop — the core of Phase 2
 
@@ -283,18 +347,22 @@ Offsets are translated through the normalizer's index map. Filler-stripping shif
 
 ```
 MedScribe/
-├── App.jsx                          # Root: SafeAreaProvider + NavigationContainer + dark theme
+├── App.jsx                          # Root: SafeAreaProvider + NavigationContainer + theme
 ├── index.js                         # AppRegistry entry
 ├── src/
 │   ├── components/
 │   │   ├── AnimatedMicButton.jsx    # Hero mic, Reanimated breathing + ripple
 │   │   ├── AppHeader.jsx            # Brand header, optional back button
 │   │   ├── ListeningVisualizer.jsx  # Aura + spectrum driven by real mic RMS
+│   │   ├── LiveFieldsPreview.jsx    # Fields recognised so far, shown mid-dictation
+│   │   ├── MicGlyph.jsx             # Mic icon drawn from Views (no icon font in use)
 │   │   ├── PermissionGate.jsx       # denied / blocked / unavailable states (NFR-4)
 │   │   ├── RecordingControls.jsx    # State-aware button row
 │   │   ├── ReportField.jsx          # One report row — editable when given onChange
 │   │   ├── ScreenContainer.jsx      # Safe-area wrapper, status bar
 │   │   ├── SectionTitle.jsx         # Title + subtitle block
+│   │   ├── SessionRecoveryModal.jsx # Restore / discard an interrupted dictation
+│   │   ├── StopConfirmationModal.jsx # Confirm before ending a session
 │   │   └── TranscriptView.jsx       # Live transcript, final + italic interim (FR-4)
 │   ├── constants/
 │   │   ├── recordingStates.js       # State machine, error maps, timings
@@ -306,10 +374,11 @@ MedScribe/
 │   ├── hooks/
 │   │   └── useSpeechRecognition.js  # Session orchestrator — the heart of Phase 2
 │   ├── navigation/
-│   │   └── RootNavigator.jsx        # Native stack: Dashboard → Recording → Report
+│   │   └── RootNavigator.jsx        # Dashboard → Recording → TranscriptReview → Report
 │   ├── screens/
-│   │   ├── DashboardScreen.jsx      # FR-1 launch screen: saved reports + New Dictation
-│   │   ├── RecordingScreen.jsx      # FR-2/3/4 state machine
+│   │   ├── DashboardScreen.jsx      # FR-1 launch screen: overview, quick actions, reports
+│   │   ├── RecordingScreen.jsx      # FR-2/3/4 state machine, pause/resume, recovery
+│   │   ├── TranscriptReviewScreen.jsx  # Correct the transcript before extraction (FR-4)
 │   │   └── ReportScreen.jsx         # Editable draft, Save, Finalize, Download PDF
 │   ├── services/
 │   │   ├── permissionService.js     # Mic permission, result → state mapping
@@ -318,6 +387,9 @@ MedScribe/
 │   │   ├── reportDraft.js           # Pure: extraction → editable draft, merge, diff
 │   │   ├── reportDocument.js        # Pure: draft → PDF payload
 │   │   ├── pdfService.js            # Native-exporter isolation layer
+│   │   ├── dictationSessionManager.js   # Session lifecycle: timer, cues, autosave, live fields
+│   │   ├── audioFeedbackService.js  # AudioCue isolation layer; no-ops without the module
+│   │   ├── sessionPersistenceService.js # Debounced autosave + recovery (active_sessions)
 │   │   └── extraction/              # One module per pipeline stage
 │   │       ├── normalizeTranscript.js   #   fillers + index map
 │   │       ├── detectMarkers.js         #   find introducers
@@ -326,22 +398,25 @@ MedScribe/
 │   │       ├── validators.js            #   reject implausible values
 │   │       └── resolveConflicts.js      #   repeats, self-correction
 │   ├── specs/
-│   │   └── NativePdfExporter.js     # TurboModule spec — codegen input, lint-ignored (§7)
+│   │   ├── NativePdfExporter.js     # TurboModule spec — codegen input, lint-ignored (§7)
+│   │   └── NativeAudioCue.js        # TurboModule spec — cues + system-tone suppression
 │   ├── store/
-│   │   ├── useRecordingStore.js     # Zustand: status, chunks, partial, error, amplitude
+│   │   ├── useRecordingStore.js     # Zustand: status, segments, partial, duration, live fields
 │   │   └── useReportsStore.js       # Zustand: saved reports, load/save/finalize/remove
 │   ├── utils/
-│   │   └── datetime.js              # Display timestamps + PDF filename stamps
+│   │   └── datetime.js              # Display + relative timestamps, PDF filename stamps
 │   └── theme/
 │       ├── colors.js  spacing.js  typography.js  index.js
 ├── scripts/
 │   ├── test-extraction.mjs          # 245 assertions, `npm run test:extraction`
-│   └── test-report.mjs              # 60 assertions,  `npm run test:report`
+│   └── test-report.mjs              # 67 assertions,  `npm run test:report`
 ├── android/                         # compileSdk/targetSdk 36, minSdk 24, New Arch + Hermes
 │   └── app/src/main/
 │       ├── java/com/medscribe/pdf/  # PdfExporterModule.kt + PdfExporterPackage.kt
+│       ├── java/com/medscribe/audio/ # AudioCueModule.kt + AudioCuePackage.kt
 │       └── res/xml/file_paths.xml   # FileProvider paths for the share sheet
 ├── ios/                             # Present but never built — see §9
+├── DESIGN.md                        # Design system: colour, type, spacing, components
 └── docs/
     ├── MedSrcibe_SRS.md             # Requirements (authoritative)
     ├── Antigravity_Plan.md          # Historical — Phase 1 plan
@@ -373,6 +448,8 @@ The spec is validated where it matters: React Native codegen reads it at build t
 
 So `pdfService` requires the spec inside a function, caches it, and converts the failure into *"PDF export is unavailable in this build. Rebuild the app natively…"*. Failing at the button press with a readable message beats failing at startup with none. The `require` is deliberate — a static `import` would defeat the whole arrangement.
 
+`audioFeedbackService` follows the identical pattern for `NativeAudioCue`, with one difference: it has no user-facing failure message. Every method simply no-ops when the module is absent, so a JS-only reload still dictates normally — it just beeps the way it did before Phase 5. **Editing anything under `src/specs/` requires a native rebuild**; codegen emits `NativePdfExporterSpec.java` and `NativeAudioCueSpec.java` at build time, and the Kotlin modules must satisfy them to compile.
+
 ### Migrations run from the store, not from `App.jsx`
 
 `ensureSchema()` fires on the first `useReportsStore` call that needs the database, not at app boot. That keeps a database failure attached to the operation that can actually surface it: `loadAll` catches it into `error`, and the dashboard renders a real message.
@@ -386,6 +463,36 @@ Running migrations in `App.jsx` instead would either crash the app before the na
 That is why **adding a report field is a JavaScript change in `reportDocument.js` only** — no Kotlin edit, no codegen, no native rebuild. It is also why the spec passes a JSON *string* rather than a structured object: the payload shape churns as fields are added, and a string keeps that churn out of the native ABI.
 
 The exporter writes to `getExternalFilesDir(DIRECTORY_DOCUMENTS)/MedScribe/`. App-scoped storage means **no runtime storage permission on any API level**, while still being shareable through `FileProvider` and reachable with `adb pull`.
+
+### ⚠️ Muted audio streams must always be restored
+
+`AudioCueModule` mutes `STREAM_MUSIC`, `STREAM_SYSTEM` and `STREAM_NOTIFICATION` for the length of a dictation, because the start/end tone heard between sentences is played by the **system** RecognitionService and cannot be disabled through `SpeechRecognizer`. Audio focus does not help — focus asks other apps to yield, it does not silence a system service.
+
+That makes "restore, always" the module's central obligation, and it is enforced five separate ways:
+
+1. JavaScript calls `restoreNow()` on pause, stop, error, unmount and backgrounding.
+2. `onHostPause`, `onHostDestroy` and `invalidate()` restore natively — these cover a JS crash, a red box and a Metro reload, none of which run JS cleanup.
+3. A 120-second watchdog inside the module restores unconditionally if JS never calls back.
+4. A `SharedPreferences` flag is `commit()`-ed *before* the first mute and read in the module's constructor, so a process death mid-session is undone on the next launch.
+5. Android's AudioService drops per-client mute requests when the process dies. A bonus, never relied upon.
+
+**Do not add the ring/notification/alarm group behind a Do-Not-Disturb permission request.** On API 23+ those streams need DND access, and asking a doctor to hand over DND control to silence a beep is not a trade this app makes. Each stream is muted in its own try/catch, and a refusal is logged rather than escalated.
+
+### ⚠️ The session starts inside `beginSession`, not around it
+
+`dictationSessionManager.startSession()` — which plays the cue and starts the duration timer — is called from inside `beginSession`, after the permission gate. It was originally called from a wrapper that only the retry button used, so the mount path never reached it: the timer never started and a whole consultation displayed `00:00`. Anything that must happen once per session belongs inside `beginSession`.
+
+### ⚠️ `stop()` must work from `PAUSED`
+
+`pause()` clears `shouldContinueRef`, and `stop()`'s guard used to return early when that ref was false. Stopping from a paused session therefore set the status to `PROCESSING`, scheduled no finalize, and hung there forever. The guard now admits `PAUSED` explicitly. Any new state that stops the restart loop has to be considered here too.
+
+### ⚠️ Crash recovery is answered before the recogniser starts
+
+`RecordingScreen` holds a `recoveryState` of `checking → prompting → settled` and passes `autoStart` to the hook; the mount effect only begins a session once that is settled. Starting first would run `beginSession`'s `reset()` against the very transcript being restored, and whichever won the race would decide whether the doctor keeps their dictation. A restored session then starts with `keepTranscript: true`, which is the same path "Resume Dictation" uses from the review screen.
+
+### ⚠️ Anything on a filled accent surface uses `colors.onPrimary`
+
+The palette is light (see `DESIGN.md`), so `colors.textPrimary` is near-black. On a `primaryAccent` button that fails contrast outright. Filled blue surfaces — primary buttons, the dashboard CTA, the round mic, active toggles — take `colors.onPrimary`; outline and surface variants keep `textPrimary`. The status bar is `dark-content` for the same reason.
 
 ### ⚠️ Never call `subscription.remove()` on speech listeners
 The library's native `removeListeners` iterates its event map **while deleting from that same map**:
@@ -492,6 +599,8 @@ Deliberate. Metro resolves extensionless imports, Node does not. The explicit ex
 | `react-native-screens` | ^4.26.2 | Native screen primitives. |
 | `react-native-safe-area-context` | ^5.8.0 | Safe-area insets. |
 
+**Phase 5 added no npm dependencies.** The app now ships **two** app-local Kotlin TurboModules — `com/medscribe/pdf` and `com/medscribe/audio`. Neither is autolinked; both are registered by hand in `MainApplication.kt`, and forgetting that line is a silent failure that only shows up as a missing module at runtime.
+
 **PDF generation has no dependency.** It is an in-app Kotlin TurboModule over the platform's own `android.graphics.pdf.PdfDocument` (`android/app/src/main/java/com/medscribe/pdf/`). No maintained React Native PDF *generator* currently supports the New Architecture, and an abandoned dependency sitting in the export path of a medical record is a liability. `androidx.core`'s `FileProvider`, already on the classpath, handles sharing.
 
 ### Installed but **not imported anywhere**
@@ -583,6 +692,24 @@ Suggested cleanup (**not performed** — it rewrites the index and deserves a de
 git rm -r --cached android/app/.cxx
 # then add android/app/.cxx/ to .gitignore
 ```
+
+### Beep suppression is unverified across OEMs
+
+`AudioCueModule` mutes `STREAM_MUSIC`, `STREAM_SYSTEM` and `STREAM_NOTIFICATION`, which covers a stock Android recogniser. Which stream carries the tone is not contractual, and OEM skins differ. `suppressSystemTones` resolves with the streams it actually muted so the answer can be read from logcat on a real device rather than guessed. If a device turns out to need the ring group, that needs Do-Not-Disturb access, and the deliberate decision (§7) is not to ask for it.
+
+Two things follow: the feature has not been confirmed on the Oppo A059, and "no beeps on my phone" is not evidence it works on another.
+
+### Live extraction re-runs the whole pipeline
+
+`runLiveExtraction` extracts against the entire transcript on every debounce tick rather than incrementally. Extraction is pure and fast at consultation length, so this is the right trade today — incremental extraction would need per-utterance offsets and conflict resolution across ticks, which is real complexity for no current benefit. It is worth revisiting if sessions ever run to many minutes of continuous speech.
+
+### Session recovery is only offered on the recording screen
+
+An interrupted session is found when the doctor next enters Recording. A crash-killed session is invisible from the Dashboard, so a doctor who reopens the app and browses reports has no indication that unfinished dictation exists. A dashboard banner reading the same `getActiveSession()` would close it.
+
+### `dist/` is not in `.gitignore`
+
+The shared release APK is written to `dist/`, which nothing ignores — an 80 MB binary can be committed by accident. Same class of problem as the tracked `.cxx` artifacts above, and worth adding before the next commit.
 
 ### iOS is entirely unverified
 
