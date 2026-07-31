@@ -4,5 +4,6 @@
   ],
   "java.import.exclusions": [
     "**/node_modules/**"
-  ]
+  ],
+  "java.compile.nullAnalysis.mode": "automatic"
 }
