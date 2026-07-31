@@ -2,7 +2,7 @@
 
 **Voice-powered medical documentation for Android.**
 
-MedScribe lets doctors create patient records by dictating instead of typing. It captures speech through the device microphone, converts it to text on-device, extracts the patient details, and renders a structured clinical report.
+MedScribe lets doctors create patient records by dictating instead of typing. It captures speech through the device microphone, converts it to text using the Android system speech recognizer, extracts the patient details, and renders a structured clinical report — which the doctor then reviews, corrects, saves to a local database, and exports as a PDF.
 
 > MedScribe is a **documentation aid only**. It performs no diagnosis and makes no medical decisions.
 
@@ -11,6 +11,7 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 ## Table of Contents
 
 - [Features](#features)
+- [How a Consultation Flows](#how-a-consultation-flows)
 - [Technology Stack](#technology-stack)
 - [Prerequisites](#prerequisites)
 - [Environment Setup](#environment-setup)
@@ -39,10 +40,35 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 - **Patient-field extraction** — pulls the eleven clinical fields out of the transcript deterministically. Works regardless of the order the doctor dictates in, and handles conversational phrasing, clinical shorthand (`c/o`, `h/o`, `Rx`), filler words, self-correction ("age 32… sorry, 22") and romanised Hindi.
 - **Structured report** — a preview with an N-of-11 summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, and values inferred from a hedged phrase are flagged **UNCERTAIN**.
 - **Transcript inspection** — the report can reveal the original dictation, which is the fastest way to tell a transcription gap from an extraction gap.
+- **Editable report fields** — the generated report is a draft, not a verdict. Every field is an input: tap it and type. Symptoms are a list with add and remove. Fields the doctor changed are flagged **EDITED**, and empty fields can be filled in from scratch.
+- **Save Report** — persists the original dictation, the extraction, the doctor's edits, the status and the timestamps together.
+- **Doctor Dashboard** — the launch screen. Lists every saved report newest-first with patient name, date and time, diagnosis and a Draft/Final pill. Tap one to reopen it for editing; long-press to delete.
+- **Local database** — SQLite, so reports survive closing the app, force-stopping it, and rebooting the phone.
+- **Finalize** — marks a report `Final` once the doctor is satisfied. Finalized reports still open and still save; the pill records intent rather than locking the record.
+- **PDF export** — renders any report as an A4 document (patient details, medical history, symptoms, diagnosis, prescription, remarks, generation timestamp) and hands it to the system share sheet for printing, mailing or filing.
 
 ### Planned
 
 Continuous recognition without restart gaps, and improved accuracy on `en-IN` devices. See [Roadmap](#roadmap).
+
+---
+
+## How a Consultation Flows
+
+```text
+Dashboard  →  New Dictation  →  Record  →  Report  →  Edit  →  Save  →  Dashboard
+                                                        └──→  Download PDF
+```
+
+1. **Open the app.** The Dashboard lists every previously saved report.
+2. **New Dictation** → dictate the consultation → **Continue**.
+3. The structured report is generated and populated.
+4. **Review and correct** any field — the extraction is a starting point, not the record.
+5. **Save Report.** It appears on the Dashboard immediately.
+6. Optionally **Download PDF** to print, mail or file it.
+7. **Tap any saved report** to reopen it with its original dictation and every edit intact, and keep working.
+
+Single doctor, no login. Multi-doctor and authentication are Roadmap items, not omissions.
 
 ---
 
@@ -59,6 +85,8 @@ Continuous recognition without restart gaps, and improved accuracy on `en-IN` de
 | Animation | Reanimated 4 + Worklets |
 | Speech | `@appcitor/react-native-voice-to-text` (Android `SpeechRecognizer`) |
 | Permissions | `react-native-permissions` 5 |
+| Database | SQLite via `@op-engineering/op-sqlite` 17 (JSI) |
+| PDF | In-app Kotlin TurboModule over `android.graphics.pdf.PdfDocument` — no third-party generator |
 | Build | Gradle 9.3.1, Kotlin 2.1.20 |
 
 **File-extension convention:** `.jsx` for files containing JSX, `.js` for everything else.
@@ -181,13 +209,16 @@ npm run android
 With more than one device or emulator attached, target one explicitly. Any of these work:
 
 ```bash
-npx react-native run-android --device 0015935AE000363   # preferred
+npm run android -- --device 0015935AE000363             # preferred: keeps --active-arch-only
+npx react-native run-android --device 0015935AE000363   # works, but builds all four ABIs
 npx react-native run-android --deviceId 0015935AE000363 # deprecated, still functional
 
 # or pin the target for any Gradle/adb command in the shell session:
 export ANDROID_SERIAL=0015935AE000363        # PowerShell: $env:ANDROID_SERIAL="..."
 ```
 
+> **Go through `npm run android`.** Calling `npx react-native run-android` directly drops `--active-arch-only`, so it compiles all four ABIs — measured at **4m35s and a ~103 MB APK**, against roughly **3 min and ~45 MB** for the one architecture your device can actually run.
+>
 > **Speed tip.** `npm run android` **already** passes `--active-arch-only`, so it builds only your device's architecture — no action needed.
 >
 > The four-ABI cost applies to the plain Gradle path and to `npm run android:all-abis`. If you invoke Gradle directly, restrict it yourself:
@@ -264,7 +295,7 @@ MedScribe/
 │   │   ├── ListeningVisualizer.jsx  #   Aura + spectrum driven by real mic levels
 │   │   ├── PermissionGate.jsx       #   Denied / blocked / unavailable screens
 │   │   ├── RecordingControls.jsx    #   State-aware action buttons
-│   │   ├── ReportField.jsx          #   One report row, "Not Available" handling
+│   │   ├── ReportField.jsx          #   One report row — editable when given onChange
 │   │   ├── ScreenContainer.jsx      #   Safe-area + status-bar wrapper
 │   │   ├── SectionTitle.jsx         #   Title + subtitle block
 │   │   └── TranscriptView.jsx       #   Live transcript (final + interim)
@@ -272,18 +303,24 @@ MedScribe/
 │   │   ├── recordingStates.js       # State machine, error maps, timings
 │   │   ├── patientFields.js         # The 11 report fields and their order
 │   │   └── fieldMarkers.js          # Marker vocabulary — add new phrasing here
+│   ├── db/
+│   │   ├── database.js              # SQLite connection + schema migrations
+│   │   └── reportsRepository.js     # Report CRUD SQL queries
 │   ├── hooks/
 │   │   └── useSpeechRecognition.js  # Session orchestrator: permission → record → transcript
 │   ├── navigation/
-│   │   └── RootNavigator.jsx        # Native stack: Home → Recording → Report
+│   │   └── RootNavigator.jsx        # Native stack: Dashboard → Recording → Report
 │   ├── screens/
-│   │   ├── HomeScreen.jsx
+│   │   ├── DashboardScreen.jsx      # Launch screen: saved reports + New Dictation
 │   │   ├── RecordingScreen.jsx
-│   │   └── ReportScreen.jsx         # Structured report preview
+│   │   └── ReportScreen.jsx         # Editable draft, Save, Finalize, Download PDF
 │   ├── services/
 │   │   ├── permissionService.js     # Microphone permission handling
 │   │   ├── speechService.js         # Speech engine isolation layer
 │   │   ├── extractionService.js     # Field extraction orchestrator
+│   │   ├── reportDraft.js           # Extraction → editable draft (pure)
+│   │   ├── reportDocument.js        # Draft → PDF payload (pure)
+│   │   ├── pdfService.js            # Native PDF exporter isolation layer
 │   │   └── extraction/              # One module per pipeline stage
 │   │       ├── normalizeTranscript.js
 │   │       ├── detectMarkers.js
@@ -291,16 +328,25 @@ MedScribe/
 │   │       ├── postProcessors.js
 │   │       ├── validators.js
 │   │       └── resolveConflicts.js
+│   ├── specs/
+│   │   └── NativePdfExporter.js     # TurboModule spec (React Native codegen input)
 │   ├── store/
-│   │   └── useRecordingStore.js     # Zustand recording state
+│   │   ├── useRecordingStore.js     # Zustand recording state
+│   │   └── useReportsStore.js       # Zustand saved-report state
+│   ├── utils/
+│   │   └── datetime.js              # Display timestamps and PDF filename stamps
 │   └── theme/
 │       ├── colors.js
 │       ├── spacing.js
 │       ├── typography.js
 │       └── index.js
 ├── scripts/
-│   └── test-extraction.mjs          # Extraction fixture suite (no test framework)
+│   ├── test-extraction.mjs          # Extraction fixture suite (no test framework)
+│   └── test-report.mjs              # Draft + PDF-payload fixture suite
 ├── android/
+│   └── app/src/main/
+│       ├── java/com/medscribe/pdf/  # Kotlin PDF exporter TurboModule
+│       └── res/xml/file_paths.xml   # FileProvider paths for sharing exported PDFs
 ├── docs/
 │   ├── MedSrcibe_SRS.md             # Requirements specification
 │   └── handoff.md                   # Architecture, decisions, known issues — read this
@@ -317,11 +363,14 @@ MedScribe/
 | :-- | :-- |
 | `@appcitor/react-native-voice-to-text` | Speech-to-text via Android `SpeechRecognizer`. Exposes partial and final results. |
 | `react-native-permissions` | Microphone permission. Used over core `PermissionsAndroid` because it distinguishes **blocked** from **denied** and provides `openSettings()`. |
-| `zustand` | Recording session state, shared across screens. |
+| `@op-engineering/op-sqlite` | Local SQLite. Real SQL with transactions and versioned migrations, JSI-backed, New-Architecture native. Chosen over key-value storage so the dashboard can list and sort without loading every record. |
+| `zustand` | Recording session state and saved-report state, shared across screens. |
 | `react-native-reanimated` + `react-native-worklets` | 60 fps animations on the UI thread. |
 | `@react-navigation/native` + `@react-navigation/native-stack` | Screen navigation. |
 | `react-native-screens` | Native screen optimization. |
 | `react-native-safe-area-context` | Notch and system-bar insets. |
+
+**PDF generation has no package.** It is an in-app Kotlin TurboModule over Android's own `PdfDocument` — no maintained React Native PDF *generator* supports the New Architecture, and an unmaintained dependency in the export path of a medical record is a liability.
 
 ### Installed but not yet used
 
@@ -340,6 +389,7 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run android:all-abis` | Build all four ABIs for a universal APK. Slow; only needed for release or an unknown target device. |
 | `npm run ios` | iOS build. **Unverified — never built.** |
 | `npm run test:extraction` | 245 assertions over the field-extraction pipeline. Runs under plain Node, no test framework. |
+| `npm run test:report` | 60 assertions over the editable draft and the PDF payload. Also plain Node. |
 | `npm run lint` | ESLint across the project. |
 | `npm test` | Jest. **Currently broken** — see below. |
 
@@ -382,12 +432,28 @@ adb reverse tcp:8081 tcp:8081    # required for USB devices
 
 ### Blank white screen
 
-Usually a wedged hot-reload — most often because Metro was restarted underneath a running app. Force-stop and relaunch:
+Two different causes. Check Metro's terminal first — it tells you which one you have.
+
+**1. Wedged hot-reload.** Metro is running and has printed `BUNDLE ./index.js`, but the app is stale — most often because Metro was restarted underneath a running app. Force-stop and relaunch:
 
 ```bash
 adb shell am force-stop com.medscribe
 adb shell am start -n com.medscribe/.MainActivity
 ```
+
+**2. Metro or the Gradle daemon is wedged and the bundle never loads.** Metro shows no `BUNDLE ./index.js` line at all. The app has no JavaScript, so it renders nothing — and the install log still says `Success`, which makes this look like an app bug. Full restart:
+
+```bash
+# Windows (PowerShell) — stop the stale daemons and bundler
+Get-Process java, node -ErrorAction SilentlyContinue | Stop-Process -Force
+
+npm start                                      # terminal 1 — wait for "Dev server ready"
+npm run android -- --device <your-device-id>   # terminal 2
+```
+
+The build is confirmed healthy only when **Metro prints `BUNDLE ./index.js`**. A `BUILD SUCCESSFUL` plus `Success` from the installer proves the APK landed, not that the device got a bundle.
+
+Expect the rebuild to take a few minutes — killing the Gradle daemon means it starts cold (`Starting a Gradle Daemon, 1 incompatible and 1 stopped Daemons could not be reused` is the expected message, not an error).
 
 ### `No online devices found` (emulator)
 
@@ -431,6 +497,41 @@ Tap **"Show original dictation"** on the report screen first. That single step t
 - **The transcript is complete but fields are empty** — the phrasing has no matching marker. Add a row to `src/constants/fieldMarkers.js`; no pipeline logic needs changing.
 
 Fields the doctor genuinely never mentioned correctly show **Not Available** — that is FR-7 behaviour, not a bug.
+
+### `PDF export is unavailable in this build`
+
+That exact message means the JavaScript reloaded but the native exporter was never compiled in — the app is running an APK built before the PDF module existed. Metro cannot supply a native module. Rebuild:
+
+```bash
+npm run android -- --device <your-device-id>
+```
+
+The same applies after pulling changes that touch `src/specs/`, `android/app/src/main/java/com/medscribe/pdf/`, or `AndroidManifest.xml`.
+
+### Where the exported PDF goes
+
+App-scoped external storage, so no storage permission is ever requested:
+
+```bash
+adb shell ls /sdcard/Android/data/com.medscribe/files/Documents/MedScribe/
+adb pull /sdcard/Android/data/com.medscribe/files/Documents/MedScribe/<file>.pdf
+```
+
+The share sheet that appears after export is the intended route for printing or mailing it; the path above is for inspecting the output during development.
+
+### The dashboard shows an error instead of reports
+
+An error banner is **not** the empty state — it means the database did not open, so "no reports listed" is not the same as "no reports saved". Check the real cause:
+
+```bash
+adb logcat -s ReactNativeJS
+```
+
+The most common cause is running a JS-only reload against an APK built before `@op-engineering/op-sqlite` was added. It is a native library; rebuild with `npm run android -- --device <id>`.
+
+### Saved reports disappeared
+
+Reports live in the app's private SQLite database. **Uninstalling the app, or clearing its storage from Android settings, deletes them permanently** — there is no backup or cloud sync yet. A normal reinstall over the top via `npm run android` preserves them.
 
 ### Transcription is inaccurate or mixes languages
 
@@ -519,6 +620,7 @@ npm start -- --reset-cache
 | **1** | Design system, components, navigation | Complete |
 | **2** | Permissions, speech-to-text, live transcript | Complete |
 | **3** | Patient-field extraction, structured report, preview | Complete |
+| **4** | Editable fields, save, doctor dashboard, SQLite persistence, PDF export | Complete |
 
 **Next up**, in priority order:
 
@@ -526,7 +628,11 @@ npm start -- --reset-cache
 2. **Promote the 15 realistic dictation samples to committed fixtures**, so a regression in any dictation style is caught automatically.
 3. **Improve `en-IN` recognition accuracy**, which is currently bounded by a library bug rather than by this codebase.
 
-Longer term (per the SRS): AI-assisted entity extraction, ICD-10 coding, PDF export, EHR integration, multi-language recognition, cloud sync, patient history, offline recognition.
+Recently closed, so nobody re-files it: leaving the Recording screen and returning used to strand the app on a permanent "Speech recognition unavailable". Fixed and verified on device — details in [`docs/handoff.md`](docs/handoff.md).
+
+Longer term (per the SRS): AI-assisted entity extraction, ICD-10 coding, EHR integration, multi-language recognition, cloud sync, offline recognition. **Multiple doctors and authentication** join that list — the schema carries no `doctor_id` yet, and the database is not encrypted at rest, both of which need addressing before real patient data.
+
+PDF export, patient history and report editing before save were delivered in Phase 4.
 
 ---
 

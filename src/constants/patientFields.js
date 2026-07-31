@@ -3,19 +3,22 @@
  * the structured report (FR-6).
  *
  * `list: true` marks fields rendered as bullet points rather than a paragraph.
+ *
+ * `multiline` and `keyboard` only affect the editable report rows; extraction
+ * never reads them. Marker vocabulary stays in `fieldMarkers.js`.
  */
 export const PATIENT_FIELDS = [
   { key: 'patientName', label: 'Patient Name' },
-  { key: 'age', label: 'Age' },
+  { key: 'age', label: 'Age', keyboard: 'number-pad' },
   { key: 'gender', label: 'Gender' },
-  { key: 'address', label: 'Address' },
-  { key: 'pinCode', label: 'PIN Code' },
-  { key: 'contactNumber', label: 'Contact Number' },
+  { key: 'address', label: 'Address', multiline: true },
+  { key: 'pinCode', label: 'PIN Code', keyboard: 'number-pad' },
+  { key: 'contactNumber', label: 'Contact Number', keyboard: 'phone-pad' },
   { key: 'symptoms', label: 'Symptoms', list: true },
-  { key: 'medicalHistory', label: 'Medical History' },
-  { key: 'diagnosis', label: 'Diagnosis' },
-  { key: 'prescriptionNotes', label: 'Prescription Notes' },
-  { key: 'additionalRemarks', label: 'Additional Remarks' },
+  { key: 'medicalHistory', label: 'Medical History', multiline: true },
+  { key: 'diagnosis', label: 'Diagnosis', multiline: true },
+  { key: 'prescriptionNotes', label: 'Prescription Notes', multiline: true },
+  { key: 'additionalRemarks', label: 'Additional Remarks', multiline: true },
 ];
 
 /**

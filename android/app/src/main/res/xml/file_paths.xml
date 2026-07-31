@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Grants the share sheet read access to exported reports only.
+
+  The path matches PdfExporterModule's output directory:
+  getExternalFilesDir(DIRECTORY_DOCUMENTS)/MedScribe — app-scoped storage, so
+  no runtime storage permission is involved on any API level.
+-->
+<paths>
+    <external-files-path name="reports" path="Documents/MedScribe/" />
+</paths>
