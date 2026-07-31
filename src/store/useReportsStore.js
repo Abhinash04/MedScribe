@@ -18,19 +18,13 @@ import {
  * backend stops at this file.
  */
 
-let migrated = false;
-
 /**
- * Migrations run once per app launch, on the first store call that needs the
- * database. Doing it here rather than in `App.jsx` keeps the failure attached
- * to the operation that surfaces it, so the dashboard can show a real error
- * instead of an empty list.
+ * Migrations run on the first store call that needs the database. Doing it
+ * here rather than in `App.jsx` keeps the failure attached to the operation that
+ * surfaces it, so the dashboard can show a real error instead of an empty list.
  */
 function ensureSchema() {
-  if (!migrated) {
-    runMigrations();
-    migrated = true;
-  }
+  runMigrations();
 }
 
 const useReportsStore = create((set, get) => ({
@@ -89,9 +83,15 @@ const useReportsStore = create((set, get) => ({
   },
 
   remove: async id => {
-    ensureSchema();
-    await deleteReport(id);
-    await get().loadAll();
+    try {
+      ensureSchema();
+      await deleteReport(id);
+      await get().loadAll();
+    } catch (error) {
+      set({
+        error: error?.message || 'Could not delete the report.',
+      });
+    }
   },
 }));
 

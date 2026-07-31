@@ -2,7 +2,7 @@
 
 **Voice-powered medical documentation for Android.**
 
-MedScribe lets doctors create patient records by dictating instead of typing. It captures speech through the device microphone, converts it to text on-device, extracts the patient details, and renders a structured clinical report — which the doctor then reviews, corrects, saves to a local database, and exports as a PDF.
+MedScribe lets doctors create patient records by dictating instead of typing. It captures speech through the device microphone, converts it to text using the Android system speech recognizer, extracts the patient details, and renders a structured clinical report — which the doctor then reviews, corrects, saves to a local database, and exports as a PDF.
 
 > MedScribe is a **documentation aid only**. It performs no diagnosis and makes no medical decisions.
 
@@ -218,7 +218,7 @@ export ANDROID_SERIAL=0015935AE000363        # PowerShell: $env:ANDROID_SERIAL="
 ```
 
 > **Go through `npm run android`.** Calling `npx react-native run-android` directly drops `--active-arch-only`, so it compiles all four ABIs — measured at **4m35s and a ~103 MB APK**, against roughly **3 min and ~45 MB** for the one architecture your device can actually run.
-
+>
 > **Speed tip.** `npm run android` **already** passes `--active-arch-only`, so it builds only your device's architecture — no action needed.
 >
 > The four-ABI cost applies to the plain Gradle path and to `npm run android:all-abis`. If you invoke Gradle directly, restrict it yourself:
@@ -305,7 +305,7 @@ MedScribe/
 │   │   └── fieldMarkers.js          # Marker vocabulary — add new phrasing here
 │   ├── db/
 │   │   ├── database.js              # SQLite connection + schema migrations
-│   │   └── reportsRepository.js     # Report CRUD — the only place SQL is written
+│   │   └── reportsRepository.js     # Report CRUD SQL queries
 │   ├── hooks/
 │   │   └── useSpeechRecognition.js  # Session orchestrator: permission → record → transcript
 │   ├── navigation/

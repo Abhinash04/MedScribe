@@ -24,10 +24,14 @@ function makeId() {
   return `rpt_${Date.now().toString(36)}_${random}`;
 }
 
-function parseJson(raw, fallback) {
+function parseJson(raw, fallback, contextName) {
   try {
     return JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    if (contextName) {
+      console.error(`[reportsRepository] Failed to parse JSON for ${contextName}:`, error);
+      throw new Error(`Corrupt report data: failed to parse ${contextName}`);
+    }
     return fallback;
   }
 }
@@ -49,8 +53,8 @@ function toReport(row) {
   return {
     ...toSummary(row),
     transcript: row.transcript || '',
-    extracted: parseJson(row.extracted_json, {}),
-    edited: parseJson(row.edited_json, {}),
+    extracted: parseJson(row.extracted_json, {}, 'extracted_json'),
+    edited: parseJson(row.edited_json, {}, 'edited_json'),
   };
 }
 
@@ -137,7 +141,14 @@ export async function updateReport(id, { edited, status }) {
 
   params.push(id);
 
-  await db.execute(`UPDATE reports SET ${sets.join(', ')} WHERE id = ?;`, params);
+  const result = await db.execute(
+    `UPDATE reports SET ${sets.join(', ')} WHERE id = ?;`,
+    params,
+  );
+
+  if ((result?.rowsAffected ?? 0) === 0) {
+    throw new Error(`Report not found: ${id}`);
+  }
 
   return now;
 }
@@ -146,10 +157,13 @@ export async function updateReport(id, { edited, status }) {
 export async function setStatus(id, status) {
   const db = getDb();
   const now = Date.now();
-  await db.execute(
+  const result = await db.execute(
     'UPDATE reports SET status = ?, updated_at = ? WHERE id = ?;',
     [status, now, id],
   );
+  if ((result?.rowsAffected ?? 0) === 0) {
+    throw new Error(`Report not found: ${id}`);
+  }
   return now;
 }
 

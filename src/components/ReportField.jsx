@@ -74,7 +74,7 @@ const ReportField = ({
                     style={[styles.value, styles.input, styles.bulletText]}
                     value={item}
                     onChangeText={text => replaceItem(index, text)}
-                    placeholder="Symptom"
+                    placeholder={label}
                     placeholderTextColor={colors.textMuted}
                     accessibilityLabel={`${label} item ${index + 1}`}
                   />
@@ -93,6 +93,10 @@ const ReportField = ({
             </View>
           ))}
 
+          {items.length === 0 ? (
+            <Text style={[styles.value, styles.missing]}>{NOT_AVAILABLE}</Text>
+          ) : null}
+
           {editable ? (
             <Pressable
               onPress={() => onChange([...items, ''])}
@@ -102,8 +106,6 @@ const ReportField = ({
             >
               <Text style={styles.addText}>+ Add item</Text>
             </Pressable>
-          ) : items.length === 0 ? (
-            <Text style={[styles.value, styles.missing]}>{NOT_AVAILABLE}</Text>
           ) : null}
         </View>
       ) : editable ? (

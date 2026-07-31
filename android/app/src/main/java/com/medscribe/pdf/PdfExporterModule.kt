@@ -279,32 +279,34 @@ class PdfExporterModule(reactContext: ReactApplicationContext) :
       val disclaimer = document.optString("disclaimer")
 
       val pdf = PdfDocument()
-      pages.forEachIndexed { index, blocks ->
-        val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, index + 1).create()
-        val page = pdf.startPage(pageInfo)
-        page.canvas.drawColor(Color.WHITE)
-        drawPage(page.canvas, blocks, index + 1, pages.size, disclaimer)
-        pdf.finishPage(page)
-      }
+      try {
+        pages.forEachIndexed { index, blocks ->
+          val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, index + 1).create()
+          val page = pdf.startPage(pageInfo)
+          page.canvas.drawColor(Color.WHITE)
+          drawPage(page.canvas, blocks, index + 1, pages.size, disclaimer)
+          pdf.finishPage(page)
+        }
 
-      // App-scoped external storage: shareable through FileProvider and
-      // readable over adb, with no runtime storage permission on any API level.
-      val directory = File(
-        reactApplicationContext.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
-        REPORTS_DIR,
-      )
-      if (!directory.exists() && !directory.mkdirs()) {
+        // App-scoped external storage: shareable through FileProvider and
+        // readable over adb, with no runtime storage permission on any API level.
+        val directory = File(
+          reactApplicationContext.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
+          REPORTS_DIR,
+        )
+        if (!directory.exists() && !directory.mkdirs()) {
+          promise.reject("E_PDF_DIR", "Could not create the reports folder.")
+          return
+        }
+
+        val fileName = document.optString("fileName").ifEmpty { "patient-report.pdf" }
+        val file = File(directory, fileName)
+        FileOutputStream(file).use { stream -> pdf.writeTo(stream) }
+
+        promise.resolve(file.absolutePath)
+      } finally {
         pdf.close()
-        promise.reject("E_PDF_DIR", "Could not create the reports folder.")
-        return
       }
-
-      val fileName = document.optString("fileName").ifEmpty { "patient-report.pdf" }
-      val file = File(directory, fileName)
-      FileOutputStream(file).use { stream -> pdf.writeTo(stream) }
-      pdf.close()
-
-      promise.resolve(file.absolutePath)
     } catch (error: Exception) {
       promise.reject("E_PDF_EXPORT", error.message, error)
     }

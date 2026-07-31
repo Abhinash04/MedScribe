@@ -71,9 +71,11 @@ export const stop = () => VoiceToText.stopListening();
  * Prefer `stop()` for ordinary teardown; this is for genuine disposal.
  */
 export const destroy = async () => {
-  const result = await VoiceToText.destroy();
-  nativeSubscriptions = null; // native listener map was cleared with it
-  return result;
+  try {
+    return await VoiceToText.destroy();
+  } finally {
+    nativeSubscriptions = null; // native listener map was cleared with it
+  }
 };
 
 export const isAvailable = () => VoiceToText.isRecognitionAvailable();

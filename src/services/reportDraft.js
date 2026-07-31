@@ -182,7 +182,7 @@ export function setListItem(draft, key, index, item) {
 /** True when the field holds something worth printing. */
 export function hasValue(entry, key) {
   if (isListField(key)) {
-    return (entry?.value?.length ?? 0) > 0;
+    return Array.isArray(entry?.value) && entry.value.some(item => !!item?.trim?.());
   }
   return !!entry?.value?.trim?.();
 }

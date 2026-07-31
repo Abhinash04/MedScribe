@@ -60,7 +60,7 @@ Phase 4 turns the one-shot pipeline into a documentation system. The generated r
 
 **Verification was performed on a physical device**, not an emulator: an Oppo A059, Android 16 (SDK 36), `arm64-v8a`. Confirmed working there — permission flow, live partial results streaming word-by-word, final results accumulating into a multi-chunk transcript.
 
-Re-verified on the same device on **2026-07-31**, including the cycle that `c59877d` fixes: enter the Recording screen → press back without dictating → tap the mic again. That path previously dead-ended on a permanent "Speech recognition unavailable" and now starts a normal session. See [§7](#-unmount-calls-stop-never-destroy) for why.
+Re-verified on the same device on **2026-07-31**, including the cycle that `c59877d` fixes: enter the Recording screen → press back without dictating → tap the mic again. That path previously dead-ended on a permanent "Speech recognition unavailable" and now starts a normal session. See [§7](#️-unmount-calls-stop-never-destroy) for why.
 
 This matters: **dictation cannot be tested on the Android emulator at all.** See [§9](#9-known-limitations--future-considerations). Any future agent that tries to validate speech features on an emulator will waste hours reaching a dead end that has already been investigated and ruled out.
 
@@ -84,7 +84,7 @@ Mapped to SRS requirement IDs so this table stays anchored to the specification.
 
 | Requirement | Description | Status |
 | :-- | :-- | :-- |
-| **FR-1** | Application launch, Home screen | Done |
+| **FR-1** | Application launch, Dashboard screen | Done |
 | **FR-2** | Voice recording + runtime permission flow | Done |
 | **FR-3** | Speech recognition via `@appcitor/react-native-voice-to-text` | Done |
 | **FR-4** | Transcript display, including live interim text | Done |
@@ -171,7 +171,7 @@ RecordingScreen (UI state machine)
 
 ```text
 DashboardScreen ─┬─ useReportsStore ── reportsRepository ── database.js ── op-sqlite
-                 │                       (the ONLY file with SQL)
+                 │                       (report CRUD SQL)
                  ├─→ RecordingScreen → ReportScreen        (fresh dictation)
                  └─→ ReportScreen({ reportId })            (saved report)
 
@@ -183,7 +183,7 @@ ReportScreen ─┬─ reportDraft.js    (pure: extraction → editable draft, m
 
 Three invariants. Each mirrors a convention this codebase already follows, and each is the reason a future backend swap is a one-file change rather than a rewrite:
 
-- **`reportsRepository.js` is the only module that writes SQL.** Same isolation rule `speechService` applies to the speech vendor. Screens do not import it — they go through `useReportsStore`. Replacing SQLite with a cloud or EHR backend touches that one file.
+- **`reportsRepository.js` is the only module that handles report CRUD SQL.** Same isolation rule `speechService` applies to the speech vendor. Screens do not import it — they go through `useReportsStore`. Replacing SQLite with a cloud or EHR backend touches that one file.
 - **`pdfService.js` is the only module that touches the native exporter.** No screen imports the TurboModule.
 - **`reportDraft.js` and `reportDocument.js` are pure and RN-free**, with explicit `.js` import extensions, so they run under plain Node exactly like the extraction pipeline — which is what makes `scripts/test-report.mjs` possible with zero test dependencies.
 

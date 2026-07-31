@@ -14,6 +14,7 @@ import { open } from '@op-engineering/op-sqlite';
 const DB_NAME = 'medscribe.db';
 
 let handle = null;
+let migrated = false;
 
 /** Lazily opened, memoized connection. */
 export function getDb() {
@@ -58,6 +59,10 @@ const MIGRATIONS = [
  * as "you have no reports" when the truth is "the database did not open".
  */
 export function runMigrations() {
+  if (migrated) {
+    return MIGRATIONS.length;
+  }
+
   const db = getDb();
 
   // WAL keeps a crash mid-write from taking the whole file with it, and lets a
@@ -80,6 +85,7 @@ export function runMigrations() {
     }
   }
 
+  migrated = true;
   return MIGRATIONS.length;
 }
 
@@ -89,4 +95,5 @@ export function closeDb() {
     handle.close();
     handle = null;
   }
+  migrated = false;
 }

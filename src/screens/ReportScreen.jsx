@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigation, usePreventRemove } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Alert,
@@ -46,7 +47,8 @@ const TOTAL_FIELDS = PATIENT_FIELDS.length;
  * The extraction result is kept alongside the edits and saved with them, so a
  * corrected field never erases what was actually dictated.
  */
-const ReportScreen = ({ navigation, route }) => {
+const ReportScreen = ({ route }) => {
+  const navigation = useNavigation();
   const openedId = route?.params?.reportId ?? null;
 
   const transcriptFromStore = useRecordingStore(selectFullTranscript);
@@ -76,14 +78,14 @@ const ReportScreen = ({ navigation, route }) => {
   // Fresh dictation: extraction is pure and deterministic, so it runs once for
   // the transcript and the draft owns every value from then on.
   useEffect(() => {
-    if (openedId) {
+    if (openedId || draft) {
       return;
     }
     const record = extractPatientFields(transcriptFromStore);
     setExtracted(record);
     setDraft(toDraft(record));
     setTranscript(transcriptFromStore);
-  }, [openedId, transcriptFromStore]);
+  }, [openedId, transcriptFromStore, draft]);
 
   // Saved report: load values, transcript and metadata from the database.
   useEffect(() => {
@@ -217,29 +219,20 @@ const ReportScreen = ({ navigation, route }) => {
   }, [resetRecording, navigation]);
 
   // Guard unsaved edits on back, gesture back and hardware back alike.
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', event => {
-      if (!dirty || busy) {
-        return;
-      }
-
-      event.preventDefault();
-      Alert.alert(
-        'Discard changes?',
-        'This report has unsaved edits.',
-        [
-          { text: 'Keep editing', style: 'cancel' },
-          {
-            text: 'Discard',
-            style: 'destructive',
-            onPress: () => navigation.dispatch(event.data.action),
-          },
-        ],
-      );
-    });
-
-    return unsubscribe;
-  }, [navigation, dirty, busy]);
+  usePreventRemove(dirty && !busy, ({ data }) => {
+    Alert.alert(
+      'Discard changes?',
+      'This report has unsaved edits.',
+      [
+        { text: 'Keep editing', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => navigation.dispatch(data.action),
+        },
+      ],
+    );
+  });
 
   if (loading || !draft) {
     return (
@@ -369,6 +362,7 @@ const ReportScreen = ({ navigation, route }) => {
           <Pressable
             style={({ pressed }) => [
               styles.secondaryButton,
+              busy && styles.disabled,
               pressed && styles.pressed,
             ]}
             onPress={handleExportPdf}
@@ -383,6 +377,7 @@ const ReportScreen = ({ navigation, route }) => {
             <Pressable
               style={({ pressed }) => [
                 styles.secondaryButton,
+                busy && styles.disabled,
                 pressed && styles.pressed,
               ]}
               onPress={handleFinalize}
