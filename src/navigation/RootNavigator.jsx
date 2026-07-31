@@ -2,13 +2,14 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import DashboardScreen from '../screens/DashboardScreen';
 import RecordingScreen from '../screens/RecordingScreen';
+import TranscriptReviewScreen from '../screens/TranscriptReviewScreen';
 import ReportScreen from '../screens/ReportScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
 
 /**
- * Dashboard -> Recording -> Report for a new consultation, and
+ * Dashboard -> Recording -> TranscriptReview -> Report for a new consultation, and
  * Dashboard -> Report({ reportId }) to reopen a saved one.
  */
 const RootNavigator = () => {
@@ -24,6 +25,7 @@ const RootNavigator = () => {
     >
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
       <Stack.Screen name="Recording" component={RecordingScreen} />
+      <Stack.Screen name="TranscriptReview" component={TranscriptReviewScreen} />
       <Stack.Screen name="Report" component={ReportScreen} />
     </Stack.Navigator>
   );

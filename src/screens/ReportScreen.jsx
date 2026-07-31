@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
-    color: colors.textPrimary,
+    color: colors.onPrimary,
   },
   savedLabel: {
     ...typography.smallCaption,
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   primaryLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: colors.onPrimary,
     letterSpacing: 0.3,
   },
   secondaryRow: {
