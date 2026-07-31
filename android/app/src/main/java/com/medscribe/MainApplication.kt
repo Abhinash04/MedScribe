@@ -6,6 +6,7 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
+import com.medscribe.audio.AudioCuePackage
 import com.medscribe.pdf.PdfExporterPackage
 
 class MainApplication : Application(), ReactApplication {
@@ -17,6 +18,9 @@ class MainApplication : Application(), ReactApplication {
         PackageList(this).packages.apply {
           // App-local modules are never autolinked — this one renders patient reports to PDF. See android/app/src/main/java/com/medscribe/pdf.
           add(PdfExporterPackage())
+          // Plays the one dictation cue and mutes the system recognizer's
+          // per-utterance tones. See android/app/src/main/java/com/medscribe/audio.
+          add(AudioCuePackage())
         },
     )
   }
