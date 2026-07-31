@@ -10,6 +10,7 @@ export const RECORDING_STATE = {
   PERMISSION_BLOCKED: 'permissionBlocked', // Needs the system settings screen
   UNAVAILABLE: 'unavailable', // No microphone or no speech recognizer
   LISTENING: 'listening',
+  PAUSED: 'paused',
   PROCESSING: 'processing',
   SUCCESS: 'success',
   ERROR: 'error',

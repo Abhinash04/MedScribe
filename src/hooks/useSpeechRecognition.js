@@ -21,6 +21,8 @@ import {
   toRecordingState,
 } from '../services/permissionService';
 import * as speech from '../services/speechService';
+import audioFeedbackService from '../services/audioFeedbackService';
+import dictationSessionManager from '../services/dictationSessionManager';
 import useRecordingStore, {
   selectFullTranscript,
 } from '../store/useRecordingStore';
@@ -38,13 +40,15 @@ const NO_SPEECH_MESSAGE =
  * as chunks. Only an explicit stop(), an unmount, or backgrounding ends the
  * session.
  */
-export default function useSpeechRecognition() {
+export default function useSpeechRecognition({
+  autoStart = true,
+  keepTranscript = false,
+} = {}) {
   const status = useRecordingStore(state => state.status);
   const partialText = useRecordingStore(state => state.partialText);
   const errorMessage = useRecordingStore(state => state.errorMessage);
 
   const setStatus = useRecordingStore(state => state.setStatus);
-  const appendChunk = useRecordingStore(state => state.appendChunk);
   const setPartial = useRecordingStore(state => state.setPartial);
   const setError = useRecordingStore(state => state.setError);
   const reset = useRecordingStore(state => state.reset);
@@ -218,7 +222,7 @@ export default function useSpeechRecognition() {
       }
 
       if (text) {
-        appendChunk(text);
+        dictationSessionManager.onSegmentReceived(text);
         consecutiveTransientRef.current = 0;
       }
 
@@ -228,7 +232,7 @@ export default function useSpeechRecognition() {
         finalize();
       }
     },
-    [appendChunk, scheduleRestart, finalize, isSettled],
+    [scheduleRestart, finalize, isSettled],
   );
 
   const handlePartialResults = useCallback(
@@ -324,10 +328,18 @@ export default function useSpeechRecognition() {
    * Runs the permission gate then starts dictating. Also used by the
    * "Grant access", "Try again" and "Record again" buttons.
    */
-  const beginSession = useCallback(async () => {
+  const beginSession = useCallback(async (options) => {
+    // `options` is often a press event (the retry / grant-access buttons pass
+    // the handler straight to onPress), so the flag is read defensively.
+    const resumeExisting = options?.keepTranscript === true;
+
     shouldContinueRef.current = false;
     clearTimers();
-    reset();
+    // Resuming from the transcript review must not wipe what was dictated —
+    // reset() clears segments, the duration and the session id alike.
+    if (!resumeExisting) {
+      reset();
+    }
     consecutiveTransientRef.current = 0;
     setStatus(RECORDING_STATE.CHECKING_PERMISSION);
 
@@ -366,12 +378,21 @@ export default function useSpeechRecognition() {
     // engine is genuinely missing, and safeStart maps that to UNAVAILABLE, so
     // the real condition is still reported without the false positives.
     shouldContinueRef.current = true;
-    setStatus(RECORDING_STATE.LISTENING);
+    // Goes through the manager rather than setStatus(LISTENING) directly: it
+    // also plays the start cue and starts the duration timer. Calling it here
+    // rather than in a wrapper covers the mount path, which is how every real
+    // session begins.
+    await dictationSessionManager.startSession();
     await safeStart();
   }, [clearTimers, reset, setStatus, setError, safeStart]);
 
   const stop = useCallback(async () => {
-    if (!shouldContinueRef.current) {
+    // A paused session has already cleared shouldContinueRef, but it still has
+    // to be stoppable — otherwise Stop from PAUSED leaves the UI in PROCESSING
+    // with no finalize ever scheduled.
+    const isPausedNow =
+      useRecordingStore.getState().status === RECORDING_STATE.PAUSED;
+    if (!shouldContinueRef.current && !isPausedNow) {
       return;
     }
 
@@ -428,8 +449,6 @@ export default function useSpeechRecognition() {
       onError: error => handlersRef.current.onError?.(error),
     });
 
-    beginSessionRef.current();
-
     return () => {
       // Without this, leaving the screen mid-dictation leaves a live
       // recognizer holding the microphone and emitting into a dead component.
@@ -446,6 +465,12 @@ export default function useSpeechRecognition() {
       }
 
       unsubscribe();
+      // The duration timer lives on the manager singleton, so it outlives this
+      // screen unless it is stopped here — leaving the screen any way other
+      // than Stop would otherwise leak a 1 Hz interval for the app's lifetime.
+      dictationSessionManager.stopTimer();
+      // Muted audio streams must never outlive the screen that muted them.
+      audioFeedbackService.restoreNow();
       // stop(), not destroy(). destroy() also clears the native listener map,
       // which left the module unusable on the next visit to this screen —
       // recognition could not restart without killing the app. stop() releases
@@ -455,9 +480,29 @@ export default function useSpeechRecognition() {
     };
   }, []);
 
+  // Starting is a separate effect from subscribing so a caller can hold the
+  // session back — RecordingScreen does that until the crash-recovery prompt
+  // has been answered, otherwise beginSession's reset() would race the restore
+  // and wipe the very transcript being recovered.
+  const startedRef = useRef(false);
+  const keepTranscriptRef = useRef(keepTranscript);
+  keepTranscriptRef.current = keepTranscript;
+  useEffect(() => {
+    if (!autoStart || startedRef.current) {
+      return;
+    }
+    startedRef.current = true;
+    beginSessionRef.current({ keepTranscript: keepTranscriptRef.current });
+  }, [autoStart]);
+
   // Release the microphone when the doctor switches apps mid-consultation.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState !== 'active') {
+        // Unconditional: the streams may be muted even when the session has
+        // already settled, and a backgrounded app must not hold the volume down.
+        audioFeedbackService.restoreNow();
+      }
       if (nextState !== 'active' && shouldContinueRef.current) {
         stopRef.current();
       }
@@ -466,13 +511,58 @@ export default function useSpeechRecognition() {
     return () => subscription.remove();
   }, []);
 
+  const durationSeconds = useRecordingStore(state => state.durationSeconds);
+  const liveExtractedFields = useRecordingStore(
+    state => state.liveExtractedFields,
+  );
+  const segments = useRecordingStore(state => state.segments);
+
+  const pause = useCallback(async () => {
+    if (!shouldContinueRef.current) {
+      return;
+    }
+    shouldContinueRef.current = false;
+    clearRestartTimer();
+    await dictationSessionManager.pauseSession();
+  }, [clearRestartTimer]);
+
+  const resume = useCallback(async () => {
+    shouldContinueRef.current = true;
+    consecutiveTransientRef.current = 0;
+    await dictationSessionManager.resumeSession();
+    await safeStart();
+  }, [safeStart]);
+
+  const stopWithManager = useCallback(async () => {
+    await dictationSessionManager.stopSession();
+    await stop();
+  }, [stop]);
+
+  /**
+   * Starts listening again on top of whatever is already transcribed — the
+   * "Resume dictation" path back from the transcript review, and the path taken
+   * after a recovered session is restored. `retry` is the opposite: it starts a
+   * new consultation and deliberately clears the previous one.
+   */
+  const resumeDictation = useCallback(
+    () => beginSession({ keepTranscript: true }),
+    [beginSession],
+  );
+
   return {
     status,
     transcript,
     partialText,
     errorMessage,
+    durationSeconds,
+    segments,
+    liveExtractedFields,
     isListening: status === RECORDING_STATE.LISTENING,
-    stop,
+    isPaused: status === RECORDING_STATE.PAUSED,
+    pause,
+    resume,
+    resumeDictation,
+    stop: stopWithManager,
     retry: beginSession,
     requestPermission: beginSession,
     openAppSettings,
