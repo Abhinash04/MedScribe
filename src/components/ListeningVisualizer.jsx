@@ -67,15 +67,17 @@ const BAR_CONFIG = [
  * @param {boolean} isActive False while processing/finished — freezes the
  *   animation instead of pulsing forever after recording has stopped.
  */
-const ListeningVisualizer = ({ isActive = true }) => {
+const ListeningVisualizer = ({ isActive = true, isPaused = false }) => {
   const pulseScale1 = useSharedValue(1);
   const pulseOpacity1 = useSharedValue(0.4);
   const pulseScale2 = useSharedValue(1);
   const pulseOpacity2 = useSharedValue(0.2);
   const micFloat = useSharedValue(0);
 
+  const isRunning = isActive && !isPaused;
+
   useEffect(() => {
-    if (!isActive) {
+    if (!isRunning) {
       cancelAnimation(pulseScale1);
       cancelAnimation(pulseOpacity1);
       cancelAnimation(pulseScale2);
@@ -141,7 +143,7 @@ const ListeningVisualizer = ({ isActive = true }) => {
       true,
     );
   }, [
-    isActive,
+    isRunning,
     micFloat,
     pulseOpacity1,
     pulseOpacity2,
@@ -193,7 +195,7 @@ const ListeningVisualizer = ({ isActive = true }) => {
             factor={bar.factor}
             minHeight={bar.minHeight}
             maxHeight={bar.maxHeight}
-            isActive={isActive}
+            isActive={isRunning}
           />
         ))}
       </View>

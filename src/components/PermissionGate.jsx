@@ -130,12 +130,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionButtonPressed: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: colors.primaryHover,
   },
   actionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: colors.onPrimary,
     letterSpacing: 0.3,
   },
   secondaryButton: {
