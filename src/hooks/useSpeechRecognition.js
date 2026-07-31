@@ -446,7 +446,12 @@ export default function useSpeechRecognition() {
       }
 
       unsubscribe();
-      speech.destroy().catch(() => {});
+      // stop(), not destroy(). destroy() also clears the native listener map,
+      // which left the module unusable on the next visit to this screen —
+      // recognition could not restart without killing the app. stop() releases
+      // the microphone, and startListening() re-initialises the recognizer on
+      // the next session anyway.
+      speech.stop().catch(() => {});
     };
   }, []);
 

@@ -58,7 +58,23 @@ export const start = () => VoiceToText.startListening();
 
 export const stop = () => VoiceToText.stopListening();
 
-export const destroy = () => VoiceToText.destroy();
+/**
+ * Fully tears down the native recognizer.
+ *
+ * The library's destroy() also does `eventListeners.clear()`, wiping the
+ * native listener-count map. Our registration is therefore invalidated and
+ * must be rebuilt before the next session — see `subscribe`. Failing to track
+ * that left the module with a destroyed recognizer and an empty listener map
+ * while JS still believed it was subscribed, so recognition could never
+ * restart after leaving the recording screen.
+ *
+ * Prefer `stop()` for ordinary teardown; this is for genuine disposal.
+ */
+export const destroy = async () => {
+  const result = await VoiceToText.destroy();
+  nativeSubscriptions = null; // native listener map was cleared with it
+  return result;
+};
 
 export const isAvailable = () => VoiceToText.isRecognitionAvailable();
 
@@ -99,6 +115,9 @@ const dispatch = (name, arg) => {
 };
 
 function ensureNativeListeners() {
+  // Re-registers after a destroy(), which clears the native listener map.
+  // Only REMOVAL triggers the library's ConcurrentModificationException, so
+  // adding again is safe.
   if (nativeSubscriptions) {
     return;
   }
