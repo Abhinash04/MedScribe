@@ -468,7 +468,7 @@ export default function useSpeechRecognition({
       // The duration timer lives on the manager singleton, so it outlives this
       // screen unless it is stopped here — leaving the screen any way other
       // than Stop would otherwise leak a 1 Hz interval for the app's lifetime.
-      dictationSessionManager.stopTimer();
+      dictationSessionManager.dispose();
       // Muted audio streams must never outlive the screen that muted them.
       audioFeedbackService.restoreNow();
       // stop(), not destroy(). destroy() also clears the native listener map,

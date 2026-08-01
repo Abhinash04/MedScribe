@@ -79,7 +79,7 @@ Those are **clean-text** numbers. Real dictation adds transcription loss on top 
 
 The Phase 4 draft and document logic is pure and gets the same treatment:
 
-- **60 / 60** assertions in `scripts/test-report.mjs` — `toDraft` / `applyEdit` / `isDirty` and the PDF payload, covering list fields, empty fields and the edited-flag transitions
+- **67 / 67** assertions in `scripts/test-report.mjs` — `toDraft` / `applyEdit` / `isDirty` and the PDF payload, covering list fields, empty fields and the edited-flag transitions
 
 ---
 
@@ -707,9 +707,9 @@ Two things follow: the feature has not been confirmed on the Oppo A059, and "no 
 
 An interrupted session is found when the doctor next enters Recording. A crash-killed session is invisible from the Dashboard, so a doctor who reopens the app and browses reports has no indication that unfinished dictation exists. A dashboard banner reading the same `getActiveSession()` would close it.
 
-### `dist/` is not in `.gitignore`
+### Release APKs are ignored, but only going forward
 
-The shared release APK is written to `dist/`, which nothing ignores — an 80 MB binary can be committed by accident. Same class of problem as the tracked `.cxx` artifacts above, and worth adding before the next commit.
+The shared release APK is written to `dist/`, which `.gitignore` now covers. That only stops *new* accidents: `.gitignore` does not untrack anything already committed, so if an APK ever landed in the index it still needs `git rm --cached dist/<file>.apk` — the same caveat as the `.cxx` artifacts above.
 
 ### iOS is entirely unverified
 

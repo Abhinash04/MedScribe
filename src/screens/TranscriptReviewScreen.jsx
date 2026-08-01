@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -38,6 +39,14 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const [segmentEditText, setSegmentEditText] = useState('');
   const [viewMode, setViewMode] = useState('full'); // 'full' or 'segments'
 
+  // Segment edits and deletes change `fullTranscript` while the full editor
+  // holds its own copy. Without this the editor would still show the pre-edit
+  // text, and Resume or Generate would write that stale copy back over the
+  // correction the doctor just made.
+  useEffect(() => {
+    setEditableText(fullTranscript);
+  }, [fullTranscript]);
+
   const goBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
@@ -64,6 +73,24 @@ const TranscriptReviewScreen = ({ navigation }) => {
     // Navigate to Report screen
     navigation.navigate('Report');
   }, [editableText, fullTranscript, viewMode, setFullTranscript, navigation]);
+
+  const handleDeleteSegment = useCallback(
+    segment => {
+      Alert.alert(
+        'Delete this sentence?',
+        'It will be removed from the transcript used to generate the report.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => deleteSegment(segment.id),
+          },
+        ],
+      );
+    },
+    [deleteSegment],
+  );
 
   const handleSaveSegmentEdit = useCallback(
     id => {
@@ -204,7 +231,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
                     <Pressable
                       style={styles.actionLink}
-                      onPress={() => deleteSegment(segment.id)}
+                      onPress={() => handleDeleteSegment(segment)}
                     >
                       <Text style={[styles.actionLinkText, styles.deleteText]}>
                         Delete
@@ -352,7 +379,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.secondaryAccent,
-    backgroundColor: 'rgba(235, 87, 87, 0.1)',
+    backgroundColor: colors.errorSoft,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,

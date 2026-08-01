@@ -40,6 +40,13 @@ export const RESTORE_DELAY_MS = 500;
  */
 export const MUTE_WATCHDOG_MS = 120000;
 
+/**
+ * How often the suppression is re-armed while a session is live. Comfortably
+ * inside `MUTE_WATCHDOG_MS`, so the native watchdog only ever fires when this
+ * side has genuinely stopped running.
+ */
+export const REARM_INTERVAL_MS = 60000;
+
 let nativeModule;
 let resolved = false;
 
@@ -68,6 +75,7 @@ class AudioFeedbackService {
     this.enabled = true;
     this.muteTimer = null;
     this.restoreTimer = null;
+    this.rearmTimer = null;
   }
 
   clearTimers() {
@@ -78,6 +86,10 @@ class AudioFeedbackService {
     if (this.restoreTimer) {
       clearTimeout(this.restoreTimer);
       this.restoreTimer = null;
+    }
+    if (this.rearmTimer) {
+      clearInterval(this.rearmTimer);
+      this.rearmTimer = null;
     }
   }
 
@@ -98,12 +110,24 @@ class AudioFeedbackService {
    * only two moments the doctor needs an audible confirmation.
    */
   cueThenSuppress(kind) {
+    // A pause schedules the restore RESTORE_DELAY_MS out. Resuming inside that
+    // window would otherwise only cancel it, leaving the streams muted — and the
+    // cue below plays on one of them, so the doctor would hear nothing.
+    if (this.restoreTimer) {
+      this.restoreNow();
+    }
+
     this.clearTimers();
     this.playCue(kind);
 
     this.muteTimer = setTimeout(() => {
       this.muteTimer = null;
       this.suppress();
+      // The native watchdog restores unconditionally after MUTE_WATCHDOG_MS, so
+      // a session longer than that would start beeping again mid-consultation.
+      // Re-arming on a shorter interval keeps it permanently deferred, and the
+      // watchdog still fires promptly if this JS thread ever stops running.
+      this.rearmTimer = setInterval(() => this.suppress(), REARM_INTERVAL_MS);
     }, CUE_GRACE_MS);
   }
 

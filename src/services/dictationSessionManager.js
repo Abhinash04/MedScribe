@@ -2,7 +2,9 @@ import { RECORDING_STATE } from '../constants/recordingStates';
 import * as speech from './speechService';
 import audioFeedbackService from './audioFeedbackService';
 import { saveSessionDebounced, clearActiveSession } from './sessionPersistenceService';
-import useRecordingStore from '../store/useRecordingStore';
+import useRecordingStore, {
+  selectFullTranscript,
+} from '../store/useRecordingStore';
 import { extractPatientFields } from './extractionService';
 
 /**
@@ -17,6 +19,7 @@ class DictationSessionManager {
   constructor() {
     this.timerId = null;
     this.extractDebounceId = null;
+    this.lastExtractedTranscript = '';
   }
 
   /**
@@ -24,6 +27,9 @@ class DictationSessionManager {
    */
   async startSession() {
     const store = useRecordingStore.getState();
+    // A new session starts from no extraction history, so an identical
+    // transcript in a later consultation is not mistaken for "unchanged".
+    this.lastExtractedTranscript = '';
     audioFeedbackService.playStartCue();
     this.startTimer();
     store.setStatus(RECORDING_STATE.LISTENING);
@@ -42,8 +48,8 @@ class DictationSessionManager {
 
     try {
       await speech.stop();
-    } catch (e) {
-      // Ignored
+    } catch (error) {
+      console.warn('[dictationSessionManager] Pause stop warning:', error);
     }
 
     this.persistCurrentSession();
@@ -72,11 +78,17 @@ class DictationSessionManager {
 
     try {
       await speech.stop();
-    } catch (e) {
-      // Ignored
+    } catch (error) {
+      console.warn('[dictationSessionManager] Stop warning:', error);
     }
 
-    // Run immediate final live entity extraction
+    // Cancel the queued run first: a debounced extraction landing after
+    // clearSession() would repopulate liveExtractedFields for a session that
+    // no longer exists.
+    if (this.extractDebounceId) {
+      clearTimeout(this.extractDebounceId);
+      this.extractDebounceId = null;
+    }
     this.runLiveExtraction();
     this.persistCurrentSession();
   }
@@ -98,6 +110,19 @@ class DictationSessionManager {
     if (this.timerId) {
       clearInterval(this.timerId);
       this.timerId = null;
+    }
+  }
+
+  /**
+   * Drops every timer this singleton owns. Called from the recording screen's
+   * teardown — the manager outlives the screen, so anything left running here
+   * leaks for the rest of the app's life.
+   */
+  dispose() {
+    this.stopTimer();
+    if (this.extractDebounceId) {
+      clearTimeout(this.extractDebounceId);
+      this.extractDebounceId = null;
     }
   }
 
@@ -128,10 +153,15 @@ class DictationSessionManager {
   runLiveExtraction() {
     try {
       const store = useRecordingStore.getState();
-      const fullTranscript = store.segments.map(s => s.text).join(' ').trim();
-      if (!fullTranscript) return;
+      // Shared selector rather than a local join, so the live preview and the
+      // report always read the transcript the same way.
+      const fullTranscript = selectFullTranscript(store);
+      if (!fullTranscript || fullTranscript === this.lastExtractedTranscript) {
+        return;
+      }
 
       const extracted = extractPatientFields(fullTranscript);
+      this.lastExtractedTranscript = fullTranscript;
       store.setLiveExtractedFields(extracted);
     } catch (err) {
       console.warn('[dictationSessionManager] Live extraction warning:', err);

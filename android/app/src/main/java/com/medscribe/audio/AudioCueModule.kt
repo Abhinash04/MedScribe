@@ -58,11 +58,22 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
     )
   }
 
+  private val appContext = reactContext
   private val audio =
     reactContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
   private val prefs =
     reactContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
   private val handler = Handler(Looper.getMainLooper())
+
+  /**
+   * Guards `mutedStreams` and `watchdog`. They are reached from three threads:
+   * the TurboModule call thread, the main thread (the watchdog Runnable and the
+   * lifecycle callbacks), and whichever thread `invalidate()` runs on. Without
+   * serialization a restore can interleave with a suppression and clear the list
+   * while a stream is still muted — which is the one failure this module exists
+   * to prevent.
+   */
+  private val lock = Any()
   private val mutedStreams = mutableListOf<Int>()
   private var watchdog: Runnable? = null
 
@@ -109,27 +120,29 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
 
   override fun suppressSystemTones(watchdogMs: Double, promise: Promise) {
     try {
-      cancelWatchdog()
+      val applied = synchronized(lock) {
+        cancelWatchdogLocked()
 
-      if (mutedStreams.isEmpty()) {
-        // Committed before the first mute so a crash between the two still
-        // leaves the marker that the next launch reads.
-        prefs.edit().putBoolean(KEY_MUTED, true).commit()
-      }
-
-      val applied = mutableListOf<String>()
-      CANDIDATE_STREAMS.forEach { (stream, label) ->
-        if (!mutedStreams.contains(stream) && muteStream(stream)) {
-          applied.add(label)
-        } else if (mutedStreams.contains(stream)) {
-          applied.add(label)
+        if (mutedStreams.isEmpty()) {
+          // Committed before the first mute so a crash between the two still
+          // leaves the marker that the next launch reads.
+          prefs.edit().putBoolean(KEY_MUTED, true).commit()
         }
-      }
 
-      if (applied.isEmpty()) {
-        prefs.edit().putBoolean(KEY_MUTED, false).commit()
-      } else {
-        armWatchdog(watchdogMs.toLong())
+        val labels = mutableListOf<String>()
+        CANDIDATE_STREAMS.forEach { (stream, label) ->
+          if (mutedStreams.contains(stream) || muteStreamLocked(stream)) {
+            labels.add(label)
+          }
+        }
+
+        if (labels.isEmpty()) {
+          prefs.edit().putBoolean(KEY_MUTED, false).commit()
+        } else {
+          armWatchdogLocked(watchdogMs.toLong())
+        }
+
+        labels
       }
 
       promise.resolve(applied.joinToString(","))
@@ -144,7 +157,7 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
     promise.resolve(true)
   }
 
-  private fun muteStream(stream: Int): Boolean =
+  private fun muteStreamLocked(stream: Int): Boolean =
     try {
       audio.adjustStreamVolume(stream, AudioManager.ADJUST_MUTE, 0)
       mutedStreams.add(stream)
@@ -163,17 +176,19 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
   }
 
   private fun restoreInternal() {
-    cancelWatchdog()
-    // Iterates a copy: unmuteStream can throw per stream and must not abandon
-    // the rest of the list half-restored.
-    mutedStreams.toList().forEach { unmuteStream(it) }
-    mutedStreams.clear()
-    prefs.edit().putBoolean(KEY_MUTED, false).commit()
+    synchronized(lock) {
+      cancelWatchdogLocked()
+      // Iterates a copy: unmuteStream can throw per stream and must not abandon
+      // the rest of the list half-restored.
+      mutedStreams.toList().forEach { unmuteStream(it) }
+      mutedStreams.clear()
+      prefs.edit().putBoolean(KEY_MUTED, false).commit()
+    }
   }
 
-  private fun armWatchdog(delayMs: Long) {
+  private fun armWatchdogLocked(delayMs: Long) {
     val runnable = Runnable {
-      watchdog = null
+      synchronized(lock) { watchdog = null }
       Log.w(TAG, "watchdog fired — restoring streams")
       restoreInternal()
     }
@@ -181,7 +196,7 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
     handler.postDelayed(runnable, if (delayMs > 0) delayMs else 120_000L)
   }
 
-  private fun cancelWatchdog() {
+  private fun cancelWatchdogLocked() {
     watchdog?.let { handler.removeCallbacks(it) }
     watchdog = null
   }
@@ -200,6 +215,9 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
 
   override fun invalidate() {
     restoreInternal()
+    // Otherwise the dead module stays in the context's listener list and is
+    // called back on the next host pause.
+    appContext.removeLifecycleEventListener(this)
     super.invalidate()
   }
 }

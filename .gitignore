@@ -102,3 +102,8 @@ xcuserdata/
 # Build output
 dist/
 
+# Temporary & log files
+*.tmp
+*.temp
+*.log
+

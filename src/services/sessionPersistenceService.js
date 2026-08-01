@@ -59,6 +59,11 @@ export async function saveSessionImmediate({
         now,
       ],
     );
+
+    // Only the live session may exist. Without this, a session that was never
+    // cleared (a crash the doctor then discarded from a different device state)
+    // could outlive its successor and be offered for recovery later.
+    await db.execute('DELETE FROM active_sessions WHERE id <> ?;', [id]);
   } catch (error) {
     console.warn('[sessionPersistenceService] Save error:', error);
   }

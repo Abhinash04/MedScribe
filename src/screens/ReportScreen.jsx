@@ -285,7 +285,14 @@ const ReportScreen = ({ route }) => {
                     : styles.statusDraft,
                 ]}
               >
-                <Text style={styles.statusText}>
+                <Text
+                  style={[
+                    styles.statusText,
+                    status === REPORT_STATUS.FINAL
+                      ? styles.statusTextFinal
+                      : styles.statusTextDraft,
+                  ]}
+                >
                   {status === REPORT_STATUS.FINAL ? 'FINAL' : 'DRAFT'}
                 </Text>
               </View>
@@ -456,6 +463,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  // The draft pill is a pale surface fill, the final pill is solid green —
+  // one shared label colour cannot be readable on both.
+  statusTextDraft: {
+    color: colors.textPrimary,
+  },
+  statusTextFinal: {
     color: colors.onPrimary,
   },
   savedLabel: {

@@ -69,7 +69,7 @@ const RecordingControls = ({
     return (
       <View style={styles.row}>
         <ControlButton
-          label="Resume (Play)"
+          label="Resume"
           variant="primary"
           onPress={onResume}
           hint="Resumes speech recognition"

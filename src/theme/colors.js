@@ -40,6 +40,8 @@ export const colors = {
   infoLight: '#F0F9FF',
 
   accentSoft: 'rgba(37, 99, 235, 0.12)',
+  onPrimarySoft: 'rgba(255, 255, 255, 0.18)',
+  onPrimaryMuted: 'rgba(255, 255, 255, 0.88)',
   violet: '#7C3AED',
   violetSoft: 'rgba(124, 58, 237, 0.12)',
   overlay: 'rgba(15, 23, 42, 0.65)',

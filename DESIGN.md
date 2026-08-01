@@ -22,7 +22,7 @@ colors:
   surface-soft: "#F8FAFC"
   surface-card: "#FFFFFF"
   surface-elevated: "#FFFFFF"
-  on-primary: "#FFFFFF"
+  onPrimary: "#FFFFFF"
   success: "#16A34A"
   success-light: "#F0FDF4"
   success-border: "#BBF7D0"
@@ -121,7 +121,7 @@ spacing:
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
+    textColor: "{colors.onPrimary}"
     typography: "{typography.button}"
     rounded: "{rounded.pill}"
     padding: "12px 24px"
@@ -145,7 +145,7 @@ components:
   card-surface:
     backgroundColor: "{colors.surface}"
     borderColor: "{colors.border}"
-    rounded: "{rounded.xl}"
+    rounded: "{rounded.lg}"
     padding: 16
   status-pill:
     backgroundColor: "{colors.surface}"
@@ -156,7 +156,7 @@ components:
     backgroundColor: "{colors.surface}"
     borderColor: "{colors.border}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.md}"
     padding: "12px 16px"
     minHeight: 48
 ---
@@ -212,7 +212,7 @@ MedScribe uses a **Light Theme** as its default design system. Dark modes are de
 | `colors.surface-soft` | `#F8FAFC` | Subtle slate tint for secondary containers |
 | `colors.surface-card` | `#FFFFFF` | Standard card container floor |
 | `colors.surface-elevated` | `#FFFFFF` | Modals, bottom sheets, floating dialogs |
-| `colors.on-primary` | `#FFFFFF` | Text/Icon color over primary blue background |
+| `colors.onPrimary` | `#FFFFFF` | Text/Icon color over primary blue background. Required on every filled `primary`, `success` or `danger` surface — the ink colours fail contrast there. |
 | `colors.success` | `#16A34A` | Green 600 — Saved status, active mic dot |
 | `colors.success-light` | `#F0FDF4` | Success pill background |
 | `colors.success-border` | `#BBF7D0` | Success pill border |
@@ -314,13 +314,29 @@ Animations in MedScribe serve usability only. No decorative transitions.
 
 ## 7. Iconography Standards
 
-Use **Lucide React Native** (`lucide-react-native`) as the single iconography system.
+**MedScribe ships no icon font or icon library.** Every glyph is composed from
+plain `View`s, which keeps the APK free of a dependency that would exist purely
+for decoration and lets each icon inherit theme tokens directly.
 
-### Recommended Icons
-- `Mic`, `MicOff`, `Pause`, `Play`, `Square` (Dictation Controls)
-- `FileText`, `CheckCircle2`, `AlertCircle`, `Clock` (Status & Reports)
-- `Edit3`, `Trash2`, `ChevronRight`, `ArrowLeft`, `Share2`, `Download` (Actions)
-- Icon stroke width: `2.0pt` uniform. Default size: `20pt` for actions, `24pt` for headers.
+### Existing glyphs
+- `MicGlyph.jsx` — the microphone, sized by a single `size` prop and coloured by
+  `color`. Used by the dashboard CTA card and the round start button.
+- `AnimatedMicButton.jsx` — a larger, hand-tuned microphone with its own
+  breathing and ripple animation. It keeps a separate copy on purpose.
+- `AppHeader.jsx` — the medical-cross mark and the back chevron.
+- Text glyphs (`›`, `＋`, `⌕`, `▤`, `◷`, `✎`, `✓`, `▦`) carry the dashboard
+  chevrons, stat tiles and quick actions.
+
+### Rules
+- Default sizes: `20pt` inside actions, `24pt` in headers, `26–30pt` for the
+  primary microphone.
+- Stroke weight is expressed as a fraction of `size` so a glyph stays balanced
+  at any scale (see `MicGlyph`).
+- Icons are decorative: mark them `accessibilityElementsHidden` and put the
+  label on the surrounding pressable, never on the glyph.
+- **Before adding a library**, extend these. Introducing `lucide-react-native`
+  or similar would mean two icon systems on screen at once, which is worse than
+  either alone.
 
 ---
 

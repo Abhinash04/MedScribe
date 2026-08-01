@@ -188,13 +188,14 @@ const DashboardScreen = ({ navigation }) => {
   );
 
   const handleToggleSearch = useCallback(() => {
-    setSearching(previous => {
-      if (previous) {
-        setQuery('');
-      }
-      return !previous;
-    });
-  }, []);
+    // Read from the closure rather than nesting setQuery inside the setSearching
+    // updater: React may invoke an updater twice, and a side effect in there
+    // runs twice with it.
+    if (searching) {
+      setQuery('');
+    }
+    setSearching(!searching);
+  }, [searching]);
 
   const handleToggleDrafts = useCallback(() => {
     setDraftsOnly(previous => !previous);
@@ -364,6 +365,24 @@ const DashboardScreen = ({ navigation }) => {
           active={draftsOnly}
           onPress={handleToggleDrafts}
         />
+        {__DEV__ ? (
+          <QuickAction
+            label="STT Measure"
+            glyph="▤"
+            tint={colors.successSoft}
+            accent={colors.success}
+            onPress={() => navigation.navigate('SttMeasure')}
+          />
+        ) : null}
+        {__DEV__ ? (
+          <QuickAction
+            label="Mic Spike"
+            glyph="◉"
+            tint={colors.warningSoft}
+            accent={colors.warning}
+            onPress={() => navigation.navigate('MicSpike')}
+          />
+        ) : null}
         <QuickAction
           label={showAll ? 'Recent Only' : 'All Reports'}
           glyph="▦"
@@ -531,7 +550,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    backgroundColor: colors.onPrimarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -546,7 +565,7 @@ const styles = StyleSheet.create({
   },
   ctaSubtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.88)',
+    color: colors.onPrimaryMuted,
     marginTop: 2,
   },
   ctaChevron: {
