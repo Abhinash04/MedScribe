@@ -1,4 +1,4 @@
-import { PATIENT_FIELDS } from '../constants/patientFields.js';
+import { PATIENT_FIELDS, REQUIRED_FIELDS } from '../constants/patientFields.js';
 
 /**
  * The editable draft that sits between extraction (FR-5) and the saved record.
@@ -104,6 +104,46 @@ function normalizeValue(key, value) {
 }
 
 /**
+ * Fold a fresh extraction into an existing draft.
+ *
+ * "Add More Speech" re-extracts the whole transcript, so the new record is
+ * authoritative for everything the doctor dictated — corrections, retractions
+ * and list merges are already resolved by the extraction pipeline. What it
+ * cannot know about is a value the doctor typed by hand, so an edited entry is
+ * never overwritten, and a field the new speech did not mention keeps what it
+ * had rather than being blanked.
+ */
+export function mergeExtraction(draft, record) {
+  const merged = {};
+
+  for (const field of PATIENT_FIELDS) {
+    const entry = draft?.[field.key] ?? emptyEntry(field.key);
+    const extracted = record?.[field.key];
+
+    if (entry.edited || !extracted) {
+      merged[field.key] = entry;
+      continue;
+    }
+
+    const value = normalizeValue(field.key, extracted.value);
+    if (!hasValue({ value }, field.key)) {
+      merged[field.key] = entry;
+      continue;
+    }
+
+    merged[field.key] = {
+      value,
+      original: value,
+      confidence: extracted.confidence ?? 0,
+      source: extracted.source ?? '',
+      edited: false,
+    };
+  }
+
+  return merged;
+}
+
+/**
  * Rebuild a draft loaded from storage.
  *
  * Fields added to PATIENT_FIELDS after a report was saved come back empty
@@ -199,6 +239,12 @@ export function hasValue(entry, key) {
 /** How many of the eleven fields the report actually carries. */
 export function countFilledFields(draft) {
   return PATIENT_FIELDS.filter(field => hasValue(draft?.[field.key], field.key))
+    .length;
+}
+
+/** How many of the ten mandatory fields the report carries. */
+export function countRequiredFilled(draft) {
+  return REQUIRED_FIELDS.filter(field => hasValue(draft?.[field.key], field.key))
     .length;
 }
 
