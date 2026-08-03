@@ -45,10 +45,12 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 - **Natural clinical speech** — the doctor never has to say a field label. Synonyms ("suggestive of", "known case of", "presents with"), gender inferred from a pronoun when it is the only evidence, and a chronic condition routed to medical history while today's complaint stays in symptoms.
 - **Negation and retraction** — "no chest pain" never becomes a symptom; it is recorded as a stated denial instead. "Correction, no history of diabetes" cancels the condition dictated a moment earlier, and "do not start Paracetamol" cancels the prescription.
 - **Prescription as a list** — one editable entry per drug, with strength, frequency, duration and timing preserved exactly as dictated.
-- **Structured report** — a preview with an N-of-11 summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, and values inferred from a hedged phrase are flagged **UNCERTAIN**.
+- **Structured report** — a preview with an N-of-10 required-field summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, and values inferred from a hedged phrase are flagged **UNCERTAIN**.
+- **Completeness gate** — ten of the eleven fields are mandatory and are checked against their own validators before a report is produced; a six-character PIN and a ten-digit contact number are not merely non-empty text. A blocked report names exactly what is still needed and offers **Add More Speech** or **Review Fields**. Additional Remarks is optional and never blocks anything. Medical History and Prescription Notes accept an explicitly dictated absence — "no significant medical history", "no medication prescribed" — which the app never fills in on the doctor's behalf.
 - **Transcript review step** — dictation lands on a review screen before any report is generated. Correct the whole transcript in one editor, or work sentence by sentence with per-utterance edit and delete, then resume dictating or generate the report.
 - **Automatic session saving** — the in-flight dictation is written to the database as it grows, so after a force-stop, an OS kill or a flat battery the next visit to the recording screen offers to restore it. Best-effort by design: a failed write is logged and swallowed rather than interrupting the consultation, so recovery depends on the last save having landed.
 - **Transcript inspection** — the report can reveal the original dictation, which is the fastest way to tell a transcription gap from an extraction gap.
+- **Diagnostic dump** — long-press the Patient Report title to share a six-stage trace: raw utterances, the text extraction received, the candidates it found, the eleven-field result with the phrase each value came from, the draft, and what the form rendered. It works in a release build, so a field that goes missing on a real device can be attributed to the recognizer, extraction, the merge or the UI without guesswork.
 - **Editable report fields** — the generated report is a draft, not a verdict. Every field is an input: tap it and type. Symptoms are a list with add and remove. Fields the doctor changed are flagged **EDITED**, and empty fields can be filled in from scratch.
 - **Save Report** — persists the original dictation, the extraction, the doctor's edits, the status and the timestamps together.
 - **Doctor Dashboard** — the launch screen. A start-recording card and a round microphone button open a new consultation; overview tiles count total, today, draft and finalized reports; saved reports list newest-first with initials, relative timestamp, diagnosis and a Draft/Final pill. Quick actions search by patient or diagnosis and filter to pending drafts. Tap a report to reopen it for editing; long-press to delete.
@@ -74,7 +76,7 @@ Dashboard → New Dictation → Record → Transcript Review → Report → Edit
 1. **Open the app.** The Dashboard lists every previously saved report.
 2. **New Dictation** → dictate the consultation, pausing and resuming as needed → **Stop**, and confirm.
 3. **Review the transcript.** Fix anything the recognizer misheard, in the full editor or sentence by sentence. **Resume Dictation** goes back for more and appends to what is already there — it never starts a fresh transcript.
-4. **Generate Report.** The structured report is extracted from the reviewed transcript.
+4. **Generate Report.** The structured report is extracted from the reviewed transcript. If any of the ten mandatory fields is missing or invalid, generation is held back and the missing details are named — dictate them with **Add More Speech**, which appends to the same consultation and keeps everything already captured, or type them in with **Review Fields**.
 5. **Review and correct** any field — the extraction is a starting point, not the record.
 6. **Save Report.** It appears on the Dashboard immediately.
 7. Optionally **Download PDF** to print, mail or file it.
@@ -428,10 +430,12 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run test:extraction` | 239 assertions — the extraction regression floor. Runs under plain Node, no test framework. |
 | `npm run test:extraction:natural` | 102 assertions over natural phrasing: synonyms, progressive-aspect symptoms, pronoun gender, negation, chronic vs acute. |
 | `npm run test:extraction:adversarial` | 31 assertions over conflicting, corrected and cancelled dictation. |
-| `npm run test:extraction:samples` | 180 assertions over twenty real dictation samples. |
+| `npm run test:extraction:samples` | 195 assertions over twenty real dictation samples, including a punctuation-free variant. |
+| `npm run test:extraction:synonyms` | 71 assertions, one per phrase family, so a full-sample fixture cannot hide a broken marker. |
 | `npm run test:extraction:numeric` | 49 assertions over PIN and phone grouping, country codes and spoken digits. |
-| `npm run test:extraction:cleanup` | 41 assertions over conversational cleanup across all eleven fields. |
+| `npm run test:extraction:cleanup` | 54 assertions over conversational cleanup across all eleven fields. |
 | `npm run test:report` | 71 assertions over the editable draft, the PDF payload and the dashboard timestamps. Also plain Node. |
+| `npm run test:completeness` | 61 assertions over the mandatory-field gate, explicit-none statements and the Add-More-Speech merge. |
 | `npm run lint` | ESLint across the project. |
 | `npm test` | Jest. **Currently broken** — see below. |
 

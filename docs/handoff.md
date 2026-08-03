@@ -76,10 +76,12 @@ The extraction and report layers are pure and deterministic, so they are measure
 | `npm run test:extraction` | **239 / 239** | The regression floor — template, scrambled, conversational, shorthand, filler and Hinglish dictation |
 | `npm run test:extraction:natural` | **102 / 102** | Natural phrasing: synonyms, pronoun gender, negation, chronic-vs-acute, prescription vs advice |
 | `npm run test:extraction:adversarial` | **31 / 31** | Conflicting and cancelled dictation: explicit-vs-pronoun, corrections, retractions, numeric bleed, restart duplicates |
-| `npm run test:extraction:samples` | **180 / 180** | Twenty real dictation samples, every stated field asserted exactly, each proving its prescription |
+| `npm run test:extraction:samples` | **195 / 195** | Twenty real dictation samples, every stated field asserted exactly, each proving its prescription, plus a punctuation-free variant |
+| `npm run test:extraction:synonyms` | **71 / 71** | One assertion per phrase family across all eleven fields, so a full-sample fixture cannot hide a broken marker |
 | `npm run test:extraction:numeric` | **49 / 49** | PIN and phone grouping, country codes, spoken digits, and the numbers that must never become either |
-| `npm run test:extraction:cleanup` | **41 / 41** | Conversational scaffolding removed from all eleven fields, and the clinical modifiers that must survive it |
+| `npm run test:extraction:cleanup` | **54 / 54** | Conversational scaffolding removed from all eleven fields, and the clinical modifiers that must survive it |
 | `npm run test:report` | **71 / 71** | Draft bookkeeping, the list-typed prescription round-trip and the PDF payload |
+| `npm run test:completeness` | **61 / 61** | The ten mandatory fields, optional remarks, explicit-none history and prescription, and the Add-More-Speech merge |
 | `npm run lint` | **0 errors** | — |
 
 Those are **clean-text** numbers. Real dictation adds transcription loss on top — see the dropped-words limitation in §9.
