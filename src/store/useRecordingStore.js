@@ -49,6 +49,10 @@ const initialState = {
   errorCode: null,
   durationSeconds: 0,
   liveExtractedFields: {},
+  // The editable report draft, held here so it survives an "Add More Speech"
+  // round trip through the recording screen. Manual edits would otherwise be
+  // lost when the report screen remounts and re-extracts.
+  reportDraft: null,
 };
 
 const useRecordingStore = create((set, get) => ({
@@ -129,6 +133,8 @@ const useRecordingStore = create((set, get) => ({
 
   setLiveExtractedFields: liveExtractedFields => set({ liveExtractedFields }),
 
+  setReportDraft: reportDraft => set({ reportDraft }),
+
   setPartial: partialText => set({ partialText: partialText ?? '' }),
 
   setError: (errorMessage, errorCode = null) =>
@@ -160,6 +166,7 @@ const useRecordingStore = create((set, get) => ({
       chunks: [],
       durationSeconds: 0,
       liveExtractedFields: {},
+      reportDraft: null,
     }),
 }));
 

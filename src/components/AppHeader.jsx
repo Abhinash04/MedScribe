@@ -2,7 +2,12 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
-const AppHeader = ({ title = 'MedScribe', showBack = false, onBackPress }) => {
+const AppHeader = ({
+  title = 'MedScribe',
+  showBack = false,
+  onBackPress,
+  onLongPressTitle,
+}) => {
   return (
     <View style={styles.headerRow}>
       {showBack ? (
@@ -27,7 +32,13 @@ const AppHeader = ({ title = 'MedScribe', showBack = false, onBackPress }) => {
         </View>
       )}
 
-      <Text style={typography.brandTitle}>{title}</Text>
+      <TouchableOpacity
+        activeOpacity={1}
+        onLongPress={onLongPressTitle}
+        disabled={!onLongPressTitle}
+      >
+        <Text style={typography.brandTitle}>{title}</Text>
+      </TouchableOpacity>
 
       {/* Empty view for symmetry when back button is shown */}
       {showBack ? <View style={styles.placeholderRight} /> : null}

@@ -118,6 +118,11 @@ const MicSpikeScreen = ({ navigation }) => {
   const capturingRef = useRef(false);
   const resolvePhaseRef = useRef(null);
   const abortedRef = useRef(false);
+  // Bumped by every run start, abort and unmount. Awaits taken inside a run
+  // compare against the token they started with, so a run that was abandoned
+  // while parked on the permission dialog or on startCapture cannot come back
+  // and open the microphone under the next run.
+  const runTokenRef = useRef(0);
 
   const addLog = useCallback(line => {
     console.log('[SPIKE2]', line);
@@ -243,8 +248,19 @@ const MicSpikeScreen = ({ navigation }) => {
     return { counters, stats };
   }, [addLog, clearRestart]);
 
+  /** Releases a capture that finished starting after its run was abandoned. */
+  const discardStaleCapture = useCallback(
+    async label => {
+      addLog(`${label} discarded — run no longer current`);
+      try {
+        await capture.stopCapture();
+      } catch {}
+    },
+    [addLog],
+  );
+
   const runPhase = useCallback(
-    async index => {
+    async (index, token) => {
       const phase = PHASES[index];
       setPhaseIndex(index);
       countersRef.current = emptyCounters();
@@ -254,11 +270,19 @@ const MicSpikeScreen = ({ navigation }) => {
       if (phase.capture && phase.captureDelayMs === 0) {
         try {
           const started = await capture.startCapture(SAMPLE_RATE, phase.capture);
+          if (runTokenRef.current !== token) {
+            await discardStaleCapture('capture');
+            return null;
+          }
           capturingRef.current = true;
           addLog(`capture ${started.source} → ${started.path}`);
         } catch (error) {
           addLog(`capture start failed: ${error?.message ?? error}`);
         }
+      }
+
+      if (runTokenRef.current !== token) {
+        return null;
       }
 
       activeRef.current = true;
@@ -267,8 +291,15 @@ const MicSpikeScreen = ({ navigation }) => {
       if (phase.capture && phase.captureDelayMs > 0) {
         captureDelayRef.current = setTimeout(async () => {
           captureDelayRef.current = null;
+          if (runTokenRef.current !== token) {
+            return;
+          }
           try {
             const started = await capture.startCapture(SAMPLE_RATE, phase.capture);
+            if (runTokenRef.current !== token) {
+              await discardStaleCapture('delayed capture');
+              return;
+            }
             capturingRef.current = true;
             addLog(`capture (delayed) ${started.source} → ${started.path}`);
           } catch (error) {
@@ -309,10 +340,13 @@ const MicSpikeScreen = ({ navigation }) => {
         }, PHASE_MS);
       });
     },
-    [addLog, safeStart, stopPhase],
+    [addLog, discardStaleCapture, safeStart, stopPhase],
   );
 
   const handleRun = useCallback(async () => {
+    const token = runTokenRef.current + 1;
+    runTokenRef.current = token;
+
     let permission = await checkMicPermission();
     if (permission === RESULTS.DENIED) {
       permission = await requestMicPermission();
@@ -326,6 +360,12 @@ const MicSpikeScreen = ({ navigation }) => {
       return;
     }
 
+    // The permission prompt is an await: the screen may have unmounted or a
+    // newer run may have started while it was open.
+    if (runTokenRef.current !== token) {
+      return;
+    }
+
     setResults([]);
     setLog([]);
     setRunning(true);
@@ -333,10 +373,10 @@ const MicSpikeScreen = ({ navigation }) => {
 
     const collected = [];
     for (let index = 0; index < PHASES.length; index += 1) {
-      const outcome = await runPhase(index);
+      const outcome = await runPhase(index, token);
       // Abort and unmount both resolve the pending phase; without this check
       // the loop would start the next phase and re-open the microphone.
-      if (abortedRef.current || !outcome) {
+      if (abortedRef.current || runTokenRef.current !== token || !outcome) {
         break;
       }
       collected.push(outcome);
@@ -344,7 +384,7 @@ const MicSpikeScreen = ({ navigation }) => {
       if (index < PHASES.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
-      if (abortedRef.current) {
+      if (abortedRef.current || runTokenRef.current !== token) {
         break;
       }
     }
@@ -356,6 +396,7 @@ const MicSpikeScreen = ({ navigation }) => {
 
   const handleAbort = useCallback(async () => {
     abortedRef.current = true;
+    runTokenRef.current += 1;
     if (phaseTimerRef.current) {
       clearTimeout(phaseTimerRef.current);
       phaseTimerRef.current = null;
@@ -378,6 +419,7 @@ const MicSpikeScreen = ({ navigation }) => {
     () => () => {
       activeRef.current = false;
       abortedRef.current = true;
+      runTokenRef.current += 1;
       clearRestart();
       // Release the awaiting run loop, otherwise it stays parked on a promise
       // that can never settle once this screen is gone.

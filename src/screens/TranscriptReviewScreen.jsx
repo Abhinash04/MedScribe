@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import AppHeader from '../components/AppHeader';
+import MissingFieldsModal from '../components/MissingFieldsModal';
 import ScreenContainer from '../components/ScreenContainer';
 import SectionTitle from '../components/SectionTitle';
 import useRecordingStore, {
@@ -16,6 +17,9 @@ import useRecordingStore, {
 } from '../store/useRecordingStore';
 import { colors, spacing, typography } from '../theme';
 import dictationSessionManager from '../services/dictationSessionManager';
+import { extractPatientFields } from '../services/extractionService';
+import { validateReportCompleteness } from '../services/reportCompleteness';
+import { mergeExtraction, toDraft } from '../services/reportDraft';
 
 /**
  * Format elapsed duration as MM:SS.
@@ -33,7 +37,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const updateSegment = useRecordingStore(state => state.updateSegment);
   const deleteSegment = useRecordingStore(state => state.deleteSegment);
   const setFullTranscript = useRecordingStore(state => state.setFullTranscript);
+  const reportDraft = useRecordingStore(state => state.reportDraft);
+  const setReportDraft = useRecordingStore(state => state.setReportDraft);
 
+  const [blocked, setBlocked] = useState(null);
   const [editableText, setEditableText] = useState(fullTranscript);
   const [editingSegmentId, setEditingSegmentId] = useState(null);
   const [segmentEditText, setSegmentEditText] = useState('');
@@ -65,14 +72,53 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const handleGenerateReport = useCallback(async () => {
     // If the full text editor was modified, sync it to store
-    if (viewMode === 'full' && editableText !== fullTranscript) {
-      setFullTranscript(editableText);
+    const text =
+      viewMode === 'full' && editableText !== fullTranscript
+        ? editableText
+        : fullTranscript;
+    if (text !== fullTranscript) {
+      setFullTranscript(text);
     }
+
+    // Extraction is deterministic, so validating here and again on the report
+    // screen cannot disagree. The draft is kept so a manual edit survives an
+    // "Add More Speech" round trip.
+    const record = extractPatientFields(text);
+    const draft = reportDraft
+      ? mergeExtraction(reportDraft, record)
+      : toDraft(record);
+    setReportDraft(draft);
+
+    const result = validateReportCompleteness(draft);
+    if (!result.isComplete) {
+      setBlocked(result);
+      return;
+    }
+
     // Clean active session
     await dictationSessionManager.clearSession();
     // Navigate to Report screen
     navigation.navigate('Report');
-  }, [editableText, fullTranscript, viewMode, setFullTranscript, navigation]);
+  }, [
+    editableText,
+    fullTranscript,
+    viewMode,
+    setFullTranscript,
+    navigation,
+    reportDraft,
+    setReportDraft,
+  ]);
+
+  const handleAddMoreSpeech = useCallback(() => {
+    setBlocked(null);
+    handleResumeRecording();
+  }, [handleResumeRecording]);
+
+  const handleReviewFields = useCallback(async () => {
+    setBlocked(null);
+    await dictationSessionManager.clearSession();
+    navigation.navigate('Report');
+  }, [navigation]);
 
   const handleDeleteSegment = useCallback(
     segment => {
@@ -268,6 +314,15 @@ const TranscriptReviewScreen = ({ navigation }) => {
           <Text style={styles.generateBtnText}>Generate Report ➔</Text>
         </Pressable>
       </View>
+
+      <MissingFieldsModal
+        visible={!!blocked}
+        missing={blocked?.missingFields ?? []}
+        invalid={blocked?.invalidFields ?? []}
+        onAddSpeech={handleAddMoreSpeech}
+        onReviewFields={handleReviewFields}
+        onDismiss={() => setBlocked(null)}
+      />
     </ScreenContainer>
   );
 };
