@@ -11,6 +11,8 @@
     "test:extraction:natural": "node scripts/test-extraction-natural.mjs",
     "test:extraction:adversarial": "node scripts/test-extraction-adversarial.mjs",
     "test:extraction:samples": "node scripts/test-extraction-samples.mjs",
+    "test:extraction:numeric": "node scripts/test-extraction-numeric.mjs",
+    "test:extraction:cleanup": "node scripts/test-extraction-cleanup.mjs",
     "test:report": "node scripts/test-report.mjs",
     "start": "react-native start",
     "test": "jest"

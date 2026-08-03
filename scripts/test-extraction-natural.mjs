@@ -10,28 +10,15 @@
  */
 import { extractPatientFields } from '../src/services/extractionService.js';
 
-let passed = 0;
-let failed = 0;
-const failures = [];
+import {
+  check,
+  expectFields as assertFields,
+  report,
+  valueOf,
+} from './lib/fixture-harness.mjs';
 
-const valueOf = field => (field ? field.value : null);
-
-function check(name, actual, expected) {
-  const ok = JSON.stringify(actual) === JSON.stringify(expected);
-  if (ok) {
-    passed += 1;
-  } else {
-    failed += 1;
-    failures.push(`  ${name}\n    expected ${JSON.stringify(expected)}\n    actual   ${JSON.stringify(actual)}`);
-  }
-}
-
-function expectFields(label, transcript, expected) {
-  const record = extractPatientFields(transcript);
-  for (const [key, want] of Object.entries(expected)) {
-    check(`${label} → ${key}`, valueOf(record[key]), want);
-  }
-}
+const expectFields = (label, transcript, expected) =>
+  assertFields(extractPatientFields, label, transcript, expected);
 
 // ── 1. Template and reordering ──────────────────────────────────────────────
 expectFields(
@@ -95,6 +82,55 @@ expectFields(
   'Investigations advised: complete blood count. Return after three days.',
   { additionalRemarks: 'Complete blood count. Return after three days' },
 );
+
+// ── 2b. Natural symptom phrasing ────────────────────────────────────────────
+expectFields(
+  '2b.1 is having, multiple symptoms with duration',
+  'He is having fever, cough, headache, and body pain for about three days.',
+  {
+    symptoms: ['Fever', 'Cough', 'Headache', 'Body pain for about three days'],
+    medicalHistory: null,
+  },
+);
+
+expectFields('2b.2 she is having', 'She is having headache and nausea.', {
+  symptoms: ['Headache', 'Nausea'],
+});
+
+expectFields('2b.3 patient is having', 'Patient is having fever since yesterday.', {
+  symptoms: ['Fever since yesterday'],
+  medicalHistory: null,
+});
+
+expectFields('2b.4 bare having', 'Currently having body pain.', {
+  symptoms: ['Body pain'],
+});
+
+expectFields('2b.5 having since', 'Having fever since yesterday.', {
+  symptoms: ['Fever since yesterday'],
+});
+
+expectFields('2b.6 has got', 'He has got fever and headache.', {
+  symptoms: ['Fever', 'Headache'],
+});
+
+expectFields('2b.7 dealing with', 'Dealing with cough and sore throat.', {
+  symptoms: ['Cough', 'Sore throat'],
+});
+
+expectFields('2b.8 has', 'He has fever and cough.', { symptoms: ['Fever', 'Cough'] });
+
+expectFields('2b.9 experiencing', 'She is experiencing fever and weakness.', {
+  symptoms: ['Fever', 'Weakness'],
+});
+
+expectFields('2b.10 suffering from', 'He is suffering from fever and cough.', {
+  symptoms: ['Fever', 'Cough'],
+});
+
+expectFields('2b.11 came with', 'Came with fever and headache.', {
+  symptoms: ['Fever', 'Headache'],
+});
 
 // ── 3. Gender from pronouns ─────────────────────────────────────────────────
 expectFields('3.1 single female pronoun', 'The patient is 22 years old. She has fever.', {
@@ -323,8 +359,4 @@ expectFields('11.2 no diagnosis invented from symptoms', 'Patient has fever and 
 });
 
 // ── Report ──────────────────────────────────────────────────────────────────
-console.log(`\n${passed} passed, ${failed} failed\n`);
-if (failures.length) {
-  console.log('FAILURES:\n' + failures.join('\n\n'));
-  process.exit(1);
-}
+report();

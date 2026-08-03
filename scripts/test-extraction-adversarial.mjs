@@ -10,28 +10,15 @@
  */
 import { extractPatientFields } from '../src/services/extractionService.js';
 
-let passed = 0;
-let failed = 0;
-const failures = [];
+import {
+  check,
+  expectFields as assertFields,
+  report,
+  valueOf,
+} from './lib/fixture-harness.mjs';
 
-const valueOf = field => (field ? field.value : null);
-
-function check(name, actual, expected) {
-  const ok = JSON.stringify(actual) === JSON.stringify(expected);
-  if (ok) {
-    passed += 1;
-  } else {
-    failed += 1;
-    failures.push(`  ${name}\n    expected ${JSON.stringify(expected)}\n    actual   ${JSON.stringify(actual)}`);
-  }
-}
-
-function expectFields(label, transcript, expected) {
-  const record = extractPatientFields(transcript);
-  for (const [key, want] of Object.entries(expected)) {
-    check(`${label} → ${key}`, valueOf(record[key]), want);
-  }
-}
+const expectFields = (label, transcript, expected) =>
+  assertFields(extractPatientFields, label, transcript, expected);
 
 /** Asserts a field exists but does not contain a forbidden substring. */
 function expectAbsent(label, transcript, key, forbidden) {
@@ -67,17 +54,13 @@ expectFields(
   { contactNumber: '9812345678' },
 );
 
-expectFields(
-  'A5 diagnosis correction',
-  'Diagnosis is viral fever. Actually, diagnosis is throat infection.',
-  { diagnosis: 'Throat infection' },
-);
-expectAbsent(
-  'A5 diagnosis correction',
-  'Diagnosis is viral fever. Actually, diagnosis is throat infection.',
-  'diagnosis',
-  'viral fever',
-);
+const A5_TRANSCRIPT =
+  'Diagnosis is viral fever. Actually, diagnosis is throat infection.';
+
+expectFields('A5 diagnosis correction', A5_TRANSCRIPT, {
+  diagnosis: 'Throat infection',
+});
+expectAbsent('A5 diagnosis correction', A5_TRANSCRIPT, 'diagnosis', 'viral fever');
 
 expectFields(
   'A6 name correction',
@@ -158,8 +141,4 @@ expectFields(
 );
 
 // ── Report ──────────────────────────────────────────────────────────────────
-console.log(`\n${passed} passed, ${failed} failed\n`);
-if (failures.length) {
-  console.log('FAILURES:\n' + failures.join('\n\n'));
-  process.exit(1);
-}
+report();
