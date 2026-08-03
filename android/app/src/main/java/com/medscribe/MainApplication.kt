@@ -22,8 +22,12 @@ class MainApplication : Application(), ReactApplication {
           // Plays the one dictation cue and mutes the system recognizer's
           // per-utterance tones. See android/app/src/main/java/com/medscribe/audio.
           add(AudioCuePackage())
-          // Phase 1 spike: concurrent PCM capture probe. Remove with the spike.
-          add(AudioCapturePackage())
+          // Phase 1 spike: concurrent PCM capture probe. Debug only — a
+          // microphone-capture module has no business in a build handed to a
+          // doctor, and the screens that drive it are already __DEV__ gated.
+          if (BuildConfig.DEBUG) {
+            add(AudioCapturePackage())
+          }
         },
     )
   }

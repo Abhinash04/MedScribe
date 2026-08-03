@@ -18,12 +18,12 @@ class AudioCapturePackage : BaseReactPackage() {
     mapOf(
       AUDIO_CAPTURE_NAME to
         ReactModuleInfo(
-          AUDIO_CAPTURE_NAME,
-          AudioCaptureModule::class.java.name,
-          false,
-          false,
-          false,
-          true,
+          name = AUDIO_CAPTURE_NAME,
+          className = AudioCaptureModule::class.java.name,
+          canOverrideExistingModule = false,
+          needsEagerInit = false,
+          isCxxModule = false,
+          isTurboModule = true,
         )
     )
   }

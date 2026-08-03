@@ -42,6 +42,7 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
     const val CAPTURE_DIR = "spike"
     const val SILENCE_RMS = 120.0
     const val GAP_THRESHOLD_MS = 400L
+    const val JOIN_TIMEOUT_MS = 2000L
     const val CONFIG_POLL_MS = 1000L
 
     fun sourceOf(name: String): Int = when (name) {
@@ -72,6 +73,7 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
   private var sampleRate = 0
   private var audioSource = MediaRecorder.AudioSource.MIC
   private var audioSourceName = "mic"
+  private var audioSessionId = 0
   private val timeline = mutableListOf<WritableMap>()
 
   private val audioManager =
@@ -165,6 +167,7 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
         return
       }
 
+      audioSessionId = record.audioSessionId
       recorder = record
       capturing = true
       startedAtMs = System.currentTimeMillis()
@@ -205,12 +208,18 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
     } catch (error: Exception) {
       Log.w(TAG, "stop failed", error)
     }
+
+    // Join BEFORE releasing: the worker can still be inside read(), and the
+    // WAV header is written from totalBytes, which it is still incrementing.
+    thread?.join(JOIN_TIMEOUT_MS)
+    if (thread?.isAlive == true) {
+      Log.w(TAG, "capture thread did not stop within ${JOIN_TIMEOUT_MS}ms")
+    }
     record?.release()
-    thread?.join(2000)
 
     val file = outputFile
     if (file != null) {
-      writeWavHeader(file, sampleRate, totalBytes)
+      writeWavHeader(file, sampleRate, synchronized(this) { totalBytes })
     }
 
     promise.resolve(buildStats())
@@ -276,7 +285,11 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
       return
     }
 
-    val ours = configs.filter { it.clientAudioSource == audioSource }
+    // Session id, not just source: another client can hold the same source,
+    // and only the session tells us which configuration is ours.
+    val ours = configs.filter {
+      it.clientAudioSessionId == audioSessionId || (audioSessionId == 0 && it.clientAudioSource == audioSource)
+    }
     val silenced = ours.any { it.isClientSilenced }
 
     synchronized(this) {
@@ -314,7 +327,7 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
           val now = System.currentTimeMillis()
 
           if (read <= 0) {
-            readErrors += 1
+            synchronized(this) { readErrors += 1 }
             val reason = when (read) {
               AudioRecord.ERROR_INVALID_OPERATION -> "ERROR_INVALID_OPERATION"
               AudioRecord.ERROR_BAD_VALUE -> "ERROR_BAD_VALUE"
@@ -341,9 +354,11 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
 
           val gap = now - lastReadAt
           if (gap > GAP_THRESHOLD_MS) {
-            gapCount += 1
-            if (gap > longestGapMs) {
-              longestGapMs = gap
+            synchronized(this) {
+              gapCount += 1
+              if (gap > longestGapMs) {
+                longestGapMs = gap
+              }
             }
           }
           lastReadAt = now
@@ -364,7 +379,7 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
           }
           out.write(bytes)
 
-          totalBytes += bytes.size
+          synchronized(this) { totalBytes += bytes.size }
           windowBytes += bytes.size
 
           if (windowBytes >= bytesPerWindow && windowSamples > 0) {
@@ -408,7 +423,7 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  private fun buildStats(): WritableMap {
+  private fun buildStats(): WritableMap = synchronized(this) {
     val durationMs = if (startedAtMs == 0L) 0L else System.currentTimeMillis() - startedAtMs
     val averageRms = if (rmsWindows > 0) sumRms / rmsWindows else 0.0
     val silentRatio = if (rmsWindows > 0) silentWindows.toDouble() / rmsWindows else 1.0
@@ -493,6 +508,10 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
       } catch (error: Exception) {
         Log.w(TAG, "invalidate stop failed", error)
       }
+      // The worker owns the RandomAccessFile; joining lets its `use` block
+      // close the file before the recorder goes away underneath it.
+      worker?.join(JOIN_TIMEOUT_MS)
+      worker = null
       recorder?.release()
       recorder = null
     }

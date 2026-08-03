@@ -117,6 +117,7 @@ const MicSpikeScreen = ({ navigation }) => {
   const captureDelayRef = useRef(null);
   const capturingRef = useRef(false);
   const resolvePhaseRef = useRef(null);
+  const abortedRef = useRef(false);
 
   const addLog = useCallback(line => {
     console.log('[SPIKE2]', line);
@@ -328,23 +329,33 @@ const MicSpikeScreen = ({ navigation }) => {
     setResults([]);
     setLog([]);
     setRunning(true);
+    abortedRef.current = false;
 
     const collected = [];
     for (let index = 0; index < PHASES.length; index += 1) {
       const outcome = await runPhase(index);
+      // Abort and unmount both resolve the pending phase; without this check
+      // the loop would start the next phase and re-open the microphone.
+      if (abortedRef.current || !outcome) {
+        break;
+      }
       collected.push(outcome);
       setResults([...collected]);
       if (index < PHASES.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
+      if (abortedRef.current) {
+        break;
+      }
     }
 
     setRunning(false);
     setPhaseIndex(-1);
-    addLog('all phases complete');
+    addLog(abortedRef.current ? 'run aborted' : 'all phases complete');
   }, [addLog, runPhase]);
 
   const handleAbort = useCallback(async () => {
+    abortedRef.current = true;
     if (phaseTimerRef.current) {
       clearTimeout(phaseTimerRef.current);
       phaseTimerRef.current = null;
@@ -353,8 +364,11 @@ const MicSpikeScreen = ({ navigation }) => {
       clearInterval(tickRef.current);
       tickRef.current = null;
     }
-    await stopPhase();
-    resolvePhaseRef.current?.({ phase: PHASES[Math.max(0, phaseIndex)], counters: countersRef.current, stats: null });
+    // Resolve with the frozen snapshot stopPhase returns, not the live ref,
+    // which later phases would keep mutating.
+    const outcome = await stopPhase();
+    resolvePhaseRef.current?.({ phase: PHASES[Math.max(0, phaseIndex)], ...outcome });
+    resolvePhaseRef.current = null;
     setRunning(false);
     setPhaseIndex(-1);
     addLog('aborted');
@@ -363,7 +377,12 @@ const MicSpikeScreen = ({ navigation }) => {
   useEffect(
     () => () => {
       activeRef.current = false;
+      abortedRef.current = true;
       clearRestart();
+      // Release the awaiting run loop, otherwise it stays parked on a promise
+      // that can never settle once this screen is gone.
+      resolvePhaseRef.current?.(null);
+      resolvePhaseRef.current = null;
       if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
       if (tickRef.current) clearInterval(tickRef.current);
       if (captureDelayRef.current) clearTimeout(captureDelayRef.current);
