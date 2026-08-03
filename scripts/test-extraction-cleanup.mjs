@@ -9,6 +9,11 @@
  * scaffolding, and stripping them would rewrite the doctor.
  */
 import { extractPatientFields } from '../src/services/extractionService.js';
+import { splitFindings } from '../src/services/extraction/detectNegation.js';
+import {
+  looksLikeMedication,
+  splitMedications,
+} from '../src/services/extraction/parseMedication.js';
 
 import {
   check,
@@ -129,6 +134,39 @@ expectFields(
   { prescriptionNotes: null },
 );
 
+// One entry per drug even when neither carries a numeric strength.
+expectFields(
+  'C4.7 two drugs split without a strength',
+  'Prescribed cough syrup twice daily and vitamin tablets once daily.',
+  { prescriptionNotes: ['Cough syrup twice daily', 'Vitamin tablets once daily'] },
+);
+check(
+  'C4.8 an advice clause stays attached, never its own entry',
+  splitMedications('Paracetamol 500 mg twice daily and drink plenty of water'),
+  ['Paracetamol 500 mg twice daily and drink plenty of water'],
+);
+
+// A frequency is a cadence, not a drug: advice with no medication anchor must
+// not qualify as a prescription.
+check('C4.9 frequency alone is not medication', looksLikeMedication('twice daily'), false);
+check(
+  'C4.10 advice with a frequency is not medication',
+  looksLikeMedication('plenty of oral fluids every four hours'),
+  false,
+);
+expectFields(
+  'C4.11 weak advice with a frequency routes to remarks',
+  'Advised plenty of oral fluids every four hours.',
+  {
+    prescriptionNotes: null,
+    additionalRemarks: 'Plenty of oral fluids every four hours',
+  },
+);
+expectFields('C4.12 a daily walk is advice', 'Advised a daily walk and adequate rest.', {
+  prescriptionNotes: null,
+  additionalRemarks: 'Daily walk and adequate rest',
+});
+
 // ── 5. Additional remarks ───────────────────────────────────────────────────
 expectFields(
   'C5.1 I would advise the patient to',
@@ -144,6 +182,33 @@ expectFields(
   'C5.3 patient should',
   'Patient should get a CBC and review after three days.',
   { additionalRemarks: 'Get a CBC and review after three days' },
+);
+
+// ── 5b. Negation scope ends where the list splits ───────────────────────────
+// A cue stops at the first clause boundary, so the findings list has to split
+// on the same boundary — otherwise "cough" inherits the "no" that ended at the
+// semicolon.
+check('C5.4 semicolon ends the negation', splitFindings('no fever; cough'), {
+  positive: ['cough'],
+  negative: ['fever'],
+});
+check('C5.5 full stop ends the negation', splitFindings('no fever. cough'), {
+  positive: ['cough'],
+  negative: ['fever'],
+});
+check('C5.6 "though" ends the negation', splitFindings('no fever though cough'), {
+  positive: ['cough'],
+  negative: ['fever'],
+});
+check('C5.7 "although" ends the negation', splitFindings('no fever although cough'), {
+  positive: ['cough'],
+  negative: ['fever'],
+});
+// A decimal is not a clause boundary.
+check(
+  'C5.8 a decimal reading is one finding',
+  splitFindings('fever 101.5 degrees and cough'),
+  { positive: ['fever 101.5 degrees', 'cough'], negative: [] },
 );
 
 // ── 6. Demographics ─────────────────────────────────────────────────────────

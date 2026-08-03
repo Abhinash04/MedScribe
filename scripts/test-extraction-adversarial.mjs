@@ -127,10 +127,10 @@ expectFields(
     pinCode: '395007',
     contactNumber: '9825123406',
     diagnosis: 'Viral fever',
-    // "fever cough" stays fused: symptoms split on commas and "and" only.
-    // Splitting on bare spaces would shatter "chest pain" and "body pain",
-    // so every word is kept and two of them share one list item.
-    symptoms: ['Fever cough', 'Weakness'],
+    // "fever cough" separates because both words are known findings and the
+    // run is fully accounted for. A run containing anything unrecognised is
+    // left exactly as dictated rather than shattered on whitespace.
+    symptoms: ['Fever', 'Cough', 'Weakness'],
   },
 );
 

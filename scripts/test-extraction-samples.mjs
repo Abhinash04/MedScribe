@@ -277,19 +277,47 @@ expectFields(
   },
 );
 
-expectFields(
-  'S18 synonym heavy',
-  S18_TRANSCRIPT,
-  {
-    patientName: 'Nisha Verma',
-    age: '37 Years',
-    gender: 'Female',
-    pinCode: '250004',
-    contactNumber: '9812345067',
-    medicalHistory: 'Diabetes',
-    diagnosis: 'Viral fever',
-  },
-);
+// Every one of the eleven fields is dictated here, so every one is asserted.
+// Asserting only the easy seven is how "Advice is to…" stayed broken while this
+// suite was green.
+const S18_EXPECTED = {
+  patientName: 'Nisha Verma',
+  age: '37 Years',
+  gender: 'Female',
+  address: 'House 10, Shastri Nagar, Meerut, Uttar Pradesh',
+  pinCode: '250004',
+  contactNumber: '9812345067',
+  symptoms: ['Fever', 'Cough', 'Headache', 'Sore throat', 'Tiredness'],
+  medicalHistory: 'Diabetes',
+  diagnosis: 'Viral fever',
+  prescriptionNotes: [
+    'Paracetamol 500 milligrams twice a day for five days',
+    'Cough syrup at bedtime',
+  ],
+  additionalRemarks:
+    'Maintain good hydration, get sufficient rest, and come back for review after three days',
+};
+
+expectFields('S18 synonym heavy', S18_TRANSCRIPT, S18_EXPECTED);
+
+// The same dictation as a recognizer actually returns it: no punctuation and no
+// capitals. Every value must still stop at its own field — no lead-in words
+// from the next sentence.
+const S18_NO_PUNCTUATION =
+  'the patient is Nisha Verma she is a 37 year old woman she resides at ' +
+  'house 10 Shastri Nagar Meerut Uttar Pradesh postal code is 250004 and ' +
+  'she can be reached on 9812345067 she presents with fever cough headache ' +
+  'sore throat and tiredness she is a known case of diabetes my clinical ' +
+  'impression is viral fever start her on paracetamol 500 milligrams twice ' +
+  'a day for five days and cough syrup at bedtime advice is to maintain ' +
+  'good hydration get sufficient rest and come back for review after three days';
+
+expectFields('S18b no punctuation', S18_NO_PUNCTUATION, {
+  ...S18_EXPECTED,
+  address: 'House 10 Shastri Nagar Meerut Uttar Pradesh',
+  additionalRemarks:
+    'Maintain good hydration get sufficient rest and come back for review after three days',
+});
 
 expectFields(
   'S19 history vs symptoms vs diagnosis',
