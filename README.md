@@ -41,7 +41,10 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 - **Live transcript** — confirmed text renders solid, the recognizer's interim guess trails it in muted italics.
 - **Real-time audio visualizer** — driven by actual microphone RMS levels, not a canned animation.
 - **Graceful error handling** — transient recognizer errors are retried silently; genuine failures surface in plain language.
-- **Patient-field extraction** — pulls the eleven clinical fields out of the transcript deterministically. Works regardless of the order the doctor dictates in, and handles conversational phrasing, clinical shorthand (`c/o`, `h/o`, `Rx`), filler words, self-correction ("age 32… sorry, 22") and romanised Hindi.
+- **Patient-field extraction** — pulls the eleven clinical fields out of the transcript deterministically, with no AI and no network. Works regardless of the order the doctor dictates in, and handles conversational phrasing, clinical shorthand (`c/o`, `h/o`, `Rx`), filler words, self-correction ("age 32… sorry, 22") and romanised Hindi.
+- **Natural clinical speech** — the doctor never has to say a field label. Synonyms ("suggestive of", "known case of", "presents with"), gender inferred from a pronoun when it is the only evidence, and a chronic condition routed to medical history while today's complaint stays in symptoms.
+- **Negation and retraction** — "no chest pain" never becomes a symptom; it is recorded as a stated denial instead. "Correction, no history of diabetes" cancels the condition dictated a moment earlier, and "do not start Paracetamol" cancels the prescription.
+- **Prescription as a list** — one editable entry per drug, with strength, frequency, duration and timing preserved exactly as dictated.
 - **Structured report** — a preview with an N-of-11 summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, and values inferred from a hedged phrase are flagged **UNCERTAIN**.
 - **Transcript review step** — dictation lands on a review screen before any report is generated. Correct the whole transcript in one editor, or work sentence by sentence with per-utterance edit and delete, then resume dictating or generate the report.
 - **Automatic session saving** — the in-flight dictation is written to the database as it grows, so after a force-stop, an OS kill or a flat battery the next visit to the recording screen offers to restore it. Best-effort by design: a failed write is logged and swallowed rather than interrupting the consultation, so recovery depends on the last save having landed.
@@ -320,7 +323,8 @@ MedScribe/
 │   ├── constants/
 │   │   ├── recordingStates.js       # State machine, error maps, timings
 │   │   ├── patientFields.js         # The 11 report fields and their order
-│   │   └── fieldMarkers.js          # Marker vocabulary — add new phrasing here
+│   │   ├── fieldMarkers.js          # Marker vocabulary — add new phrasing here
+│   │   └── clinicalCues.js          # Negation, chronicity, pronoun, medication cues
 │   ├── db/
 │   │   ├── database.js              # SQLite connection + migrations (reports, active_sessions)
 │   │   └── reportsRepository.js     # Report CRUD SQL queries
@@ -345,9 +349,14 @@ MedScribe/
 │   │   ├── pdfService.js            # Native PDF exporter isolation layer
 │   │   └── extraction/              # One module per pipeline stage
 │   │       ├── normalizeTranscript.js
+│   │       ├── detectNegation.js
 │   │       ├── detectMarkers.js
 │   │       ├── segmentTranscript.js
+│   │       ├── classifySegment.js
 │   │       ├── postProcessors.js
+│   │       ├── collectEvidence.js
+│   │       ├── suppressNegated.js
+│   │       ├── parseMedication.js
 │   │       ├── validators.js
 │   │       └── resolveConflicts.js
 │   ├── specs/
@@ -364,7 +373,10 @@ MedScribe/
 │       ├── typography.js
 │       └── index.js
 ├── scripts/
-│   ├── test-extraction.mjs          # Extraction fixture suite (no test framework)
+│   ├── test-extraction.mjs          # Regression floor (no test framework)
+│   ├── test-extraction-natural.mjs  # Natural phrasing: synonyms, negation, pronouns
+│   ├── test-extraction-adversarial.mjs # Conflicts, corrections, cancellations
+│   ├── test-extraction-samples.mjs  # Twenty real dictation samples
 │   └── test-report.mjs              # Draft + PDF-payload fixture suite
 ├── android/
 │   └── app/src/main/
@@ -413,8 +425,11 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run android` | Build, install and launch. Uses `--active-arch-only` — builds only the connected device's ABI (~4× faster, ~½ the APK size). |
 | `npm run android:all-abis` | Build all four ABIs for a universal APK. Slow; only needed for release or an unknown target device. |
 | `npm run ios` | iOS build. **Unverified — never built.** |
-| `npm run test:extraction` | 245 assertions over the field-extraction pipeline. Runs under plain Node, no test framework. |
-| `npm run test:report` | 67 assertions over the editable draft, the PDF payload and the dashboard timestamps. Also plain Node. |
+| `npm run test:extraction` | 238 assertions — the extraction regression floor. Runs under plain Node, no test framework. |
+| `npm run test:extraction:natural` | 89 assertions over natural phrasing: synonyms, pronoun gender, negation, chronic vs acute. |
+| `npm run test:extraction:adversarial` | 31 assertions over conflicting, corrected and cancelled dictation. |
+| `npm run test:extraction:samples` | 142 assertions over twenty real dictation samples. |
+| `npm run test:report` | 71 assertions over the editable draft, the PDF payload and the dashboard timestamps. Also plain Node. |
 | `npm run lint` | ESLint across the project. |
 | `npm test` | Jest. **Currently broken** — see below. |
 
@@ -540,6 +555,7 @@ Expected after a crash, a force-stop or the OS killing the app mid-consultation:
 
 Tap **"Show original dictation"** on the report screen first. That single step tells you which of two very different problems you have:
 
+- **Symptoms look merged** — dictation with no commas ("fever cough weakness") groups adjacent symptoms into one list item. Deliberate: splitting on spaces would break "chest pain" and "sore throat". Nothing is lost — split the item on the transcript review screen.
 - **Words are missing from the transcript** — the recognizer dropped them during a restart gap. No extraction change can recover a field whose introducer phrase was never transcribed. Dictate with a brief pause between sentences, and see the recognizer-restart limitation in [`docs/handoff.md`](docs/handoff.md).
 - **The transcript is complete but fields are empty** — the phrasing has no matching marker. Add a row to `src/constants/fieldMarkers.js`; no pipeline logic needs changing.
 
@@ -669,6 +685,7 @@ npm start -- --reset-cache
 | **3** | Patient-field extraction, structured report, preview | Complete |
 | **4** | Editable fields, save, doctor dashboard, SQLite persistence, PDF export | Complete |
 | **5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete on host checks; the audio module still needs device verification |
+| **6** | Extraction v2 — natural phrasing, negation, retraction, pronoun gender, prescription list | Complete; 571 fixture assertions across five suites |
 
 **Next up**, in priority order:
 
