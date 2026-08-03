@@ -42,8 +42,11 @@ function mergeAdjacentSameField(segments, text) {
 
     // A recognizer restart repeats a whole phrase; merging the repeat would
     // build "fever and cough. Complains of fever and cough".
-    const repeats =
-      previous && normalizedValue(previous.value).includes(normalizedValue(segment.value));
+    //
+    // Matched on whole tokens, not as a substring: "fever and cough" contains
+    // "cough", so a substring test discarded a later, genuinely separate
+    // "cough" segment.
+    const repeats = previous && isRepeatOf(previous.value, segment.value);
 
     if (previous && previous.field === segment.field && repeats) {
       continue;
@@ -80,6 +83,23 @@ function mergeAdjacentSameField(segments, text) {
 }
 
 const NEGATED = /\b(?:no|not|without|denies|denied|negative\s+for|nil)\b/i;
+
+/**
+ * A later segment whose entire value already appeared in the earlier one is a
+ * restatement, not new content.
+ *
+ * Matched on whole tokens: a bare substring test also matched "cough" inside
+ * "coughing". Empty values never count as a repeat — two blank segments are
+ * not the same statement twice.
+ */
+function isRepeatOf(previousValue, value) {
+  const candidate = normalizedValue(value);
+  const earlier = normalizedValue(previousValue);
+  if (!candidate || !earlier) {
+    return false;
+  }
+  return ` ${earlier} `.includes(` ${candidate} `);
+}
 
 const normalizedValue = value =>
   (value || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();

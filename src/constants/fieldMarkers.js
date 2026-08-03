@@ -20,6 +20,8 @@
  * ("patient name is") always beats a looser one ("name is").
  */
 
+import { MEDICATION_UNITS } from './clinicalCues.js';
+
 export const CONFIDENCE = {
   EXPLICIT: 0.95,
   STRONG: 0.9,
@@ -151,7 +153,10 @@ export const FIELD_MARKERS = {
       m(/\bexperienc(?:es|ing|ed)\s+/i, CONFIDENCE.STRONG, 'experiencing'),
       m(/\bpresenting\s+complaint\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'presenting complaint'),
       m(/\b(?:has|have|had)\s+had\s+/i, CONFIDENCE.MODERATE, 'has had'),
-      m(/\b(?:patient\s+)?(?:has|have)\s+(?!had\b|been\b|no\b)/i, CONFIDENCE.WEAK, 'has'),
+      m(/\b(?:patient\s+)?(?:has|have)\s+(?!had\b|been\b|no\b)(?:got\s+)?/i, CONFIDENCE.WEAK, 'has'),
+      m(/\b(?:is|are|was|were)\s+having\s+/i, CONFIDENCE.STRONG, 'is having'),
+      m(/\bhaving\s+/i, CONFIDENCE.MODERATE, 'having'),
+      m(/\bdealing\s+with\s+/i, CONFIDENCE.STRONG, 'dealing with'),
       m(/\b(?=denies\s+)/i, CONFIDENCE.STRONG, 'denies'),
       m(/\bdevelop(?:s|ed|ing)\s+/i, CONFIDENCE.STRONG, 'developed'),
       m(/\bnow\s+has\s+/i, CONFIDENCE.STRONG, 'now has'),
@@ -193,13 +198,14 @@ export const FIELD_MARKERS = {
 
   diagnosis: {
     priority: 8,
-    postProcessor: 'text',
+    postProcessor: 'diagnosis',
     validator: 'nonEmptyText',
     markers: [
       m(/\b(?:provisional\s+|final\s+)?diagnosis\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'diagnosis is'),
       m(/\bdiagnosed\s+(?:with|as)\s+/i, CONFIDENCE.EXPLICIT, 'diagnosed with'),
       m(/\b(?:clinical\s+)?impression\s+(?:is\s+|suggests\s+)?/i, CONFIDENCE.EXPLICIT, 'impression'),
       m(/\bappears\s+to\s+be\s+/i, CONFIDENCE.HEDGED, 'appears to be'),
+      m(/\bseems\s+to\s+be\s+/i, CONFIDENCE.HEDGED, 'seems to be'),
       m(/\b(?:looks|seems|sounds)\s+like\s+/i, CONFIDENCE.HEDGED, 'looks like'),
       m(/\bi\s+think\s+this\s+is\s+/i, CONFIDENCE.HEDGED, 'I think this is'),
       // Reversed phrasing: "Viral fever appears likely."
@@ -218,6 +224,16 @@ export const FIELD_MARKERS = {
     priority: 4,
     postProcessor: 'medicationList',
     validator: 'nonEmptyList',
+    fallbacks: [
+      m(
+        new RegExp(
+          `\\b[A-Za-z][A-Za-z-]{2,}\\s+\\d+(?:\\.\\d+)?\\s*(?:${MEDICATION_UNITS})\\b[^.;]*`,
+          'i',
+        ),
+        CONFIDENCE.FALLBACK,
+        'bare drug and dose',
+      ),
+    ],
     markers: [
       // Must precede the generic prescription marker AND span the word
       // "notes", so resolveOverlaps drops the remarks `notes` marker that
@@ -257,6 +273,7 @@ export const FIELD_MARKERS = {
       m(/\btell\s+(?:her|him|them)\s+to\s+/i, CONFIDENCE.STRONG, 'tell her to'),
       m(/\b(?:she|he|they|patient)\s+should\s+/i, CONFIDENCE.MODERATE, 'she should'),
       m(/\bask\s+(?:her|him|them)\s+to\s+/i, CONFIDENCE.STRONG, 'ask her to'),
+      m(/\b(?:i\s+would\s+)?advise\s+(?:the\s+patient|her|him|them)?\s*to\s+/i, CONFIDENCE.STRONG, 'advise to'),
       m(/\bfollow[\s-]*up\s+/i, CONFIDENCE.MODERATE, 'follow up'),
       m(/\breview\s+after\s+/i, CONFIDENCE.MODERATE, 'review after'),
       m(/\binvestigations?\s+advised\s*:?\s*/i, CONFIDENCE.EXPLICIT, 'investigations advised'),
@@ -272,11 +289,24 @@ export const FILLER_PATTERN =
 
 /** Leading connectives trimmed from the front of a captured value. */
 export const LEADING_TRIM_PATTERN =
-  /^(?:looks\s+like|appears\s+to\s+be|appears|seems\s+like|seems|sounds\s+like|suggestive\s+of|consistent\s+with|most\s+likely|probably|possibly|likely|is|are|was|were|has|have|had|of|the|a|an|with|for|to|her|his|their|and|that|it|she|he)\b[\s,]*/i;
+  /^(?:is|are|was|were|has|have|had|of|the|a|an|with|for|to|her|his|their|and|that|it|she|he)\b[\s,]*/i;
+
+/**
+ * Diagnostic hedging, stripped ONLY by the diagnosis processor.
+ *
+ * These were once in the leading trim and therefore applied to every text
+ * field, which cost an address its first word: "Likely Lane, Sector 10" became
+ * "Lane, Sector 10". Diagnosis semantics belong to diagnosis alone.
+ *
+ * Uncertainty that qualifies the condition itself — "suspected dengue",
+ * "probable dengue" — is clinical meaning and is deliberately absent here.
+ */
+export const DIAGNOSIS_HEDGE_PATTERN =
+  /^(?:it\s+)?(?:looks\s+like|appears\s+to\s+be|appears|seems\s+to\s+be|seems\s+like|seems|sounds\s+like|suggestive\s+of|consistent\s+with|most\s+likely|probably|possibly|likely)\b[\s,]*/i;
 
 /** Dangling connectives left at the end of a segment cut at the next marker. */
 export const TRAILING_TRIM_PATTERN =
-  /[\s,]*\b(?:and|but|with|for|to|then|also|plus|today|now|currently)\b[\s,]*$/i;
+  /[\s,]*\b(?:to\s+me|and|but|with|for|to|then|also|plus|today|now|currently)\b[\s,]*$/i;
 
 /**
  * Field labels a doctor repeats when restating a value after a correction.

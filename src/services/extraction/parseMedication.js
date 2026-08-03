@@ -5,6 +5,7 @@ import {
   MEDICATION_ROUTE,
   MEDICATION_STRENGTH,
   MEDICATION_TIMING,
+  MEDICATION_UNITS,
 } from '../../constants/clinicalCues.js';
 
 /**
@@ -15,9 +16,15 @@ import {
  * still reads "twice daily".
  */
 
-/** "and" splits drugs only when a drug-like token follows it. */
-const DRUG_AFTER_AND =
-  /\s+and\s+(?=[a-z][\w-]*\s+\d+(?:\.\d+)?\s*(?:mg|ml|mcg|g|gm|iu|units?)\b)/i;
+/**
+ * "and" splits drugs only when a drug-like token follows it. Built from the
+ * shared unit list — when this held its own narrower copy, a second drug
+ * dictated in "milligrams" was never split out.
+ */
+const DRUG_AFTER_AND = new RegExp(
+  `\\s+and\\s+(?=[a-z][\\w-]*\\s+\\d+(?:\\.\\d+)?\\s*(?:${MEDICATION_UNITS})\\b)`,
+  'i',
+);
 
 const LIST_SEPARATOR = /\s*[,;]\s*/;
 

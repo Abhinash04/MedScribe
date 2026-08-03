@@ -2,7 +2,7 @@ import {
   CHRONICITY_CUES,
   PRESENTATION_CUES,
 } from '../../constants/clinicalCues.js';
-import { TRAILING_TRIM_PATTERN } from '../../constants/fieldMarkers.js';
+import { trimTrailingConnectives } from './postProcessors.js';
 
 /**
  * Re-routes a segment when its content contradicts the marker that opened it.
@@ -20,12 +20,7 @@ export function classifySegment(segment) {
   // Test the trimmed value: a segment cut at the next marker ends "…for ten
   // years and today", and that dangling "today" would read as an acute
   // presentation belonging to the following segment, not to this one.
-  let value = (segment.value || '').trim();
-  let previous = null;
-  while (value !== previous) {
-    previous = value;
-    value = value.replace(TRAILING_TRIM_PATTERN, '').trim();
-  }
+  const value = trimTrailingConnectives(segment.value || '');
   if (!CHRONICITY_CUES.test(value) || PRESENTATION_CUES.test(value)) {
     return segment;
   }

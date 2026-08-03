@@ -10,7 +10,10 @@ import {
   normalizeTranscript,
   toOriginalRange,
 } from './extraction/normalizeTranscript.js';
-import { applyPostProcessor } from './extraction/postProcessors.js';
+import {
+  applyPostProcessor,
+  retractionTail,
+} from './extraction/postProcessors.js';
 import { resolveConflicts } from './extraction/resolveConflicts.js';
 import {
   segmentTranscript,
@@ -55,7 +58,7 @@ export function extractPatientFields(transcript) {
     return empty;
   }
 
-  const { text, indexMap } = normalizeTranscript(transcript);
+  const { text, indexMap, original } = normalizeTranscript(transcript);
   if (!text) {
     return empty;
   }
@@ -71,8 +74,12 @@ export function extractPatientFields(transcript) {
     const config = FIELD_MARKERS[segment.field];
     const value = applyPostProcessor(config.postProcessor, segment.value);
 
+    // Read the post-retraction text, not the raw segment: a symptom the doctor
+    // took back must not resurface as a denial. Collected before validation on
+    // purpose — a segment that is nothing but a denial produces no positive
+    // symptom, and losing it would drop the denial entirely.
     if (segment.field === 'symptoms') {
-      denied.push(...splitFindings(segment.value).negative);
+      denied.push(...splitFindings(retractionTail(segment.value)).negative);
     }
 
     // "Advised plenty of oral fluids" carries a prescription marker but no
@@ -140,6 +147,9 @@ export function extractPatientFields(transcript) {
       value: candidate.value,
       confidence: candidate.confidence,
       source: candidate.source,
+      // The dictated words this value came from, for traceability: the report
+      // shows "Viral fever", the evidence shows "Looks like viral fever to me".
+      sourceText: original.slice(range.start, range.end),
       start: range.start,
       end: range.end,
     };

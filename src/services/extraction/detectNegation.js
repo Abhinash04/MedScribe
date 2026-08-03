@@ -1,4 +1,5 @@
 import {
+  NEGATION_ALTERNATION,
   NEGATION_CUES,
   NEGATION_TERMINATORS,
 } from '../../constants/clinicalCues.js';
@@ -84,12 +85,13 @@ export function splitFindings(text) {
   };
 }
 
+/** Built from the same alternation `negatedRanges` scopes with, so no cue can
+ *  scope an item and then survive into the rendered text. */
+const LEADING_CUE = new RegExp(`^\\s*(?:${NEGATION_ALTERNATION})\\s+`, 'i');
+
 function stripCue(item) {
   return item
-    .replace(
-      /^\s*(?:no|not|without|denies|denied|denying|negative\s+for|ruled\s+out|nil)\s+/i,
-      '',
-    )
+    .replace(LEADING_CUE, '')
     .replace(/^\s*(?:any|of)\s+/i, '')
     .trim();
 }

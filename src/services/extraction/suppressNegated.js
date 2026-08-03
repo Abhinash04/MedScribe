@@ -32,6 +32,13 @@ const drugTokens = slice =>
     word => !INSTRUCTION_WORDS.has(word),
   );
 
+const isCancelled = (value, cancelled) => {
+  const stems = new Set(
+    (String(value ?? '').toLowerCase().match(/[a-z]{4,}/g) || []).map(stem),
+  );
+  return cancelled.some(drug => stems.has(drug));
+};
+
 const NEGATION_SENSITIVE = new Set([
   'medicalHistory',
   'diagnosis',
@@ -75,17 +82,18 @@ export function suppressNegated(text, candidates) {
       cancelled.length &&
       (candidate.field === 'prescriptionNotes' || candidate.field === 'medicalHistory')
     ) {
-      const words = new Set(
-        String(
-          Array.isArray(candidate.value)
-            ? candidate.value.join(' ')
-            : candidate.value,
-        )
-          .toLowerCase()
-          .match(/[a-z]{4,}/g) || [],
-      );
-      const stems = new Set([...words].map(stem));
-      if (cancelled.some(drug => stems.has(drug))) {
+      // A list is filtered entry by entry: cancelling one drug must not delete
+      // the others prescribed in the same breath.
+      if (Array.isArray(candidate.value)) {
+        const surviving = candidate.value.filter(entry => !isCancelled(entry, cancelled));
+        if (!surviving.length) {
+          continue;
+        }
+        kept.push({ ...candidate, value: surviving });
+        continue;
+      }
+
+      if (isCancelled(candidate.value, cancelled)) {
         continue;
       }
     }

@@ -1,9 +1,16 @@
 import {
+  DIAGNOSIS_HEDGE_PATTERN,
   LEADING_TRIM_PATTERN,
   RESTATED_LABEL_PATTERN,
   TRAILING_TRIM_PATTERN,
 } from '../../constants/fieldMarkers.js';
 import { splitFindings } from './detectNegation.js';
+import {
+  digitGroups,
+  normalizeIndianMobile,
+  pickPin,
+  spokenDigits,
+} from './parseNumbers.js';
 import { splitMedications } from './parseMedication.js';
 
 /** Stage 5 — turn a raw segment into the value the report displays. */
@@ -14,11 +21,6 @@ const NUMBER_WORDS = {
   fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18,
   nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60,
   seventy: 70, eighty: 80, ninety: 90,
-};
-
-const DIGIT_WORDS = {
-  zero: '0', oh: '0', o: '0', nought: '0', one: '1', two: '2', three: '3',
-  four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9',
 };
 
 /**
@@ -152,26 +154,6 @@ const sentenceCase = value => {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
 };
 
-/** Longest run of consecutive spoken digit words anywhere in the text. */
-const collectSpokenDigits = text => {
-  const words = clean(text).toLowerCase().split(/[\s-]+/).filter(Boolean);
-  let best = '';
-  let run = '';
-
-  for (const word of words) {
-    const digit = DIGIT_WORDS[word];
-    if (digit === undefined) {
-      if (run.length > best.length) {
-        best = run;
-      }
-      run = '';
-      continue;
-    }
-    run += digit;
-  }
-
-  return run.length > best.length ? run : best;
-};
 
 const wordsToNumber = phrase => {
   const words = clean(phrase).toLowerCase().split(/[\s-]+/).filter(Boolean);
@@ -259,42 +241,35 @@ const processors = {
 
   pinCode: raw => {
     const text = trimLeading(afterLastCorrection(raw));
-    const all = [...text.matchAll(/\b(\d{6})\b/g)];
-    if (all.length) {
-      return all[all.length - 1][1];
+
+    const grouped = pickPin(digitGroups(text).map(group => group.digits));
+    if (grouped) {
+      return grouped;
     }
 
     // Spoken: "one one zero zero seven eight".
-    const spoken = collectSpokenDigits(text);
+    const spoken = spokenDigits(text);
     return spoken.length === 6 ? spoken : '';
   },
 
-  /** Handles "9876543210", "98765 43210", "+91 …" and spelled-out digits. */
+  /**
+   * Handles "9876543210", "98765 43210", "+91 …" and spelled-out digits.
+   *
+   * Takes the LAST valid number so a self-correction wins — "9876543218...
+   * correction, 9876543210" — and reduces every form to the bare ten digits
+   * the report stores.
+   */
   phone: raw => {
     const text = trimLeading(afterLastCorrection(raw));
 
-    // LAST valid number — "9876543218... correction, 9876543210".
-    //
-    // \b prevents starting mid-number, so digits inside one number cannot seed
-    // a bogus partial match. The trailing (?![\s-]?\d) rejects a candidate that
-    // runs into a following number, which lets the scan skip past the first and
-    // match the second cleanly — without it a greedy 20-digit match was made,
-    // then dropped by the length filter, losing BOTH numbers.
-    //
-    // Uses \b rather than a (?<!\d) lookbehind on purpose: Hermes has had gaps
-    // in lookbehind support and this ships to a Hermes runtime.
-    const grouped = [...text.matchAll(/(\+?\b\d(?:[\s-]?\d){9,12}(?![\s-]?\d))/g)]
-      .map(m => m[1].replace(/[^\d+]/g, ''))
-      .filter(d => {
-        const digits = d.replace(/\D/g, '').length;
-        return digits >= 10 && digits <= 13;
-      });
+    const grouped = digitGroups(text)
+      .map(group => normalizeIndianMobile(group.digits))
+      .filter(Boolean);
     if (grouped.length) {
       return grouped[grouped.length - 1];
     }
 
-    const spoken = collectSpokenDigits(text);
-    return spoken.length >= 10 ? spoken : '';
+    return normalizeIndianMobile(spokenDigits(text));
   },
 
   /**
@@ -322,6 +297,23 @@ const processors = {
    * "actually" cue to filler-stripping in stage 1, leaving only the "..." to
    * signal that the doctor replaced the value.
    */
+  /**
+   * Diagnosis carries its own hedge stripping. "Looks like viral fever" is
+   * scaffolding; "suspected dengue" is the doctor's degree of certainty and
+   * survives untouched.
+   */
+  diagnosis: raw => {
+    let out = processors.text(raw);
+    let previous = null;
+    while (out !== previous) {
+      previous = out;
+      // Re-trim after each hedge: "most likely a viral infection" leaves a
+      // bare article behind once the hedge goes.
+      out = trimLeading(out.replace(DIAGNOSIS_HEDGE_PATTERN, ''));
+    }
+    return out ? out.charAt(0).toUpperCase() + out.slice(1) : '';
+  },
+
   text: raw => {
     const corrected = afterLastCorrection(raw);
     const parts = corrected.split(/\.{2,}/);
@@ -331,6 +323,16 @@ const processors = {
     );
   },
 };
+
+/**
+ * The text that survives a retraction, exported so callers reading a segment
+ * for anything other than its value — denial collection, for one — see what
+ * the doctor actually meant rather than what they took back.
+ */
+export const retractionTail = raw => afterLastCorrection(raw || '');
+
+/** Shared so `classifySegment` trims a segment exactly as a value is trimmed. */
+export const trimTrailingConnectives = trimTrailing;
 
 export function applyPostProcessor(name, raw) {
   const processor = processors[name] || processors.text;

@@ -89,13 +89,16 @@ export function toDraft(record) {
 
 function normalizeValue(key, value) {
   if (isListField(key)) {
-    if (Array.isArray(value)) {
-      return [...value];
-    }
     // A field that became a list must not drop values saved while it was a
-    // scalar — prescriptionNotes has rows in the database from before.
-    const text = typeof value === 'string' ? value.trim() : '';
-    return text ? [text] : [];
+    // scalar — prescriptionNotes has rows in the database from before. A
+    // multi-line scalar becomes one entry per line, and both paths trim and
+    // drop blanks so an empty row never renders.
+    const entries = Array.isArray(value)
+      ? value
+      : String(typeof value === 'string' ? value : '').split(/\r?\n/);
+    return entries
+      .map(entry => (typeof entry === 'string' ? entry.trim() : ''))
+      .filter(Boolean);
   }
   return typeof value === 'string' ? value : '';
 }

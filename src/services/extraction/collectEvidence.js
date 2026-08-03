@@ -16,20 +16,45 @@ import { CONFIDENCE } from '../../constants/fieldMarkers.js';
  * than a blank one.
  */
 
-const RELATIVE_WINDOW = 40;
+const RELATIVE_WINDOW = 24;
+const SENTENCE_END = /[.;?!]/;
 
-/** True when the pronoun sits close after a companion noun ("her mother"). */
-function refersToCompanion(text, index) {
-  const window = text.slice(index, index + RELATIVE_WINDOW);
-  return RELATIVE_NOUNS.test(window);
+/** Trims a window at the first sentence boundary, scanning outward from the match. */
+const untilBoundary = (slice, fromEnd) => {
+  const index = fromEnd ? slice.search(SENTENCE_END) : slice.split('').reverse().join('').search(SENTENCE_END);
+  if (index === -1) {
+    return slice;
+  }
+  return fromEnd ? slice.slice(0, index) : slice.slice(slice.length - index);
+};
+
+/**
+ * True when a companion noun sits beside the match — "her mother" puts it
+ * after, "the husband says she" puts it before.
+ *
+ * The window stops at a sentence boundary. Without that, "This lady presented
+ * with fever. His attendant waited outside." let the attendant in the NEXT
+ * sentence veto the patient noun in this one.
+ */
+function refersToCompanion(text, index, length) {
+  const before = untilBoundary(
+    text.slice(Math.max(0, index - RELATIVE_WINDOW), index),
+    false,
+  );
+  const after = untilBoundary(
+    text.slice(index + length, index + length + RELATIVE_WINDOW),
+    true,
+  );
+  return RELATIVE_NOUNS.test(before) || RELATIVE_NOUNS.test(after);
 }
 
-function countMatches(text, pattern, { skipCompanions = false } = {}) {
-  const regex = new RegExp(pattern.source, pattern.flags);
+function countMatches(text, pattern, { skipCompanions = true } = {}) {
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const regex = new RegExp(pattern.source, flags);
   const hits = [];
   let match = regex.exec(text);
   while (match) {
-    if (!skipCompanions || !refersToCompanion(text, match.index)) {
+    if (!skipCompanions || !refersToCompanion(text, match.index, match[0].length)) {
       hits.push({ index: match.index, text: match[0] });
     }
     match = regex.exec(text);

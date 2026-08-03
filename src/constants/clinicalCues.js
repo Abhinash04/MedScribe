@@ -5,8 +5,15 @@
  * classify, negate or infer around segments that already exist.
  */
 
-export const NEGATION_CUES =
-  /\b(?:no|not|without|denies|denied|denying|negative\s+for|ruled\s+out|nil)\b/gi;
+/**
+ * Single source for every negation cue. `detectNegation` builds both its
+ * scope-finding pattern and its cue-stripping pattern from this, so the two
+ * cannot drift apart and leave a cue that scopes but never gets removed.
+ */
+export const NEGATION_ALTERNATION =
+  'no|not|without|denies|denied|denying|negative\\s+for|ruled\\s+out|nil';
+
+export const NEGATION_CUES = new RegExp(`\\b(?:${NEGATION_ALTERNATION})\\b`, 'gi');
 
 /** A negation stops here; anything past it is asserted again. */
 export const NEGATION_TERMINATORS = /[.;?!]|\b(?:but|however|though|although)\b/i;
@@ -37,8 +44,18 @@ export const MEDICATION_FREQUENCY =
 export const MEDICATION_ROUTE =
   /\b(?:oral(?:ly)?|intravenous(?:ly)?|iv|intramuscular(?:ly)?|im|subcutaneous(?:ly)?|topical(?:ly)?|sublingual)\b/i;
 
-export const MEDICATION_STRENGTH =
-  /\b\d+(?:\.\d+)?\s*(?:milligrams?|millilitres?|milliliters?|micrograms?|mg|ml|mcg|g|gm|iu|units?)\b/i;
+/**
+ * Every unit the app accepts. `parseMedication` builds both the strength
+ * pattern and the "and <drug> <dose>" splitter from this list — when they
+ * disagreed, a second drug dictated in "milligrams" was never split out.
+ */
+export const MEDICATION_UNITS =
+  'milligrams?|millilitres?|milliliters?|micrograms?|mg|ml|mcg|g|gm|iu|units?';
+
+export const MEDICATION_STRENGTH = new RegExp(
+  `\\b\\d+(?:\\.\\d+)?\\s*(?:${MEDICATION_UNITS})\\b`,
+  'i',
+);
 
 export const MEDICATION_DURATION =
   /\bfor\s+(?:\w+)\s+(?:days?|weeks?|months?)\b/i;

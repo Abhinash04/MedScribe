@@ -63,8 +63,22 @@ export function overallRecall(transcript, script = FIXTURE_SCRIPT) {
   if (expected.length === 0) {
     return { recall: 0, hits: 0, total: 0, missing: [] };
   }
-  const heard = new Set(tokens(digitFolded(transcript)));
-  const missing = expected.filter(word => !heard.has(word));
+  // Counted, not set-membership: a word dictated twice and transcribed once is
+  // one hit and one miss. A set scored it as fully recalled.
+  const heard = new Map();
+  for (const word of tokens(digitFolded(transcript))) {
+    heard.set(word, (heard.get(word) ?? 0) + 1);
+  }
+
+  const missing = [];
+  for (const word of expected) {
+    const remaining = heard.get(word) ?? 0;
+    if (remaining > 0) {
+      heard.set(word, remaining - 1);
+    } else {
+      missing.push(word);
+    }
+  }
   const hits = expected.length - missing.length;
   return {
     recall: hits / expected.length,
@@ -83,6 +97,17 @@ function joinDigitRuns(text) {
   return text.replace(/(\d)[\s-]+(?=\d)/g, '$1');
 }
 
+/**
+ * Whole-token containment. A plain `includes` scored a wrong ten-digit number
+ * as a correct PIN, because "21100789" contains "110078".
+ */
+function containsPhrase(haystack, needle) {
+  if (!needle) {
+    return false;
+  }
+  return ` ${haystack} `.includes(` ${needle} `);
+}
+
 export function criticalRecall(transcript, values = CRITICAL_VALUES) {
   const forms = [
     normalize(transcript),
@@ -94,7 +119,7 @@ export function criticalRecall(transcript, values = CRITICAL_VALUES) {
     label: value.label,
     found: value.variants.some(variant => {
       const needles = [normalize(variant), joinDigitRuns(digitFolded(variant))];
-      return forms.some(form => needles.some(needle => form.includes(needle)));
+      return forms.some(form => needles.some(needle => containsPhrase(form, needle)));
     }),
   }));
   return {
