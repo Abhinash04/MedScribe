@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import AppHeader from '../components/AppHeader';
 import ScreenContainer from '../components/ScreenContainer';
+import { buildSpikeReport } from '../dev/spikeReport';
 import {
   RESTART_DELAY_MS,
   isTransientError,
@@ -14,6 +15,7 @@ import {
   requestMicPermission,
   RESULTS,
 } from '../services/permissionService';
+import * as sharedMic from '../services/sharedMicService';
 import * as speech from '../services/speechService';
 import { colors, spacing, typography } from '../theme';
 
@@ -55,6 +57,20 @@ const PHASES = [
     hint: 'Is the loser decided by start order?',
     capture: AUDIO_SOURCES.MIC,
     captureDelayMs: 5000,
+  },
+  {
+    id: 'E',
+    label: 'E · Recognizer + capture (VOICE_COMMUNICATION)',
+    hint: 'The source the platform reserves for calls — does it share better?',
+    capture: AUDIO_SOURCES.VOICE_COMMUNICATION,
+    captureDelayMs: 0,
+  },
+  {
+    id: 'F',
+    label: 'F · Recognizer + capture (CAMCORDER)',
+    hint: 'The last untested source. Completes the contention matrix.',
+    capture: AUDIO_SOURCES.CAMCORDER,
+    captureDelayMs: 0,
   },
 ];
 
@@ -437,29 +453,193 @@ const MicSpikeScreen = ({ navigation }) => {
   const baselineRecall = baseline ? wordRecall(baseline.counters.text) : 0;
   const current = phaseIndex >= 0 ? PHASES[phaseIndex] : null;
 
+  // The shared-microphone path is structurally different from the phases
+  // above: nothing contends, because one AudioRecord feeds both the recognizer
+  // and the recording. Scored with the same criteria so the numbers compare.
+  const handleRunSharedMic = useCallback(async (useSegmented = true) => {
+    let permission = await checkMicPermission();
+    if (permission === RESULTS.DENIED) {
+      permission = await requestMicPermission();
+    }
+    if (!isGranted(permission)) {
+      addLog(`permission not granted: ${permission}`);
+      return;
+    }
+
+    if (!(await sharedMic.isSupported())) {
+      addLog('SharedMic unsupported — needs Android 12+ and a recognition service.');
+      return;
+    }
+
+    setRunning(true);
+    addLog(`── shared mic start (${useSegmented ? 'segmented' : 'classic'})`);
+
+    try {
+      const started = await sharedMic.start(
+        SAMPLE_RATE,
+        'spike-shared',
+        'en-IN',
+        useSegmented,
+      );
+      addLog(`shared mic → ${started.path}`);
+    } catch (error) {
+      addLog(`shared mic start failed: ${error?.message ?? error}`);
+      setRunning(false);
+      return;
+    }
+
+    const endsAt = Date.now() + PHASE_MS;
+    const ticker = setInterval(async () => {
+      setRemaining(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
+      const state = await sharedMic.getState();
+      if (state) {
+        setLive({
+          ...emptyCounters(),
+          ready: state.ready,
+          begin: state.begin,
+          partials: state.partials,
+          finals: state.finals,
+          restarts: state.restarts,
+          text: state.text,
+        });
+      }
+    }, 500);
+
+    await new Promise(resolve => setTimeout(resolve, PHASE_MS));
+    clearInterval(ticker);
+
+    const final = await sharedMic.stop();
+    addLog('── shared mic done');
+
+    if (final) {
+      setResults(collected => [
+        ...collected,
+        {
+          phase: {
+            id: useSegmented ? 'G' : 'H',
+            label: useSegmented
+              ? 'G · Shared mic (segmented)'
+              : 'H · Shared mic (classic per-utterance)',
+            capture: 'sharedMic',
+            captureDelayMs: 0,
+          },
+          counters: {
+            ...emptyCounters(),
+            ready: final.ready,
+            begin: final.begin,
+            partials: final.partials,
+            finals: final.finals,
+            restarts: final.restarts,
+            text: final.text,
+            errorsByCode: final.errorsByCode ?? {},
+            firstPartialAtMs: final.firstPartialAtMs,
+          },
+          stats: {
+            source: 'sharedMic',
+            path: final.path,
+            peakAmplitude: final.peakAmplitude,
+            averageRms: final.averageRms,
+            silentRatio: final.silentRatio,
+            // Nothing contends here — we are the only client — so the
+            // platform-silencing counters have nothing to report.
+            silencedSamples: 0,
+            configSamples: 0,
+            maxConcurrentClients: 1,
+            readErrors: final.droppedFrames,
+            gapCount: 0,
+            longestGapMs: 0,
+            bytes: final.bytes,
+          },
+        },
+      ]);
+    }
+
+    setRunning(false);
+    setRemaining(0);
+  }, [addLog]);
+
+  const handleShareResults = async () => {
+    if (!results.length) {
+      return;
+    }
+    const text = buildSpikeReport(results, item =>
+      scorePhase(item, item.phase.id === 'A' ? 0 : baselineRecall),
+    );
+    try {
+      await Share.share({ message: text });
+    } catch {}
+  };
+
   return (
     <ScreenContainer>
       <AppHeader showBack onBackPress={() => navigation.goBack()} title="Mic Spike v2" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.script} selectable>
-          Read this continuously, in every phase:{'\n'}
-          {SCRIPT}
-        </Text>
+        <View style={styles.scriptCard}>
+          <Text style={styles.scriptLabel}>DICTATION SCRIPT (Read during test phase)</Text>
+          <Text style={styles.scriptText} selectable>
+            {SCRIPT}
+          </Text>
+        </View>
 
-        <View style={styles.row}>
+        <View style={styles.buttonContainer}>
           <Pressable
-            style={[styles.button, running && styles.buttonDisabled]}
+            style={[styles.button, styles.buttonPrimary, running && styles.buttonDisabled]}
             onPress={handleRun}
             disabled={running}
+            accessibilityRole="button"
+            accessibilityLabel={`Run ${PHASES.length} phases`}
           >
-            <Text style={styles.buttonText}>Run 4 phases</Text>
+            <Text style={styles.buttonPrimaryText}>Run {PHASES.length} phases</Text>
           </Pressable>
+
           <Pressable
-            style={[styles.button, !running && styles.buttonDisabled]}
+            style={[
+              styles.button,
+              running ? styles.buttonDanger : styles.buttonDangerDisabled,
+            ]}
             onPress={handleAbort}
             disabled={!running}
+            accessibilityRole="button"
+            accessibilityLabel="Abort current run"
           >
-            <Text style={styles.buttonText}>Abort</Text>
+            <Text style={running ? styles.buttonDangerText : styles.buttonDisabledText}>
+              Abort
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.button, styles.buttonSecondary, running && styles.buttonDisabled]}
+            onPress={() => handleRunSharedMic(true)}
+            disabled={running}
+            accessibilityRole="button"
+            accessibilityLabel="Run shared mic segmented"
+          >
+            <Text style={styles.buttonSecondaryText}>Shared mic (segmented)</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.button, styles.buttonSecondary, running && styles.buttonDisabled]}
+            onPress={() => handleRunSharedMic(false)}
+            disabled={running}
+            accessibilityRole="button"
+            accessibilityLabel="Run shared mic classic"
+          >
+            <Text style={styles.buttonSecondaryText}>Shared mic (classic)</Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.button,
+              results.length ? styles.buttonSuccess : styles.buttonSecondaryDisabled,
+            ]}
+            onPress={handleShareResults}
+            disabled={!results.length}
+            accessibilityRole="button"
+            accessibilityLabel="Share results"
+          >
+            <Text style={results.length ? styles.buttonSuccessText : styles.buttonDisabledText}>
+              Share results
+            </Text>
           </Pressable>
         </View>
 
@@ -477,9 +657,12 @@ const MicSpikeScreen = ({ navigation }) => {
 
         {results.map(item => {
           const score = scorePhase(item, item.phase.id === 'A' ? 0 : baselineRecall);
-          const errors = Object.entries(item.counters.errorsByCode)
+          const errors = Object.entries(item.counters.errorsByCode ?? {})
             .map(([code, count]) => `${code}×${count}`)
             .join(' ');
+          // A diagnostic screen that crashes while reporting a result is worse
+          // than useless, so every number is read defensively.
+          const num = (value, digits = 0) => (value ?? 0).toFixed(digits);
           return (
             <View key={item.phase.id} style={styles.phaseCard}>
               <View style={styles.phaseHead}>
@@ -494,22 +677,22 @@ const MicSpikeScreen = ({ navigation }) => {
                 </Text>
               </View>
               <Text style={styles.mono}>
-                {`recall ${(score.recall * 100).toFixed(0)}%` +
+                {`recall ${num(score.recall * 100)}%` +
                   (score.relative !== null
-                    ? ` · vs baseline ${(score.relative * 100).toFixed(0)}%${score.degraded ? ' (DEGRADED)' : ''}`
+                    ? ` · vs baseline ${num(score.relative * 100)}%${score.degraded ? ' (DEGRADED)' : ''}`
                     : ' (baseline)') +
-                  `\nready ${item.counters.ready} · begin ${item.counters.begin} (${(score.beginRatio * 100).toFixed(0)}%)` +
+                  `\nready ${item.counters.ready} · begin ${item.counters.begin} (${num(score.beginRatio * 100)}%)` +
                   ` · partials ${item.counters.partials} · finals ${item.counters.finals}` +
-                  `\nrestarts ${item.counters.restarts} · errors ${errors || 'none'} · fatal ${item.counters.fatal}` +
-                  `\nlongest silence ${(item.counters.longestSilenceMs / 1000).toFixed(1)}s`}
+                  `\nrestarts ${item.counters.restarts} · errors ${errors || 'none'} · fatal ${item.counters.fatal ?? 0}` +
+                  `\nlongest silence ${num((item.counters.longestSilenceMs ?? 0) / 1000, 1)}s`}
               </Text>
               {item.stats ? (
                 <Text style={styles.mono}>
-                  {`capture ${item.stats.source} · peak ${item.stats.peakAmplitude} · avgRMS ${item.stats.averageRms.toFixed(0)}` +
-                    ` · silent ${(item.stats.silentRatio * 100).toFixed(0)}%` +
-                    `\nplatform silencing: ${item.stats.silencedSamples}/${item.stats.configSamples} samples` +
-                    ` · max clients ${item.stats.maxConcurrentClients}` +
-                    `\nreadErrors ${item.stats.readErrors} · gaps ${item.stats.gapCount}`}
+                  {`capture ${item.stats.source ?? '—'} · peak ${item.stats.peakAmplitude ?? 0} · avgRMS ${num(item.stats.averageRms)}` +
+                    ` · silent ${num((item.stats.silentRatio ?? 0) * 100)}%` +
+                    `\nplatform silencing: ${item.stats.silencedSamples ?? 0}/${item.stats.configSamples ?? 0} samples` +
+                    ` · max clients ${item.stats.maxConcurrentClients ?? 0}` +
+                    `\nreadErrors ${item.stats.readErrors ?? 0} · gaps ${item.stats.gapCount ?? 0}`}
                 </Text>
               ) : null}
               {item.stats?.path ? (
@@ -536,31 +719,106 @@ const MicSpikeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: spacing.xl, gap: spacing.xs },
-  script: {
-    ...typography.body,
-    fontSize: 13,
+  content: { paddingBottom: spacing.xl, gap: spacing.sm },
+  scriptCard: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     borderRadius: 12,
-    padding: spacing.sm,
-    marginTop: spacing.sm,
+    padding: spacing.md,
+    marginTop: spacing.xs,
   },
-  row: { flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.sm },
+  scriptLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+  },
+  scriptText: {
+    ...typography.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textPrimary,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginVertical: spacing.sm,
+    alignItems: 'center',
+  },
   button: {
-    backgroundColor: colors.primaryAccent,
-    paddingVertical: spacing.sm,
+    paddingVertical: 10,
     paddingHorizontal: spacing.md,
-    borderRadius: 999,
+    borderRadius: 10,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 13 },
+  buttonPrimary: {
+    backgroundColor: colors.primaryAccent,
+  },
+  buttonPrimaryText: {
+    color: colors.onPrimary,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  buttonSecondary: {
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primaryDisabled,
+  },
+  buttonSecondaryText: {
+    color: colors.primaryAccent,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  buttonDanger: {
+    backgroundColor: colors.errorLight,
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  buttonDangerText: {
+    color: colors.danger,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  buttonDangerDisabled: {
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    opacity: 0.5,
+  },
+  buttonSecondaryDisabled: {
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    opacity: 0.5,
+  },
+  buttonSuccess: {
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success,
+  },
+  buttonSuccessText: {
+    color: colors.success,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonDisabledText: {
+    color: colors.textMuted,
+    fontWeight: '600',
+    fontSize: 13,
+  },
   currentBox: {
     backgroundColor: colors.accentSoft,
     borderRadius: 12,
-    padding: spacing.sm,
-    gap: 2,
+    padding: spacing.md,
+    gap: 4,
   },
   currentTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   currentHint: { fontSize: 12, color: colors.textSecondary },
@@ -569,8 +827,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     borderRadius: 12,
-    padding: spacing.sm,
-    marginTop: spacing.sm,
+    padding: spacing.md,
+    marginTop: spacing.xs,
     gap: 4,
   },
   phaseHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -579,8 +837,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: colors.onPrimary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 4,
     overflow: 'hidden',
   },
