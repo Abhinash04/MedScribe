@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.secondaryAccent,
-    backgroundColor: colors.errorSoft,
+    backgroundColor: colors.accentSoft,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,

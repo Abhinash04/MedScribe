@@ -357,7 +357,7 @@ const ReportScreen = ({ route }) => {
           accessibilityLabel="Save report"
         >
           {busy ? (
-            <ActivityIndicator color={colors.textPrimary} />
+            <ActivityIndicator color={colors.onPrimary} />
           ) : (
             <Text style={styles.primaryLabel}>
               {reportId ? 'Save Changes' : 'Save Report'}
