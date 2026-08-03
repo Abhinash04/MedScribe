@@ -36,6 +36,21 @@ export const CONFIDENCE = {
 /** Below this, the report flags the value as uncertain. */
 export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 
+/**
+ * Markers whose whole point is to record an absence.
+ *
+ * "No significant medical history" and "No medication prescribed" sit inside a
+ * negation, so the generic negation suppression would delete them — yet they
+ * are the doctor stating something, and the completeness gate accepts them as
+ * a mandatory field being answered.
+ */
+export const ABSENCE_MARKER_SOURCES = new Set([
+  'no significant history',
+  'nothing significant in the history',
+  'no medication',
+  'advice only',
+]);
+
 const m = (pattern, confidence, source) => ({ pattern, confidence, source });
 
 /**
@@ -107,6 +122,7 @@ export const FIELD_MARKERS = {
       m(/\b(?:resides?|residing|staying|stays)\s+(?:at|in)\s+/i, CONFIDENCE.STRONG, 'resides at'),
       m(/\bliv(?:es?|ing)\s+(?:at|in)\s+/i, CONFIDENCE.STRONG, 'lives in'),
       m(/\bhails\s+from\s+/i, CONFIDENCE.MODERATE, 'hails from'),
+      m(/\blocated\s+(?:at|in)\s+/i, CONFIDENCE.STRONG, 'located at'),
     ],
   },
 
@@ -126,7 +142,7 @@ export const FIELD_MARKERS = {
     validator: 'phone',
     markers: [
       m(/\b(?:contact|phone|mobile|cell)\s*(?:number|no\.?)?\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'contact number'),
-      m(/\breachable\s+(?:at|on)\s+/i, CONFIDENCE.STRONG, 'reachable at'),
+      m(/\b(?:can\s+be\s+)?reach(?:able|ed|es)?\s+(?:at|on)\s+/i, CONFIDENCE.STRONG, 'reachable at'),
       m(/\bnumber\s+is\s+/i, CONFIDENCE.MODERATE, 'number is'),
     ],
     fallbacks: [m(/\b((?:\+91[\s-]?)?[6-9]\d{9})\b/, CONFIDENCE.FALLBACK, 'bare 10-digit')],
@@ -172,7 +188,16 @@ export const FIELD_MARKERS = {
       // Negation first — "no significant medical history" is information the
       // doctor stated, clinically different from never mentioning it. Matched
       // ahead of the generic marker so the value keeps the "no".
-      m(/\b(?=(?:has\s+)?no\s+(?:significant\s+)?(?:medical\s+|past\s+)?history)/i, CONFIDENCE.EXPLICIT, 'no significant history'),
+      m(
+        /\b(?=(?:has\s+)?no\s+(?:significant\s+|known\s+|previous\s+|prior\s+|past\s+|other\s+)*(?:(?:medical\s+|surgical\s+)?history|(?:medical\s+)?conditions?))/i,
+        CONFIDENCE.EXPLICIT,
+        'no significant history',
+      ),
+      m(
+        /\b(?=nothing\s+significant\s+in\s+(?:the\s+)?(?:past\s+|medical\s+)*history)/i,
+        CONFIDENCE.EXPLICIT,
+        'nothing significant in the history',
+      ),
       m(/\bpast\s+medical\s+history\s+significant\s+for\s+/i, CONFIDENCE.EXPLICIT, 'past medical history significant for'),
       m(/\b(?:medical|past)\s+history\s+(?:of|is|includes?|significant\s+for)?\s*/i, CONFIDENCE.EXPLICIT, 'medical history of'),
       m(/\bh\/o\s+/i, CONFIDENCE.EXPLICIT, 'h/o'),
@@ -235,6 +260,15 @@ export const FIELD_MARKERS = {
       ),
     ],
     markers: [
+      // An explicitly empty prescription is information the doctor gave, not a
+      // gap. Matched ahead of the generic markers and at explicit confidence so
+      // the phrase survives whole and is never rerouted to remarks as advice.
+      m(
+        /\b(?=no\s+(?:medications?|medicines?|meds|drugs?|prescriptions?)\b)/i,
+        CONFIDENCE.EXPLICIT,
+        'no medication',
+      ),
+      m(/\b(?=advice\s+only\b)/i, CONFIDENCE.EXPLICIT, 'advice only'),
       // Must precede the generic prescription marker AND span the word
       // "notes", so resolveOverlaps drops the remarks `notes` marker that
       // would otherwise open a segment one word later and steal the drug.
@@ -269,16 +303,17 @@ export const FIELD_MARKERS = {
       m(/\b(?:additional\s+)?remarks?\s*(?:are|is|:)?\s*/i, CONFIDENCE.EXPLICIT, 'remarks'),
       m(/\bobservations?\s*(?:are|is)?\s*/i, CONFIDENCE.STRONG, 'observation'),
       m(/\bnotes?\s*(?:are|is|:)?\s*/i, CONFIDENCE.MODERATE, 'note'),
-      m(/\badvice\s*:\s*/i, CONFIDENCE.EXPLICIT, 'advice:'),
+      m(/\badvice\s*(?::|is)?\s*(?:to\s+)?/i, CONFIDENCE.EXPLICIT, 'advice is to'),
       m(/\btell\s+(?:her|him|them)\s+to\s+/i, CONFIDENCE.STRONG, 'tell her to'),
       m(/\b(?:she|he|they|patient)\s+should\s+/i, CONFIDENCE.MODERATE, 'she should'),
       m(/\bask\s+(?:her|him|them)\s+to\s+/i, CONFIDENCE.STRONG, 'ask her to'),
       m(/\b(?:i\s+would\s+)?advise\s+(?:the\s+patient|her|him|them)?\s*to\s+/i, CONFIDENCE.STRONG, 'advise to'),
-      m(/\bfollow[\s-]*up\s+/i, CONFIDENCE.MODERATE, 'follow up'),
-      m(/\breview\s+after\s+/i, CONFIDENCE.MODERATE, 'review after'),
+      m(/\b(?=follow[\s-]*up\b)/i, CONFIDENCE.MODERATE, 'follow up'),
+      m(/\b(?=come\s+back\s+(?:for\s+review|after)\b)/i, CONFIDENCE.MODERATE, 'come back for review'),
+      m(/\b(?=review\s+after\b)/i, CONFIDENCE.MODERATE, 'review after'),
       m(/\binvestigations?\s+advised\s*:?\s*/i, CONFIDENCE.EXPLICIT, 'investigations advised'),
       m(/\brecommendations?\s*(?:are|is|:)?\s*/i, CONFIDENCE.STRONG, 'recommendation'),
-      m(/\breturn\s+after\s+/i, CONFIDENCE.MODERATE, 'return after'),
+      m(/\b(?=return\s+after\b)/i, CONFIDENCE.MODERATE, 'return after'),
     ],
   },
 };
@@ -307,6 +342,18 @@ export const DIAGNOSIS_HEDGE_PATTERN =
 /** Dangling connectives left at the end of a segment cut at the next marker. */
 export const TRAILING_TRIM_PATTERN =
   /[\s,]*\b(?:to\s+me|and|but|with|for|to|then|also|plus|today|now|currently)\b[\s,]*$/i;
+
+/**
+ * The opening words of the NEXT sentence, left behind when a marker starts
+ * after its subject.
+ *
+ * Dictation without punctuation runs one field into the next: "…and tiredness
+ * she is a known case of diabetes" ends the symptoms segment at "known", so the
+ * symptom list keeps "she is a". Anchored on a pronoun or possessive so a value
+ * that merely ends in "a" or "the" is untouched.
+ */
+export const TRAILING_LEAD_IN_PATTERN =
+  /[\s,]*\b(?:she|he|they|the\s+patient|patient|my|our|her|his|their)(?:\s+(?:is|was|are|were|has|have|had))?(?:\s+(?:a|an|the))?[\s,]*$/i;
 
 /**
  * Field labels a doctor repeats when restating a value after a correction.

@@ -1,3 +1,4 @@
+import { ABSENCE_MARKER_SOURCES } from '../../constants/fieldMarkers.js';
 import { negatedRanges } from './detectNegation.js';
 
 /**
@@ -70,8 +71,12 @@ export function suppressNegated(text, candidates) {
     const range = ranges.find(
       item => candidate.start >= item.start && candidate.start < item.end,
     );
+    // "No history of diabetes" IS the cancellation. Suppressing it, or
+    // filtering it against the drug it names, would delete the statement the
+    // doctor actually made and leave the field unanswered.
+    const absence = ABSENCE_MARKER_SOURCES.has(candidate.source);
 
-    if (range && NEGATION_SENSITIVE.has(candidate.field)) {
+    if (range && NEGATION_SENSITIVE.has(candidate.field) && !absence) {
       if (candidate.field === 'medicalHistory' && !negatedHistory) {
         negatedHistory = text.slice(range.start, range.end).trim();
       }
@@ -80,6 +85,7 @@ export function suppressNegated(text, candidates) {
 
     if (
       cancelled.length &&
+      !absence &&
       (candidate.field === 'prescriptionNotes' || candidate.field === 'medicalHistory')
     ) {
       // A list is filtered entry by entry: cancelling one drug must not delete

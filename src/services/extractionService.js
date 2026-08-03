@@ -15,6 +15,7 @@ import {
   retractionTail,
 } from './extraction/postProcessors.js';
 import { resolveConflicts } from './extraction/resolveConflicts.js';
+import { emit } from './extraction/trace.js';
 import {
   segmentTranscript,
   unclaimedRanges,
@@ -62,6 +63,8 @@ export function extractPatientFields(transcript) {
   if (!text) {
     return empty;
   }
+
+  emit('input', () => ({ transcript, normalized: text }));
 
   const markers = detectMarkers(text);
   const segments = segmentTranscript(text, markers, classifySegment);
@@ -137,6 +140,17 @@ export function extractPatientFields(transcript) {
     }
   }
 
+  emit('candidates', () =>
+    asserted.map(item => ({
+      field: item.field,
+      value: item.value,
+      marker: item.source,
+      confidence: item.confidence,
+      start: item.start,
+      end: item.end,
+    })),
+  );
+
   const resolved = resolveConflicts(asserted);
   appendDenials(resolved, denied);
   const record = { ...empty };
@@ -154,6 +168,8 @@ export function extractPatientFields(transcript) {
       end: range.end,
     };
   }
+
+  emit('record', () => record);
 
   return record;
 }

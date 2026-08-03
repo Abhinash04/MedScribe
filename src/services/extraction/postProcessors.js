@@ -2,8 +2,10 @@ import {
   DIAGNOSIS_HEDGE_PATTERN,
   LEADING_TRIM_PATTERN,
   RESTATED_LABEL_PATTERN,
+  TRAILING_LEAD_IN_PATTERN,
   TRAILING_TRIM_PATTERN,
 } from '../../constants/fieldMarkers.js';
+import { SYMPTOM_MODIFIERS, SYMPTOM_TERMS } from '../../constants/clinicalCues.js';
 import { splitFindings } from './detectNegation.js';
 import {
   digitGroups,
@@ -103,6 +105,7 @@ const trimTrailing = value => {
   let previous = null;
   while (out !== previous) {
     previous = out;
+    out = clean(out.replace(TRAILING_LEAD_IN_PATTERN, ''));
     out = clean(out.replace(TRAILING_TRIM_PATTERN, ''));
   }
   return out;
@@ -154,6 +157,55 @@ const sentenceCase = value => {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
 };
 
+
+/**
+ * Splits a comma-less run of findings, and only when every word is a known
+ * finding or one of its qualifiers.
+ *
+ * "fever cough headache sore throat" becomes four findings; "body pain for
+ * about three days" is not fully accounted for and is returned untouched, so
+ * nothing the doctor said is ever guessed at or shattered.
+ */
+const MODIFIERS = new Set(SYMPTOM_MODIFIERS);
+const TERMS = [...SYMPTOM_TERMS].sort(
+  (a, b) => b.split(' ').length - a.split(' ').length,
+);
+
+const splitKnownFindings = value => {
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length < 2) {
+    return [value];
+  }
+
+  const parts = [];
+  let index = 0;
+
+  while (index < words.length) {
+    const start = index;
+    while (MODIFIERS.has(words[index]?.toLowerCase())) {
+      index += 1;
+    }
+
+    const term = TERMS.find(candidate => {
+      const size = candidate.split(' ').length;
+      return (
+        words
+          .slice(index, index + size)
+          .join(' ')
+          .toLowerCase() === candidate
+      );
+    });
+
+    if (!term) {
+      return [value];
+    }
+
+    index += term.split(' ').length;
+    parts.push(words.slice(start, index).join(' '));
+  }
+
+  return parts.length > 1 ? parts : [value];
+};
 
 const wordsToNumber = phrase => {
   const words = clean(phrase).toLowerCase().split(/[\s-]+/).filter(Boolean);
@@ -279,7 +331,8 @@ const processors = {
   symptomList: raw =>
     dedupe(
       splitFindings(trimTrailing(trimLeading(afterLastCorrection(raw))))
-        .positive.map(item => sentenceCase(item.replace(/\bhai\b/gi, '')))
+        .positive.flatMap(item => splitKnownFindings(item.replace(/\bhai\b/gi, '').trim()))
+        .map(item => sentenceCase(item))
         .filter(item => item.length > 1),
     ),
 

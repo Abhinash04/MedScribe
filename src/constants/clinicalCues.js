@@ -15,8 +15,21 @@ export const NEGATION_ALTERNATION =
 
 export const NEGATION_CUES = new RegExp(`\\b(?:${NEGATION_ALTERNATION})\\b`, 'gi');
 
+/**
+ * One clause boundary definition, used for both halves of the negation logic.
+ *
+ * A negation's scope ends here, and a findings list splits here. When the two
+ * were written separately they drifted: "no fever; cough" ended the negation at
+ * the semicolon but never split there, so "cough" was reported as denied.
+ */
+export const CLAUSE_BREAK = '[.;?!]';
+export const CONTRAST_WORDS = 'but|however|though|although';
+
 /** A negation stops here; anything past it is asserted again. */
-export const NEGATION_TERMINATORS = /[.;?!]|\b(?:but|however|though|although)\b/i;
+export const NEGATION_TERMINATORS = new RegExp(
+  `${CLAUSE_BREAK}|\\b(?:${CONTRAST_WORDS})\\b`,
+  'i',
+);
 
 /** Pushes a value into medical history regardless of the marker that opened it. */
 export const CHRONICITY_CUES =
@@ -36,7 +49,7 @@ export const FEMALE_NOUNS = /\b(?:female|woman|lady|girl)\b/gi;
 export const MALE_NOUNS = /\b(?:male|man|gentleman|boy)\b/gi;
 
 export const MEDICATION_FORMS =
-  /\b(?:tablet|tab|capsule|cap|syrup|suspension|injection|inj|drops?|ointment|cream|inhaler|spray|sachet)\b/i;
+  /\b(?:tablets?|tabs?|capsules?|caps?|syrups?|suspensions?|injections?|inj|drops?|ointments?|creams?|inhalers?|sprays?|sachets?)\b/i;
 
 export const MEDICATION_FREQUENCY =
   /\b(?:once|twice|thrice|three\s+times|four\s+times|every\s+\w+\s+hours?|od|bd|tds|qid|hs|sos|stat|daily|nightly)\b/i;
@@ -62,3 +75,32 @@ export const MEDICATION_DURATION =
 
 export const MEDICATION_TIMING =
   /\b(?:before|after)\s+(?:food|meals?|breakfast|lunch|dinner)\b|\bempty\s+stomach\b|\bat\s+bedtime\b/i;
+
+/**
+ * Findings a recogniser can run together when the doctor dictates without
+ * commas: "fever cough headache sore throat".
+ *
+ * A CLOSED list, and used only to split a run in which EVERY word is accounted
+ * for. Splitting on whitespace alone would shatter "sore throat"; requiring
+ * full coverage means an unrecognised phrase is left exactly as dictated rather
+ * than guessed at.
+ */
+export const SYMPTOM_TERMS = [
+  'shortness of breath', 'difficulty in breathing', 'difficulty breathing',
+  'breathing difficulty', 'loss of appetite', 'burning sensation',
+  'sore throat', 'chest pain', 'body pain', 'back pain', 'joint pain',
+  'muscle pain', 'stomach pain', 'abdominal pain', 'ear pain', 'tooth pain',
+  'throat pain', 'runny nose', 'blocked nose', 'night sweats', 'blurred vision',
+  'loose motions', 'body ache', 'stomach ache',
+  'fever', 'cough', 'cold', 'headache', 'tiredness', 'weakness', 'fatigue',
+  'vomiting', 'nausea', 'dizziness', 'giddiness', 'sneezing', 'diarrhea',
+  'diarrhoea', 'constipation', 'rash', 'itching', 'chills', 'breathlessness',
+  'insomnia', 'cramps', 'swelling', 'restlessness', 'sweating', 'shivering',
+];
+
+/** Qualifiers that belong to the finding they precede, not to a new one. */
+export const SYMPTOM_MODIFIERS = [
+  'mild', 'moderate', 'severe', 'slight', 'high', 'low', 'acute', 'chronic',
+  'persistent', 'recurrent', 'dry', 'productive', 'constant', 'intermittent',
+  'occasional', 'continuous', 'heavy', 'light', 'bad',
+];

@@ -1,4 +1,6 @@
 import {
+  CLAUSE_BREAK,
+  CONTRAST_WORDS,
   NEGATION_ALTERNATION,
   NEGATION_CUES,
   NEGATION_TERMINATORS,
@@ -33,8 +35,18 @@ export function negatedRanges(text) {
 const isNegated = (ranges, index) =>
   ranges.some(range => index >= range.start && index < range.end);
 
-/** Item separators for a findings list. "or" joins negated alternatives. */
-const SEPARATOR = /\s*,\s*|\s+(?:and|or|but|however|aur|bhi)\s+/i;
+/**
+ * Item separators for a findings list. "or" joins negated alternatives.
+ *
+ * Built from the same clause boundary a negation scopes to, so a cue can never
+ * stop covering text that still belongs to the item it was scoping. Punctuation
+ * must be followed by space or end of string — "fever 101.5 degrees" is one
+ * finding, not two.
+ */
+const SEPARATOR = new RegExp(
+  `\\s*${CLAUSE_BREAK}(?:\\s+|$)|\\s*,\\s*|\\s+(?:${CONTRAST_WORDS}|and|or|aur|bhi)\\s+`,
+  'i',
+);
 
 /**
  * Splits a findings phrase into positive and negated items.

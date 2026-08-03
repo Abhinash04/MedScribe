@@ -5,7 +5,6 @@ import {
   MEDICATION_ROUTE,
   MEDICATION_STRENGTH,
   MEDICATION_TIMING,
-  MEDICATION_UNITS,
 } from '../../constants/clinicalCues.js';
 
 /**
@@ -16,17 +15,34 @@ import {
  * still reads "twice daily".
  */
 
-/**
- * "and" splits drugs only when a drug-like token follows it. Built from the
- * shared unit list — when this held its own narrower copy, a second drug
- * dictated in "milligrams" was never split out.
- */
-const DRUG_AFTER_AND = new RegExp(
-  `\\s+and\\s+(?=[a-z][\\w-]*\\s+\\d+(?:\\.\\d+)?\\s*(?:${MEDICATION_UNITS})\\b)`,
-  'i',
-);
+const AND_JOIN = /\s+and\s+/i;
 
 const LIST_SEPARATOR = /\s*[,;]\s*/;
+
+/**
+ * "and" splits drugs only when what follows is itself medication-like, judged
+ * by the same test that keeps advice out of the prescription list. A numeric
+ * strength is not required — "cough syrup twice daily and vitamin tablets once
+ * daily" is two prescriptions — while an advice clause ("and drink plenty of
+ * water") stays attached to the entry it was dictated with rather than becoming
+ * an entry of its own.
+ */
+function splitOnAnd(part) {
+  const pieces = part.split(AND_JOIN);
+  if (pieces.length === 1) {
+    return pieces;
+  }
+
+  const entries = [pieces[0]];
+  for (const piece of pieces.slice(1)) {
+    if (looksLikeMedication(piece)) {
+      entries.push(piece);
+    } else {
+      entries[entries.length - 1] += ` and ${piece}`;
+    }
+  }
+  return entries;
+}
 
 export function splitMedications(text) {
   const source = (text || '').trim();
@@ -36,7 +52,7 @@ export function splitMedications(text) {
 
   return source
     .split(LIST_SEPARATOR)
-    .flatMap(part => part.split(DRUG_AFTER_AND))
+    .flatMap(splitOnAnd)
     .map(part => part.trim())
     .filter(Boolean);
 }
@@ -58,12 +74,13 @@ export function parseMedication(entry) {
  * True when the phrase looks like medication rather than advice.
  *
  * "plenty of oral fluids and complete bed rest" carries a route word but no
- * drug, so a route alone is not enough — a strength, a dosage form or an
- * explicit frequency has to be present.
+ * drug, so a route alone is not enough. Neither is a frequency: "drink water
+ * twice daily" and "a daily walk" are cadences of advice, not prescriptions.
+ * A strength or a dosage form is the anchor that makes an entry a medication.
  */
 export function looksLikeMedication(entry) {
   const parsed = parseMedication(entry);
-  return !!(parsed.strength || parsed.form || parsed.frequency);
+  return !!(parsed.strength || parsed.form);
 }
 
 function match(text, pattern) {
