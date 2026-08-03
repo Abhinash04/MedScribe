@@ -11,8 +11,19 @@
  * @param {Array} markers from detectMarkers, sorted by position
  * @returns {Array<{field, value, start, end, confidence, source}>}
  */
-export function segmentTranscript(text, markers) {
-  return mergeAdjacentSameField(buildSegments(text, markers), text);
+/**
+ * Fields whose value is a list keep merging across sentences — a doctor lists
+ * symptoms and remarks in several breaths. A scalar field restated in a LATER
+ * sentence is a correction, not a continuation, and merging it concatenates
+ * the old value onto the new one.
+ */
+const MERGEABLE_FIELDS = new Set(['symptoms', 'prescriptionNotes', 'additionalRemarks']);
+
+export function segmentTranscript(text, markers, classify = segment => segment) {
+  // Classification runs BEFORE merging: "has had diabetes for ten years" and
+  // "presents with fever" are both symptoms markers, so merging first would
+  // fuse a chronic condition onto an acute complaint and hide the distinction.
+  return mergeAdjacentSameField(buildSegments(text, markers).map(classify), text);
 }
 
 /**
@@ -29,7 +40,33 @@ function mergeAdjacentSameField(segments, text) {
   for (const segment of segments) {
     const previous = merged[merged.length - 1];
 
-    if (previous && previous.field === segment.field) {
+    // A recognizer restart repeats a whole phrase; merging the repeat would
+    // build "fever and cough. Complains of fever and cough".
+    const repeats =
+      previous && normalizedValue(previous.value).includes(normalizedValue(segment.value));
+
+    if (previous && previous.field === segment.field && repeats) {
+      continue;
+    }
+
+    // "Patient denies chest pain. Complains of fever" is two opposite
+    // statements; merging them would negate the second one too.
+    const polarityBreak =
+      previous &&
+      NEGATED.test(previous.value) &&
+      /[.;?!]/.test(text.slice(previous.end, segment.start));
+
+    const restatement =
+      previous &&
+      !MERGEABLE_FIELDS.has(segment.field) &&
+      /[.;?!]/.test(text.slice(previous.end, segment.start));
+
+    if (
+      previous &&
+      previous.field === segment.field &&
+      !polarityBreak &&
+      !restatement
+    ) {
       previous.value = text.slice(previous.start, segment.end);
       previous.end = segment.end;
       previous.confidence = Math.max(previous.confidence, segment.confidence);
@@ -41,6 +78,11 @@ function mergeAdjacentSameField(segments, text) {
 
   return merged;
 }
+
+const NEGATED = /\b(?:no|not|without|denies|denied|negative\s+for|nil)\b/i;
+
+const normalizedValue = value =>
+  (value || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
 function buildSegments(text, markers) {
   return markers.map((marker, index) => {

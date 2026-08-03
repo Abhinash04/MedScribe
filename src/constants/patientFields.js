@@ -17,7 +17,7 @@ export const PATIENT_FIELDS = [
   { key: 'symptoms', label: 'Symptoms', list: true },
   { key: 'medicalHistory', label: 'Medical History', multiline: true },
   { key: 'diagnosis', label: 'Diagnosis', multiline: true },
-  { key: 'prescriptionNotes', label: 'Prescription Notes', multiline: true },
+  { key: 'prescriptionNotes', label: 'Prescription Notes', list: true },
   { key: 'additionalRemarks', label: 'Additional Remarks', multiline: true },
 ];
 

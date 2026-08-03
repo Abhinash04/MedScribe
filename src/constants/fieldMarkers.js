@@ -28,6 +28,7 @@ export const CONFIDENCE = {
   WEAK: 0.6,
   FALLBACK: 0.5,
   WEAK_FALLBACK: 0.45,
+  PRONOUN: 0.45,
 };
 
 /** Below this, the report flags the value as uncertain. */
@@ -49,18 +50,20 @@ export const FIELD_MARKERS = {
     postProcessor: 'name',
     validator: 'personName',
     markers: [
-      m(/\bpatient(?:'s|s)?\s+name\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, "patient's name is"),
-      m(/\bname\s+of\s+the\s+patient\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'name of the patient is'),
-      m(/\b(?:her|his|the)\s+name\s+(?:is\s+)?/i, CONFIDENCE.STRONG, 'name is'),
-      m(/\bname\s+is\s+/i, CONFIDENCE.STRONG, 'name is'),
-      m(/\bthe\s+patient\s+is\s+/i, CONFIDENCE.MODERATE, 'the patient is'),
-      m(/\bpatient\s+called\s+/i, CONFIDENCE.MODERATE, 'patient called'),
-      m(/\bthis\s+is\s+(?:mr|mrs|ms|miss|master)\.?\s+/i, CONFIDENCE.STRONG, 'this is Mr/Mrs'),
-      m(/\bthis\s+is\s+/i, CONFIDENCE.MODERATE, 'this is'),
-      m(/\bpatient\s+identified\s+as\s+/i, CONFIDENCE.EXPLICIT, 'patient identified as'),
-      m(/\bidentified\s+as\s+/i, CONFIDENCE.STRONG, 'identified as'),
+      m(/\bpatient(?:'s|s)?\s+name\s+(?:is[\s,]+)?/i, CONFIDENCE.EXPLICIT, "patient's name is"),
+      m(/\bname\s+of\s+the\s+patient\s+(?:is[\s,]+)?/i, CONFIDENCE.EXPLICIT, 'name of the patient is'),
+      m(/\b(?:her|his|the)\s+name\s+(?:is[\s,]+)?/i, CONFIDENCE.STRONG, 'name is'),
+      m(/\bname\s+is[\s,]+/i, CONFIDENCE.STRONG, 'name is'),
+      m(/\bthe\s+patient\s+is[\s,]+/i, CONFIDENCE.MODERATE, 'the patient is'),
+      m(/\bpatient\s+is[\s,]+/i, CONFIDENCE.MODERATE, 'patient is'),
+      m(/\bpatient\s+named[\s,]+/i, CONFIDENCE.EXPLICIT, 'patient named'),
+      m(/\bpatient\s+called[\s,]+/i, CONFIDENCE.MODERATE, 'patient called'),
+      m(/\bthis\s+is\s+(?:mr|mrs|ms|miss|master)\.?[\s,]+/i, CONFIDENCE.STRONG, 'this is Mr/Mrs'),
+      m(/\bthis\s+is[\s,]+/i, CONFIDENCE.MODERATE, 'this is'),
+      m(/\bpatient\s+identified\s+as[\s,]+/i, CONFIDENCE.EXPLICIT, 'patient identified as'),
+      m(/\bidentified\s+as[\s,]+/i, CONFIDENCE.STRONG, 'identified as'),
       // Hinglish: "patient ka naam Hema Sharma hai"
-      m(/\b(?:patient\s+)?ka\s+naam\s+/i, CONFIDENCE.EXPLICIT, 'ka naam'),
+      m(/\b(?:patient\s+)?ka\s+naam[\s,]+/i, CONFIDENCE.EXPLICIT, 'ka naam'),
     ],
   },
 
@@ -89,12 +92,8 @@ export const FIELD_MARKERS = {
     markers: [
       m(/\b(?:gender|sex)\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'gender'),
     ],
-    // Applied only to text no marker claimed.
-    fallbacks: [
-      m(/\b(male|female|transgender)\b/i, CONFIDENCE.FALLBACK, 'bare gender word'),
-      m(/\b(woman|lady|girl)\b/i, CONFIDENCE.WEAK_FALLBACK, 'woman/lady'),
-      m(/\b(man|gentleman|boy)\b/i, CONFIDENCE.WEAK_FALLBACK, 'man/gentleman'),
-    ],
+    // Bare gender words and pronouns are handled by collectEvidence, which
+    // applies the companion-noun guard and refuses to pick a side on conflict.
   },
 
   address: {
@@ -104,7 +103,7 @@ export const FIELD_MARKERS = {
     markers: [
       m(/\b(?:residential\s+|postal\s+|home\s+)?address\s*(?:is\s*|:\s*)?/i, CONFIDENCE.EXPLICIT, 'address is'),
       m(/\b(?:resides?|residing|staying|stays)\s+(?:at|in)\s+/i, CONFIDENCE.STRONG, 'resides at'),
-      m(/\blives?\s+(?:at|in)\s+/i, CONFIDENCE.STRONG, 'lives in'),
+      m(/\bliv(?:es?|ing)\s+(?:at|in)\s+/i, CONFIDENCE.STRONG, 'lives in'),
       m(/\bhails\s+from\s+/i, CONFIDENCE.MODERATE, 'hails from'),
     ],
   },
@@ -148,8 +147,14 @@ export const FIELD_MARKERS = {
       // Contraction-aware: "she's been having" as well as "has been having".
       m(/\b(?:has|have|'s|s)\s*been\s+having\s+/i, CONFIDENCE.MODERATE, 'been having'),
       m(/\bcomplaints?\s+(?:are|of)?\s*/i, CONFIDENCE.EXPLICIT, 'complaints of'),
-      m(/\bcame\s+in\s+with\s+/i, CONFIDENCE.MODERATE, 'came in with'),
+      m(/\bcame\s+(?:in\s+)?with\s+/i, CONFIDENCE.MODERATE, 'came with'),
+      m(/\bexperienc(?:es|ing|ed)\s+/i, CONFIDENCE.STRONG, 'experiencing'),
+      m(/\bpresenting\s+complaint\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'presenting complaint'),
       m(/\b(?:has|have|had)\s+had\s+/i, CONFIDENCE.MODERATE, 'has had'),
+      m(/\b(?:patient\s+)?(?:has|have)\s+(?!had\b|been\b|no\b)/i, CONFIDENCE.WEAK, 'has'),
+      m(/\b(?=denies\s+)/i, CONFIDENCE.STRONG, 'denies'),
+      m(/\bdevelop(?:s|ed|ing)\s+/i, CONFIDENCE.STRONG, 'developed'),
+      m(/\bnow\s+has\s+/i, CONFIDENCE.STRONG, 'now has'),
       m(/\b(?:has|have|'s)\s*been\s+running\s+a\s+/i, CONFIDENCE.MODERATE, 'running a fever'),
     ],
   },
@@ -168,6 +173,8 @@ export const FIELD_MARKERS = {
       m(/\bh\/o\s+/i, CONFIDENCE.EXPLICIT, 'h/o'),
       m(/\bhistory\s+(?:of|is|includes?)?\s*/i, CONFIDENCE.STRONG, 'history of'),
       m(/\bknown\s+case\s+of\s+/i, CONFIDENCE.STRONG, 'known case of'),
+      m(/\bpreviously\s+diagnosed\s+with\s+/i, CONFIDENCE.EXPLICIT, 'previously diagnosed with'),
+      m(/\bsuffers\s+from\s+/i, CONFIDENCE.MODERATE, 'suffers from'),
       m(/\b(?=known\s+(?:diabetic|hypertensive|asthmatic|epileptic))/i, CONFIDENCE.MODERATE, 'known diabetic'),
       m(/\bcomorbid(?:ities)?\s+(?:are|include[s]?)?\s*/i, CONFIDENCE.MODERATE, 'comorbidities'),
       // Bare clinical conditions: "She is diabetic", "known diabetic on
@@ -198,6 +205,10 @@ export const FIELD_MARKERS = {
       // Reversed phrasing: "Viral fever appears likely."
       m(/\b(?=[\w\s-]{3,40}?\s+appears\s+likely\b)/i, CONFIDENCE.HEDGED, 'appears likely'),
       m(/\b(?:probably|most\s+likely|likely)\s+/i, CONFIDENCE.WEAK, 'probably'),
+      m(/\b(?:findings?\s+(?:are|is)\s+)?suggestive\s+of\s+/i, CONFIDENCE.STRONG, 'suggestive of'),
+      m(/\b(?:presentation\s+(?:is\s+)?)?consistent\s+with\s+/i, CONFIDENCE.STRONG, 'consistent with'),
+      m(/\bsuspected\s+/i, CONFIDENCE.HEDGED, 'suspected'),
+      m(/\bworking\s+diagnosis\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'working diagnosis'),
       // Hinglish: "diagnosis viral infection lag raha hai"
       m(/\bdiagnosis\s+(?=[\w\s]+lag\s+raha\s+hai)/i, CONFIDENCE.EXPLICIT, 'lag raha hai'),
     ],
@@ -205,9 +216,13 @@ export const FIELD_MARKERS = {
 
   prescriptionNotes: {
     priority: 4,
-    postProcessor: 'text',
-    validator: 'nonEmptyText',
+    postProcessor: 'medicationList',
+    validator: 'nonEmptyList',
     markers: [
+      // Must precede the generic prescription marker AND span the word
+      // "notes", so resolveOverlaps drops the remarks `notes` marker that
+      // would otherwise open a segment one word later and steal the drug.
+      m(/\bprescription\s+notes?\s*(?:include[s]?|are|is|:)?\s*/i, CONFIDENCE.EXPLICIT, 'prescription notes'),
       m(/\bprescri(?:bed|bing|be|ption)\s+(?:is|with)?\s*/i, CONFIDENCE.EXPLICIT, 'prescribed'),
       m(/\brx\s+/i, CONFIDENCE.EXPLICIT, 'Rx'),
       m(/\bmedication\s+prescribed\s+includes?\s+/i, CONFIDENCE.EXPLICIT, 'medication prescribed includes'),
@@ -217,7 +232,7 @@ export const FIELD_MARKERS = {
       // Paracetamol". Require a capitalised or dosage-like token so this
       // cannot swallow "start to feel better".
       // Anchored on a dosage so it cannot swallow "start to feel better".
-      m(/\b(?:start|give|administer|prescribe)\s+(?:her|him|them\s+)?(?=[\w-]+\s+\d+\s*(?:mg|ml|mcg|g)\b)/i, CONFIDENCE.STRONG, 'start <drug> <dose>'),
+      m(/\b(?:start|give|administer|prescribe)\s+(?:her|him|them\s+)?(?=[\w-]+\s+\d+\s*(?:milligrams?|millilitres?|milliliters?|mg|ml|mcg|g)\b)/i, CONFIDENCE.STRONG, 'start <drug> <dose>'),
       // "Give her Paracetamol twice daily" — no dosage, but the pronoun makes
       // the intent unambiguous.
       m(/\bgive\s+(?:her|him|them)\s+/i, CONFIDENCE.STRONG, 'give her'),
@@ -244,6 +259,9 @@ export const FIELD_MARKERS = {
       m(/\bask\s+(?:her|him|them)\s+to\s+/i, CONFIDENCE.STRONG, 'ask her to'),
       m(/\bfollow[\s-]*up\s+/i, CONFIDENCE.MODERATE, 'follow up'),
       m(/\breview\s+after\s+/i, CONFIDENCE.MODERATE, 'review after'),
+      m(/\binvestigations?\s+advised\s*:?\s*/i, CONFIDENCE.EXPLICIT, 'investigations advised'),
+      m(/\brecommendations?\s*(?:are|is|:)?\s*/i, CONFIDENCE.STRONG, 'recommendation'),
+      m(/\breturn\s+after\s+/i, CONFIDENCE.MODERATE, 'return after'),
     ],
   },
 };
@@ -254,4 +272,16 @@ export const FILLER_PATTERN =
 
 /** Leading connectives trimmed from the front of a captured value. */
 export const LEADING_TRIM_PATTERN =
-  /^(?:most\s+likely|probably|possibly|likely|is|are|was|were|has|have|had|of|the|a|an|with|for|to|her|his|their|and|that|it|she|he)\b[\s,]*/i;
+  /^(?:looks\s+like|appears\s+to\s+be|appears|seems\s+like|seems|sounds\s+like|suggestive\s+of|consistent\s+with|most\s+likely|probably|possibly|likely|is|are|was|were|has|have|had|of|the|a|an|with|for|to|her|his|their|and|that|it|she|he)\b[\s,]*/i;
+
+/** Dangling connectives left at the end of a segment cut at the next marker. */
+export const TRAILING_TRIM_PATTERN =
+  /[\s,]*\b(?:and|but|with|for|to|then|also|plus|today|now|currently)\b[\s,]*$/i;
+
+/**
+ * Field labels a doctor repeats when restating a value after a correction.
+ * Stripped from the front of the surviving tail, which would otherwise read
+ * "Diagnosis is viral infection" inside the diagnosis field.
+ */
+export const RESTATED_LABEL_PATTERN =
+  /^(?:the\s+)?(?:provisional\s+|final\s+|clinical\s+)?(?:diagnosis|impression|age|gender|sex|patient\s+name|name|contact\s+number|phone\s+number|mobile\s+number|pin\s*code|postal\s*code|address|medical\s+history|prescription\s+notes?|symptoms?)\s*(?:is|are|:)?\s*/i;

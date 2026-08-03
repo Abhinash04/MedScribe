@@ -1,4 +1,10 @@
-import { LEADING_TRIM_PATTERN } from '../../constants/fieldMarkers.js';
+import {
+  LEADING_TRIM_PATTERN,
+  RESTATED_LABEL_PATTERN,
+  TRAILING_TRIM_PATTERN,
+} from '../../constants/fieldMarkers.js';
+import { splitFindings } from './detectNegation.js';
+import { splitMedications } from './parseMedication.js';
 
 /** Stage 5 — turn a raw segment into the value the report displays. */
 
@@ -30,6 +36,7 @@ const NAME_STOPWORDS = new Set([
   'is', 'was', 'are', 'were', 'has', 'have', 'had', 'been', 'being',
   'a', 'an', 'the', 'and', 'or', 'but', 'who', 'that', 'this', 'which',
   'patient', 'complains', 'complaining', 'reports', 'presents', 'aged',
+  'again', 'named', 'called',
   'age', 'years', 'year', 'old', 'gender', 'sex', 'male', 'female',
   'lives', 'living', 'resides', 'residing', 'address', 'contact', 'phone',
   'mobile', 'diagnosis', 'diagnosed', 'history', 'known', 'suffering',
@@ -55,6 +62,7 @@ const CORRECTION_CUE =
 
 /** Keeps only the text after the final correction cue. */
 const afterLastCorrection = value => {
+  const withoutLabel = text => text.replace(RESTATED_LABEL_PATTERN, '');
   const text = value || '';
   CORRECTION_CUE.lastIndex = 0;
   let cut = 0;
@@ -63,7 +71,7 @@ const afterLastCorrection = value => {
     cut = match.index + match[0].length;
     match = CORRECTION_CUE.exec(text);
   }
-  return cut ? text.slice(cut) : text;
+  return cut ? withoutLabel(text.slice(cut)) : text;
 };
 
 const clean = value =>
@@ -82,6 +90,33 @@ const trimLeading = value => {
     out = clean(out.replace(LEADING_TRIM_PATTERN, ''));
   }
   return out;
+};
+
+/**
+ * Strips a dangling connective at the end. A segment cut at the next marker
+ * often ends "…for five days and", and that "and" is not content.
+ */
+const trimTrailing = value => {
+  let out = clean(value);
+  let previous = null;
+  while (out !== previous) {
+    previous = out;
+    out = clean(out.replace(TRAILING_TRIM_PATTERN, ''));
+  }
+  return out;
+};
+
+/** Recognizer restarts repeat whole phrases; the same finding is one finding. */
+const dedupe = items => {
+  const seen = new Set();
+  return items.filter(item => {
+    const key = item.toLowerCase();
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 };
 
 /**
@@ -160,11 +195,16 @@ const processors = {
    * a stop-word list is the only available boundary.
    */
   name: raw => {
-    const tokens = trimLeading(raw).split(/\s+/).filter(Boolean);
+    const tokens = trimLeading(afterLastCorrection(raw)).split(/\s+/).filter(Boolean);
     const kept = [];
 
     for (const token of tokens) {
       const word = token.replace(/[^A-Za-z.'-]/g, '');
+      // Punctuation left by filler-stripping is not a name boundary:
+      // "the patient is, uh, Hema Sharma" normalizes to "the patient is , Hema".
+      if (!word && /^[.,;:-]+$/.test(token)) {
+        continue;
+      }
       if (!word || NAME_STOPWORDS.has(word.toLowerCase())) {
         break;
       }
@@ -262,12 +302,19 @@ const processors = {
    * that would shatter "back pain" and "shortness of breath".
    */
   symptomList: raw =>
-    trimLeading(afterLastCorrection(raw))
-      // "aur" / "bhi" are the Hindi equivalents of "and" / "also", common in
-      // Indian clinical dictation.
-      .split(/\s*,\s*|\s+(?:and|aur|bhi)\s+/i)
-      .map(item => sentenceCase(item.replace(/\bhai\b/gi, '')))
-      .filter(item => item.length > 1),
+    dedupe(
+      splitFindings(trimTrailing(trimLeading(afterLastCorrection(raw))))
+        .positive.map(item => sentenceCase(item.replace(/\bhai\b/gi, '')))
+        .filter(item => item.length > 1),
+    ),
+
+  /** One entry per drug, wording untouched. */
+  medicationList: raw =>
+    dedupe(
+      splitMedications(trimTrailing(trimLeading(afterLastCorrection(raw))))
+        .map(entry => sentenceCase(entry))
+        .filter(entry => entry.length > 1),
+    ),
 
   /**
    * Text fields also honour a bare ellipsis as a retraction:
@@ -279,7 +326,9 @@ const processors = {
     const corrected = afterLastCorrection(raw);
     const parts = corrected.split(/\.{2,}/);
     const tail = parts[parts.length - 1];
-    return sentenceCase(parts.length > 1 && tail.trim().length > 2 ? tail : corrected);
+    return trimTrailing(
+      sentenceCase(parts.length > 1 && tail.trim().length > 2 ? tail : corrected),
+    );
   },
 };
 

@@ -89,7 +89,13 @@ export function toDraft(record) {
 
 function normalizeValue(key, value) {
   if (isListField(key)) {
-    return Array.isArray(value) ? [...value] : [];
+    if (Array.isArray(value)) {
+      return [...value];
+    }
+    // A field that became a list must not drop values saved while it was a
+    // scalar — prescriptionNotes has rows in the database from before.
+    const text = typeof value === 'string' ? value.trim() : '';
+    return text ? [text] : [];
   }
   return typeof value === 'string' ? value : '';
 }

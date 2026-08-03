@@ -1,5 +1,10 @@
-import { FIELD_MARKERS } from '../constants/fieldMarkers.js';
+import { CONFIDENCE, FIELD_MARKERS } from '../constants/fieldMarkers.js';
 import { PATIENT_FIELDS } from '../constants/patientFields.js';
+import { classifySegment } from './extraction/classifySegment.js';
+import { inferGender } from './extraction/collectEvidence.js';
+import { splitFindings } from './extraction/detectNegation.js';
+import { looksLikeMedication } from './extraction/parseMedication.js';
+import { suppressNegated } from './extraction/suppressNegated.js';
 import { detectMarkers } from './extraction/detectMarkers.js';
 import {
   normalizeTranscript,
@@ -56,13 +61,39 @@ export function extractPatientFields(transcript) {
   }
 
   const markers = detectMarkers(text);
-  const segments = segmentTranscript(text, markers);
+  const segments = segmentTranscript(text, markers, classifySegment);
 
   const candidates = [];
+
+  const denied = [];
 
   for (const segment of segments) {
     const config = FIELD_MARKERS[segment.field];
     const value = applyPostProcessor(config.postProcessor, segment.value);
+
+    if (segment.field === 'symptoms') {
+      denied.push(...splitFindings(segment.value).negative);
+    }
+
+    // "Advised plenty of oral fluids" carries a prescription marker but no
+    // drug. Advice belongs in remarks, not in the medication list.
+    if (
+      segment.field === 'prescriptionNotes' &&
+      Array.isArray(value) &&
+      segment.confidence <= CONFIDENCE.WEAK &&
+      !value.some(looksLikeMedication)
+    ) {
+      const asText = applyPostProcessor('text', segment.value);
+      if (isValid('nonEmptyText', asText)) {
+        candidates.push({
+          ...segment,
+          field: 'additionalRemarks',
+          value: asText,
+          method: 'contextual',
+        });
+      }
+      continue;
+    }
 
     if (!isValid(config.validator, value)) {
       continue;
@@ -75,7 +106,32 @@ export function extractPatientFields(transcript) {
   // bare "female" inside an address cannot be mistaken for the gender field.
   candidates.push(...collectFallbacks(text, markers, segments));
 
-  const resolved = resolveConflicts(candidates);
+  const gender = inferGender(text, candidates);
+  if (gender && isValid('gender', gender.value)) {
+    candidates.push(gender);
+  }
+
+  const { candidates: asserted, negatedHistory } = suppressNegated(text, candidates);
+
+  // A cancelled condition still leaves the doctor's statement on the record:
+  // "no history of diabetes" is information, just not a positive history.
+  if (negatedHistory && !asserted.some(item => item.field === 'medicalHistory')) {
+    const value = applyPostProcessor('text', negatedHistory);
+    if (isValid('nonEmptyText', value)) {
+      asserted.push({
+        field: 'medicalHistory',
+        value,
+        confidence: CONFIDENCE.STRONG,
+        source: 'negated history',
+        method: 'contextual',
+        start: 0,
+        end: 0,
+      });
+    }
+  }
+
+  const resolved = resolveConflicts(asserted);
+  appendDenials(resolved, denied);
   const record = { ...empty };
 
   for (const [field, candidate] of Object.entries(resolved)) {
@@ -90,6 +146,37 @@ export function extractPatientFields(transcript) {
   }
 
   return record;
+}
+
+/**
+ * Negated findings are information the doctor stated, so they are recorded —
+ * as an explicit denial in remarks, never as a positive symptom.
+ */
+function appendDenials(resolved, denied) {
+  const unique = [...new Set(denied.map(item => item.trim().toLowerCase()))].filter(
+    item => item.length > 1,
+  );
+  if (!unique.length) {
+    return;
+  }
+
+  const line = `Denies: ${unique.join(', ')}`;
+  const existing = resolved.additionalRemarks;
+
+  if (existing) {
+    existing.value = `${existing.value}; ${line}`;
+    return;
+  }
+
+  resolved.additionalRemarks = {
+    field: 'additionalRemarks',
+    value: line,
+    confidence: CONFIDENCE.STRONG,
+    source: 'negated findings',
+    method: 'contextual',
+    start: 0,
+    end: 0,
+  };
 }
 
 function collectFallbacks(text, markers, segments) {
