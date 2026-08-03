@@ -73,10 +73,12 @@ The extraction and report layers are pure and deterministic, so they are measure
 
 | Suite | Assertions | What it guards |
 | :-- | --: | :-- |
-| `npm run test:extraction` | **238 / 238** | The regression floor — template, scrambled, conversational, shorthand, filler and Hinglish dictation |
-| `npm run test:extraction:natural` | **89 / 89** | Natural phrasing: synonyms, pronoun gender, negation, chronic-vs-acute, prescription vs advice |
+| `npm run test:extraction` | **239 / 239** | The regression floor — template, scrambled, conversational, shorthand, filler and Hinglish dictation |
+| `npm run test:extraction:natural` | **102 / 102** | Natural phrasing: synonyms, pronoun gender, negation, chronic-vs-acute, prescription vs advice |
 | `npm run test:extraction:adversarial` | **31 / 31** | Conflicting and cancelled dictation: explicit-vs-pronoun, corrections, retractions, numeric bleed, restart duplicates |
-| `npm run test:extraction:samples` | **142 / 142** | Twenty real dictation samples, every stated field asserted exactly |
+| `npm run test:extraction:samples` | **180 / 180** | Twenty real dictation samples, every stated field asserted exactly, each proving its prescription |
+| `npm run test:extraction:numeric` | **49 / 49** | PIN and phone grouping, country codes, spoken digits, and the numbers that must never become either |
+| `npm run test:extraction:cleanup` | **41 / 41** | Conversational scaffolding removed from all eleven fields, and the clinical modifiers that must survive it |
 | `npm run test:report` | **71 / 71** | Draft bookkeeping, the list-typed prescription round-trip and the PDF payload |
 | `npm run lint` | **0 errors** | — |
 
@@ -126,7 +128,7 @@ Phase 5 turns the recording step from a one-shot capture into a controllable ses
 | Live field preview | Extraction runs debounced against the transcript so far, so a missed field is visible while the patient is still present. |
 | Session autosave | The live session is written to `active_sessions` on a 2 s debounce and cleared when the report is generated. |
 | Crash recovery | Entering the recording screen with an unfinished session offers Restore or Discard, and the recogniser does not start until that is answered. |
-| Audio cues | One cue at start and resume; the system recogniser's per-utterance tones are muted for the rest of the session. |
+| Audio cues | One cue at start and resume; the app then attempts to suppress the system recogniser's per-utterance tones for the rest of the session by muting the streams that carry them. Which stream that is depends on the OEM, so suppression is best-effort and unconfirmed on the target hardware (§9). |
 
 Extraction v2 makes the extractor robust to natural clinical speech rather than to field labels:
 
@@ -389,6 +391,48 @@ Both "advised paracetamol" and "advised blood tests" are grammatical, so the mar
 
 `prescription notes` needs its own explicit marker specifically so that it spans the word `notes`. The bare `notes` remarks marker starts one word later and, before this existed, stole the medication out of nine of ten real dictation samples.
 
+#### Conversational cleanup is field-aware
+
+A value must hold the clinical information, not the phrasing that introduced
+it. Two mechanisms do that: the **marker consumes the introducer** ("diagnosis
+is", "known case of", "I am prescribing"), and `trimLeading`/`trimTrailing`
+strip whatever connective survives at the edges.
+
+Diagnostic hedging is the one piece that is **not** global. `looks like`,
+`seems to be`, `most likely` and friends live in `DIAGNOSIS_HEDGE_PATTERN` and
+are applied only by the `diagnosis` processor. They used to sit in the shared
+leading trim, where they cost an address its first word — "Likely Lane, Sector
+10" became "Lane, Sector 10".
+
+What is never stripped is clinical meaning: `suspected dengue` and `probable
+dengue` keep their qualifier, and `severe`, `mild`, `persistent`, `dry`,
+`productive` and `recurrent` stay attached to their symptom. Hedging that
+frames the doctor's confidence goes; hedging that qualifies the condition
+stays.
+
+Every extracted field also carries `sourceText` — the dictated words the value
+came from — beside the marker that matched and the offsets into the original
+transcript. The raw transcript is never rewritten.
+
+#### Numeric normalization
+
+Speech recognisers group digits arbitrarily, so `parseNumbers.js` recovers the
+number from the grouping rather than matching it literally. `digitGroups` joins
+a run **only** across spaces and hyphens; every other character ends it, which
+is what stops a PIN from swallowing the phone number in the next sentence.
+
+- **PIN** is six digits not starting at zero. Grouping applies only inside a
+  marked segment — the unmarked fallback keeps its strict contiguous pattern, so
+  an explicit "PIN code" stays stronger evidence than a bare six-digit number.
+- **Phone** reduces to the bare ten digits the report stores: `+91`, `91` and a
+  leading `0` are stripped when what remains is a plausible Indian mobile. A
+  candidate that cannot be reduced is rejected rather than stored half-parsed.
+- **Spoken digits** run through the same normalizer, so "plus nine one nine
+  five five six…" resolves to the same ten digits as "+91 9556774130".
+
+Dosage and duration are unaffected by construction: "500 milligrams" ends the
+run at `m`, and "5 days" is a single-digit group — neither reaches six or ten.
+
 #### Medication parsing
 
 `parseMedication` splits one entry per drug on `,` and `;`, and on `and` **only** when a drug-like token follows — so "twice daily for five days and review after three days" never splits mid-instruction. Strength, frequency, duration, route, form and timing are parsed for validation and traceability; the dictated wording is preserved verbatim and never normalised or reordered.
@@ -413,6 +457,7 @@ Offsets are translated through the normalizer's index map. Filler-stripping shif
 ```
 
 Candidate extraction remains the **designated seam**: swap it for an NLP or local model to support free-form dictation, leaving every other stage intact.
+
 ---
 
 ## 6. Project Structure
@@ -722,7 +767,7 @@ Android's `SpeechRecognizer` is single-utterance, so the hook restarts it after 
 
 Google's own voice typing holds one continuous streaming session, which is why it feels seamless; this library's API cannot do that.
 
-This is why **device results trail fixture results**. Extraction scores 165/165 on clean text, but a field whose introducer phrase was never transcribed is unrecoverable — no amount of marker vocabulary helps. Mitigation is documented in §4.
+This is why **device results trail fixture results**. Extraction passes its 238-assertion regression floor on clean text, but a field whose introducer phrase was never transcribed is unrecoverable — no amount of marker vocabulary helps. Mitigation is documented in §4.
 
 ### Unpunctuated adjacent symptoms stay grouped
 

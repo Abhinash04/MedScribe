@@ -425,10 +425,12 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run android` | Build, install and launch. Uses `--active-arch-only` — builds only the connected device's ABI (~4× faster, ~½ the APK size). |
 | `npm run android:all-abis` | Build all four ABIs for a universal APK. Slow; only needed for release or an unknown target device. |
 | `npm run ios` | iOS build. **Unverified — never built.** |
-| `npm run test:extraction` | 238 assertions — the extraction regression floor. Runs under plain Node, no test framework. |
-| `npm run test:extraction:natural` | 89 assertions over natural phrasing: synonyms, pronoun gender, negation, chronic vs acute. |
+| `npm run test:extraction` | 239 assertions — the extraction regression floor. Runs under plain Node, no test framework. |
+| `npm run test:extraction:natural` | 102 assertions over natural phrasing: synonyms, progressive-aspect symptoms, pronoun gender, negation, chronic vs acute. |
 | `npm run test:extraction:adversarial` | 31 assertions over conflicting, corrected and cancelled dictation. |
-| `npm run test:extraction:samples` | 142 assertions over twenty real dictation samples. |
+| `npm run test:extraction:samples` | 180 assertions over twenty real dictation samples. |
+| `npm run test:extraction:numeric` | 49 assertions over PIN and phone grouping, country codes and spoken digits. |
+| `npm run test:extraction:cleanup` | 41 assertions over conversational cleanup across all eleven fields. |
 | `npm run test:report` | 71 assertions over the editable draft, the PDF payload and the dashboard timestamps. Also plain Node. |
 | `npm run lint` | ESLint across the project. |
 | `npm test` | Jest. **Currently broken** — see below. |
@@ -689,7 +691,7 @@ npm start -- --reset-cache
 
 **Next up**, in priority order:
 
-1. **Close the recognizer restart gaps.** The microphone is deaf for ~0.5–1.5 s after each pause while the recognizer restarts, so words are dropped from real dictation. This is the largest gap between test results and real-world quality — extraction scores 165/165 on clean text, but cannot recover a field whose marker was never transcribed.
+1. **Close the recognizer restart gaps.** The microphone is deaf for ~0.5–1.5 s after each pause while the recognizer restarts, so words are dropped from real dictation. This is the largest gap between test results and real-world quality — extraction passes its 238-assertion regression floor on clean text, but cannot recover a field whose marker was never transcribed.
 2. **Promote the 15 realistic dictation samples to committed fixtures**, so a regression in any dictation style is caught automatically.
 3. **Improve `en-IN` recognition accuracy**, which is currently bounded by a library bug rather than by this codebase.
 
