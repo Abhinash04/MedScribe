@@ -8,6 +8,9 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "test:extraction": "node scripts/test-extraction.mjs",
+    "test:extraction:natural": "node scripts/test-extraction-natural.mjs",
+    "test:extraction:adversarial": "node scripts/test-extraction-adversarial.mjs",
+    "test:extraction:samples": "node scripts/test-extraction-samples.mjs",
     "test:report": "node scripts/test-report.mjs",
     "start": "react-native start",
     "test": "jest"
