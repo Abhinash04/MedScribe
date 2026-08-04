@@ -1,10 +1,13 @@
 import {
-  isTranscriptionProxyConfigured,
-  voiceToTextUrl,
+  ANUVADINI_STT_URL,
+  TRANSPORT,
+  proxyVoiceToTextUrl,
+  resolveTransport,
 } from '../../config/endpoints.js';
 import { MAX_UPLOAD_BYTES, base64CharsFor } from '../audioBudget.js';
 import { normalizeAnuvadiniLanguage } from './language.js';
 import {
+  buildDirectRequestBody,
   buildRequestBody,
   ERROR_KIND,
   readTranscription,
@@ -31,7 +34,7 @@ export const REQUEST_TIMEOUT_MS = 75000;
  */
 export const MAX_AUDIO_BASE64_CHARS = base64CharsFor(MAX_UPLOAD_BYTES);
 
-async function fetchTransport({ url, body, signal, timeoutMs }) {
+async function fetchTransport({ url, body, headers, signal, timeoutMs }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort('timeout'), timeoutMs);
 
@@ -41,7 +44,7 @@ async function fetchTransport({ url, body, signal, timeoutMs }) {
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -68,6 +71,7 @@ export async function transcribe({
   signal,
   transport = fetchTransport,
   url,
+  token = '',
   timeoutMs = REQUEST_TIMEOUT_MS,
 }) {
   if (!audioBase64) {
@@ -82,7 +86,16 @@ export async function transcribe({
     return failed(ERROR_KIND.UNSUPPORTED_LANGUAGE);
   }
 
-  const endpoint = url || (isTranscriptionProxyConfigured() ? voiceToTextUrl() : '');
+  const mode = resolveTransport(token);
+  if (mode === TRANSPORT.NONE) {
+    return failed(ERROR_KIND.NOT_CONFIGURED);
+  }
+
+  // Direct mode speaks Anuvadini's own contract and carries the credential;
+  // proxy mode speaks ours and carries none. The declared transport decides —
+  // a populated proxy URL cannot pull a direct build off the upstream.
+  const direct = mode === TRANSPORT.DIRECT;
+  const endpoint = url || (direct ? ANUVADINI_STT_URL : proxyVoiceToTextUrl());
   if (!endpoint) {
     return failed(ERROR_KIND.NOT_CONFIGURED);
   }
@@ -91,7 +104,10 @@ export async function transcribe({
   try {
     response = await transport({
       url: endpoint,
-      body: buildRequestBody(audioBase64, normalized),
+      body: direct
+        ? buildDirectRequestBody(audioBase64, normalized)
+        : buildRequestBody(audioBase64, normalized),
+      headers: direct ? { Authorization: `Bearer ${token}` } : undefined,
       signal,
       timeoutMs,
     });

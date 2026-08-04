@@ -15,6 +15,12 @@ export const REQUEST_FIELDS = {
   LANGUAGE: 'audio_language',
 };
 
+/** Anuvadini's own field names, used only when the app calls it directly. */
+export const DIRECT_REQUEST_FIELDS = {
+  AUDIO: 'audioBuffer',
+  LANGUAGE: 'audioLanguage',
+};
+
 export const ERROR_KIND = {
   NOT_CONFIGURED: 'not_configured',
   UNSUPPORTED_LANGUAGE: 'unsupported_language',
@@ -33,6 +39,13 @@ export function buildRequestBody(audioBase64, normalizedLanguage) {
   return {
     [REQUEST_FIELDS.AUDIO]: audioBase64,
     [REQUEST_FIELDS.LANGUAGE]: normalizedLanguage,
+  };
+}
+
+export function buildDirectRequestBody(audioBase64, normalizedLanguage) {
+  return {
+    [DIRECT_REQUEST_FIELDS.AUDIO]: audioBase64,
+    [DIRECT_REQUEST_FIELDS.LANGUAGE]: normalizedLanguage,
   };
 }
 

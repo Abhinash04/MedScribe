@@ -5,6 +5,9 @@ import {
   withinUploadBudget,
 } from './audioBudget';
 import * as capture from './audioCaptureService';
+// Reading and deleting go through the shared-mic module: it writes the file and
+// is registered in every build, whereas the capture module is debug-only.
+import * as sharedMic from './sharedMicService';
 
 /**
  * The recorded audio for one consultation.
@@ -141,7 +144,7 @@ export async function readForUpload() {
   }
 
   try {
-    return await capture.readCaptureBase64(current.path, MAX_UPLOAD_BYTES);
+    return await sharedMic.readCaptureBase64(current.path, MAX_UPLOAD_BYTES);
   } catch {
     return null;
   }
@@ -155,7 +158,7 @@ export async function discard() {
     return false;
   }
   try {
-    return await capture.deleteCapture(path);
+    return await sharedMic.deleteCapture(path);
   } catch {
     return false;
   }
@@ -164,7 +167,7 @@ export async function discard() {
 /** Anything an interrupted app left behind. Runs at startup. */
 export async function purgeAbandoned(olderThanMs = ABANDONED_AFTER_MS) {
   try {
-    return await capture.purgeCaptures(olderThanMs);
+    return await sharedMic.purgeCaptures(olderThanMs);
   } catch {
     return 0;
   }

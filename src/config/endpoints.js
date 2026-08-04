@@ -1,17 +1,35 @@
 /**
- * Non-secret service endpoints.
+ * Where transcription requests go, and how.
  *
- * The Anuvadini credential is NOT here and is not in the app at all: the phone
- * talks to the MedScribe proxy, and the proxy is what holds the Bearer token.
- * A base URL is not a secret, so it ships as a plain constant rather than
- * dragging in a native config package.
+ * The transport is declared rather than inferred from whichever URL happens to
+ * be populated — a debug default silently winning on a physical device is
+ * exactly the kind of surprise that costs a test cycle.
  */
 
+export const TRANSPORT = {
+  /** Straight to Anuvadini with the Bearer token built into the app. */
+  DIRECT: 'direct',
+  /** Through our own service, which holds the credential. */
+  PROXY: 'proxy',
+  /** No endpoint; the alternative transcription is unavailable. */
+  NONE: 'none',
+};
+
 /**
- * Debug builds talk to the proxy running on the developer's machine, reached
- * through `adb reverse tcp:8787 tcp:8787`. Release stays empty on purpose: a
- * shipped build must never be silently pointed at someone's laptop, and it
- * needs an HTTPS deployment rather than cleartext localhost.
+ * Internal testing calls Anuvadini directly, with the credential injected at
+ * build time. Deploying `server/` later means changing this one value to
+ * PROXY and dropping the token from the build — no feature code moves.
+ */
+export const TRANSCRIPTION_TRANSPORT = TRANSPORT.DIRECT;
+
+/** The upstream service. Public, and not a secret. */
+export const ANUVADINI_STT_URL =
+  'https://anuvadini-services.aicte-india.org/api/voice-to-text';
+
+/**
+ * Our own proxy, for local development and a future production deployment.
+ * Only consulted when the transport is PROXY, so this can hold a localhost
+ * default without ever affecting a direct-mode build.
  */
 const isDevBuild = typeof __DEV__ !== 'undefined' && __DEV__;
 
@@ -19,11 +37,23 @@ export const MEDSCRIBE_PROXY_BASE_URL = isDevBuild ? 'http://localhost:8787' : '
 
 export const VOICE_TO_TEXT_PATH = '/voice-to-text';
 
-/** False until a proxy URL is configured, which keeps the feature dark. */
-export function isTranscriptionProxyConfigured() {
-  return !!MEDSCRIBE_PROXY_BASE_URL;
+export function proxyVoiceToTextUrl() {
+  return `${MEDSCRIBE_PROXY_BASE_URL.replace(/\/+$/, '')}${VOICE_TO_TEXT_PATH}`;
 }
 
-export function voiceToTextUrl() {
-  return `${MEDSCRIBE_PROXY_BASE_URL.replace(/\/+$/, '')}${VOICE_TO_TEXT_PATH}`;
+/**
+ * The transport actually usable right now.
+ *
+ * A declared transport whose requirement is missing — a direct build with no
+ * token, a proxy build with no URL — degrades to NONE rather than sending a
+ * request that cannot succeed.
+ */
+export function resolveTransport(token) {
+  if (TRANSCRIPTION_TRANSPORT === TRANSPORT.DIRECT) {
+    return token ? TRANSPORT.DIRECT : TRANSPORT.NONE;
+  }
+  if (TRANSCRIPTION_TRANSPORT === TRANSPORT.PROXY) {
+    return MEDSCRIBE_PROXY_BASE_URL ? TRANSPORT.PROXY : TRANSPORT.NONE;
+  }
+  return TRANSPORT.NONE;
 }

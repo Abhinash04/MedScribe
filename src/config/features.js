@@ -1,4 +1,5 @@
-import { isTranscriptionProxyConfigured } from './endpoints';
+import { getAnuvadiniToken } from '../services/appConfigService';
+import { resolveTransport, TRANSPORT } from './endpoints';
 
 /**
  * Two recognizer clients cannot share a microphone: measured on device, the
@@ -17,7 +18,19 @@ import { isTranscriptionProxyConfigured } from './endpoints';
  */
 export const CONCURRENT_CAPTURE_VERIFIED = true;
 
-/** Capture is pointless without somewhere to send the audio. */
+/**
+ * Capture is deliberately NOT gated on having a transcription endpoint.
+ *
+ * It used to be, and a release build without a URL therefore lost the shared
+ * microphone silently — giving up the better recognition path as well as the
+ * recording. Only the upload depends on an endpoint; when there is none, the
+ * recording is discarded at the end of the consultation rather than kept.
+ */
 export function isCaptureEnabled() {
-  return CONCURRENT_CAPTURE_VERIFIED && isTranscriptionProxyConfigured();
+  return CONCURRENT_CAPTURE_VERIFIED;
+}
+
+/** Whether the alternative transcription has anywhere to send audio. */
+export function isTranscriptionAvailable() {
+  return resolveTransport(getAnuvadiniToken()) !== TRANSPORT.NONE;
 }

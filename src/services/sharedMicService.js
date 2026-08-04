@@ -80,3 +80,34 @@ export async function getState() {
     return null;
   }
 }
+
+/**
+ * Recording files.
+ *
+ * Served by this module, not the capture spike, because the spike is only
+ * registered in debug builds — a release APK has to be able to read and delete
+ * the consultation it just recorded.
+ */
+export async function readCaptureBase64(path, maxBytes) {
+  const module = sharedMic();
+  if (!module) {
+    throw new Error('SharedMic module is not in this build.');
+  }
+  return module.readCaptureBase64(path, maxBytes);
+}
+
+export async function deleteCapture(path) {
+  const module = sharedMic();
+  if (!module || !path) {
+    return false;
+  }
+  return module.deleteCapture(path);
+}
+
+export async function purgeCaptures(olderThanMs) {
+  const module = sharedMic();
+  if (!module) {
+    return 0;
+  }
+  return module.purgeCaptures(olderThanMs);
+}
