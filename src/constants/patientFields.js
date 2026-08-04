@@ -6,20 +6,46 @@
  *
  * `multiline` and `keyboard` only affect the editable report rows; extraction
  * never reads them. Marker vocabulary stays in `fieldMarkers.js`.
+ *
+ * `required` is the single source of truth for report completeness. Ten fields
+ * block report generation until they hold a value that passes their validator;
+ * Additional Remarks is the doctor's own note and never blocks anything.
  */
 export const PATIENT_FIELDS = [
-  { key: 'patientName', label: 'Patient Name' },
-  { key: 'age', label: 'Age', keyboard: 'number-pad' },
-  { key: 'gender', label: 'Gender' },
-  { key: 'address', label: 'Address', multiline: true },
-  { key: 'pinCode', label: 'PIN Code', keyboard: 'number-pad' },
-  { key: 'contactNumber', label: 'Contact Number', keyboard: 'phone-pad' },
-  { key: 'symptoms', label: 'Symptoms', list: true },
-  { key: 'medicalHistory', label: 'Medical History', multiline: true },
-  { key: 'diagnosis', label: 'Diagnosis', multiline: true },
-  { key: 'prescriptionNotes', label: 'Prescription Notes', multiline: true },
-  { key: 'additionalRemarks', label: 'Additional Remarks', multiline: true },
+  { key: 'patientName', label: 'Patient Name', required: true },
+  { key: 'age', label: 'Age', keyboard: 'number-pad', required: true },
+  { key: 'gender', label: 'Gender', required: true },
+  { key: 'address', label: 'Address', multiline: true, required: true },
+  { key: 'pinCode', label: 'PIN Code', keyboard: 'number-pad', required: true },
+  {
+    key: 'contactNumber',
+    label: 'Contact Number',
+    keyboard: 'phone-pad',
+    required: true,
+  },
+  { key: 'symptoms', label: 'Symptoms', list: true, required: true },
+  {
+    key: 'medicalHistory',
+    label: 'Medical History',
+    multiline: true,
+    required: true,
+  },
+  { key: 'diagnosis', label: 'Diagnosis', multiline: true, required: true },
+  {
+    key: 'prescriptionNotes',
+    label: 'Prescription Notes',
+    list: true,
+    required: true,
+  },
+  {
+    key: 'additionalRemarks',
+    label: 'Additional Remarks',
+    multiline: true,
+    required: false,
+  },
 ];
+
+export const REQUIRED_FIELDS = PATIENT_FIELDS.filter(field => field.required);
 
 /**
  * SRS FR-7: a field absent from the dictation is shown explicitly rather than

@@ -11,8 +11,19 @@
  * @param {Array} markers from detectMarkers, sorted by position
  * @returns {Array<{field, value, start, end, confidence, source}>}
  */
-export function segmentTranscript(text, markers) {
-  return mergeAdjacentSameField(buildSegments(text, markers), text);
+/**
+ * Fields whose value is a list keep merging across sentences — a doctor lists
+ * symptoms and remarks in several breaths. A scalar field restated in a LATER
+ * sentence is a correction, not a continuation, and merging it concatenates
+ * the old value onto the new one.
+ */
+const MERGEABLE_FIELDS = new Set(['symptoms', 'prescriptionNotes', 'additionalRemarks']);
+
+export function segmentTranscript(text, markers, classify = segment => segment) {
+  // Classification runs BEFORE merging: "has had diabetes for ten years" and
+  // "presents with fever" are both symptoms markers, so merging first would
+  // fuse a chronic condition onto an acute complaint and hide the distinction.
+  return mergeAdjacentSameField(buildSegments(text, markers).map(classify), text);
 }
 
 /**
@@ -29,7 +40,36 @@ function mergeAdjacentSameField(segments, text) {
   for (const segment of segments) {
     const previous = merged[merged.length - 1];
 
-    if (previous && previous.field === segment.field) {
+    // A recognizer restart repeats a whole phrase; merging the repeat would
+    // build "fever and cough. Complains of fever and cough".
+    //
+    // Matched on whole tokens, not as a substring: "fever and cough" contains
+    // "cough", so a substring test discarded a later, genuinely separate
+    // "cough" segment.
+    const repeats = previous && isRepeatOf(previous.value, segment.value);
+
+    if (previous && previous.field === segment.field && repeats) {
+      continue;
+    }
+
+    // "Patient denies chest pain. Complains of fever" is two opposite
+    // statements; merging them would negate the second one too.
+    const polarityBreak =
+      previous &&
+      NEGATED.test(previous.value) &&
+      /[.;?!]/.test(text.slice(previous.end, segment.start));
+
+    const restatement =
+      previous &&
+      !MERGEABLE_FIELDS.has(segment.field) &&
+      /[.;?!]/.test(text.slice(previous.end, segment.start));
+
+    if (
+      previous &&
+      previous.field === segment.field &&
+      !polarityBreak &&
+      !restatement
+    ) {
       previous.value = text.slice(previous.start, segment.end);
       previous.end = segment.end;
       previous.confidence = Math.max(previous.confidence, segment.confidence);
@@ -41,6 +81,28 @@ function mergeAdjacentSameField(segments, text) {
 
   return merged;
 }
+
+const NEGATED = /\b(?:no|not|without|denies|denied|negative\s+for|nil)\b/i;
+
+/**
+ * A later segment whose entire value already appeared in the earlier one is a
+ * restatement, not new content.
+ *
+ * Matched on whole tokens: a bare substring test also matched "cough" inside
+ * "coughing". Empty values never count as a repeat — two blank segments are
+ * not the same statement twice.
+ */
+function isRepeatOf(previousValue, value) {
+  const candidate = normalizedValue(value);
+  const earlier = normalizedValue(previousValue);
+  if (!candidate || !earlier) {
+    return false;
+  }
+  return ` ${earlier} `.includes(` ${candidate} `);
+}
+
+const normalizedValue = value =>
+  (value || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
 function buildSegments(text, markers) {
   return markers.map((marker, index) => {

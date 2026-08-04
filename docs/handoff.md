@@ -35,8 +35,10 @@ Dictate  →  Transcribe  →  Extract patient fields  →  Structured report
 Phase 4 continues that line past the preview the SRS stops at:
 
 ```text
-… → Structured report → Review & edit → Save → Dashboard → Reopen / Export PDF
+… → Transcript review → Structured report → Review & edit → Save → Dashboard → Reopen / Export PDF
 ```
+
+Phase 5 adds the transcript review step in front of extraction, and makes the dictation itself controllable: pause, resume, a live status and timer, automatic saving of the in-flight session, and a single audio cue in place of the system recogniser's beep between every sentence.
 
 **Scope boundary:** the application is a *documentation aid only*. It performs no diagnosis and makes no medical decisions (SRS §1.2). Editable fields do not change that — the doctor is the author of every value; the app only proposes.
 
@@ -53,6 +55,7 @@ Full requirements live in [`MedSrcibe_SRS.md`](./MedSrcibe_SRS.md). The two Anti
 | **Phase 3** | Field extraction + structured report | Complete |
 | **Hardening** | Post-Phase-3 correctness pass | Complete, verified on hardware |
 | **Phase 4** | Editable reports, SQLite persistence, doctor dashboard, PDF export | Complete, verified on hardware |
+| **Phase 5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete; host checks green, audio module unverified on hardware |
 
 The hardening round is five commits: `c02369d` (extraction pipeline correctness), `b0c9b6f` (permission rejection + native error surfacing), `9d4ddff` (transcript preserved on error, reset on new dictation), `3095391` (phone numbers + trailing unmarked values), `c59877d` (recording restarts after leaving the screen).
 
@@ -64,17 +67,28 @@ Re-verified on the same device on **2026-07-31**, including the cycle that `c598
 
 This matters: **dictation cannot be tested on the Android emulator at all.** See [§9](#9-known-limitations--future-considerations). Any future agent that tries to validate speech features on an emulator will waste hours reaching a dead end that has already been investigated and ruled out.
 
-Extraction is measured against fixtures rather than the device, since it is pure and deterministic:
+**What Phase 5 has and has not been proven on:** `npm run lint` is clean and all five fixture suites pass (see the gate table below), and the release APK builds with both native modules compiled in. What no host check can cover is which audio stream the recogniser's tone plays on — that varies by OEM, and `suppressSystemTones` resolves with the list it actually muted precisely so it can be read out of logcat on the device. Treat beep suppression as implemented-but-unconfirmed until someone runs it on the Oppo A059.
 
-- **245 / 245** assertions in `scripts/test-extraction.mjs`
-- **165 / 165** fields captured across 15 realistic dictation samples covering template order, scrambled order, conversational and casual speech, clinical shorthand, self-correction, filler words and romanised Hindi
-- **44 / 44** fields across the four realistic samples re-run after `3095391`, plus direct post-processor checks (adjacent numbers, spaced digits, `+91` prefix, self-correction)
+The extraction and report layers are pure and deterministic, so they are measured against fixtures rather than the device. The full automated gate:
+
+| Suite | Assertions | What it guards |
+| :-- | --: | :-- |
+| `npm run test:extraction` | **239 / 239** | The regression floor — template, scrambled, conversational, shorthand, filler and Hinglish dictation |
+| `npm run test:extraction:natural` | **102 / 102** | Natural phrasing: synonyms, pronoun gender, negation, chronic-vs-acute, prescription vs advice |
+| `npm run test:extraction:adversarial` | **31 / 31** | Conflicting and cancelled dictation: explicit-vs-pronoun, corrections, retractions, numeric bleed, restart duplicates |
+| `npm run test:extraction:samples` | **195 / 195** | Twenty real dictation samples, every stated field asserted exactly, each proving its prescription, plus a punctuation-free variant |
+| `npm run test:extraction:synonyms` | **71 / 71** | One assertion per phrase family across all eleven fields, so a full-sample fixture cannot hide a broken marker |
+| `npm run test:extraction:numeric` | **49 / 49** | PIN and phone grouping, country codes, spoken digits, and the numbers that must never become either |
+| `npm run test:extraction:cleanup` | **54 / 54** | Conversational scaffolding removed from all eleven fields, and the clinical modifiers that must survive it |
+| `npm run test:report` | **71 / 71** | Draft bookkeeping, the list-typed prescription round-trip and the PDF payload |
+| `npm run test:completeness` | **61 / 61** | The ten mandatory fields, optional remarks, explicit-none history and prescription, and the Add-More-Speech merge |
+| `npm run test:transcripts` | **35 / 35** | Native vs Anuvadini transcript state, offer rules, and manual edits surviving a source switch |
+| `npm run test:anuvadini` | **66 / 66** | Proxy request assembly, language normalization, every failure path, no auto-retry, and no audio in error payloads |
+| `npm run test:audio` | **31 / 31** | Capture upload budget: WAV sizing, Base64 growth, the 120 s ceiling and its boundaries |
+| `npm run test:proxy` | **77 / 77** | Proxy field translation, Bearer containment, guards before any upstream call, and every error mapping |
+| `npm run lint` | **0 errors** | — |
 
 Those are **clean-text** numbers. Real dictation adds transcription loss on top — see the dropped-words limitation in §9.
-
-The Phase 4 draft and document logic is pure and gets the same treatment:
-
-- **60 / 60** assertions in `scripts/test-report.mjs` — `toDraft` / `applyEdit` / `isDirty` and the PDF payload, covering list fields, empty fields and the edited-flag transitions
 
 ---
 
@@ -89,7 +103,7 @@ Mapped to SRS requirement IDs so this table stays anchored to the specification.
 | **FR-3** | Speech recognition via `@appcitor/react-native-voice-to-text` | Done |
 | **FR-4** | Transcript display, including live interim text | Done |
 | **NFR-4** | Graceful handling of denial, blocking, engine failure | Done |
-| **FR-5** | Information extraction (11 patient fields) | Done |
+| **FR-5** | Information extraction (11 patient fields) | Done — v2, see §5 |
 | **FR-6** | Structured report generation | Done |
 | **FR-7** | Missing-field handling ("Not Available") | Done |
 | **FR-8** | Report preview | Done |
@@ -108,6 +122,32 @@ Phase 4 goes beyond the original FR list — the SRS stops at *preview*, and the
 | Persistence | SQLite via `@op-engineering/op-sqlite`. Survives force-stop and reinstall-free relaunch. |
 | Finalize | `draft` → `final`. Finalized reports stay openable and editable — the pill records intent, it is not a lock. |
 | PDF export | A4 document rendered by an in-app Kotlin TurboModule, handed to the system share sheet (SRS §8). |
+
+Phase 5 turns the recording step from a one-shot capture into a controllable session:
+
+| Capability | Description |
+| :-- | :-- |
+| Pause / Resume | Pause stops the recogniser and freezes the timer; resume appends to the same transcript. Stop is confirmed through a dialog, since an accidental tap used to end a consultation. |
+| Status + timer | A live pill (Listening / Paused / Processing / Stopped) and an MM:SS duration that excludes paused time. |
+| Utterance model | The store holds `segments` — `{ id, text, originalText, confidence, timestamp, edited }` — instead of flat strings. `chunks` remains as a derived mirror so existing readers did not have to change. |
+| Transcript review | A screen between recording and extraction: a full-text editor, or a sentence-by-sentence breakdown with per-utterance edit and delete. "Resume Dictation" returns to recording without discarding anything. |
+| Live field preview | Extraction runs debounced against the transcript so far, so a missed field is visible while the patient is still present. |
+| Session autosave | The live session is written to `active_sessions` on a 2 s debounce and cleared when the report is generated. |
+| Crash recovery | Entering the recording screen with an unfinished session offers Restore or Discard, and the recogniser does not start until that is answered. |
+| Audio cues | One cue at start and resume; the app then attempts to suppress the system recogniser's per-utterance tones for the rest of the session by muting the streams that carry them. Which stream that is depends on the OEM, so suppression is best-effort and unconfirmed on the target hardware (§9). |
+
+Extraction v2 makes the extractor robust to natural clinical speech rather than to field labels:
+
+| Capability | Description |
+| :-- | :-- |
+| Synonym vocabulary | Around 20 additional markers — `suggestive of`, `consistent with`, `previously diagnosed with`, `experiencing`, `investigations advised`, `prescription notes` and others. New phrasing is still a row in `fieldMarkers.js`, never a logic change. |
+| Negation | Negated findings never populate a positive field; the denial is recorded in remarks as `Denies: …`. |
+| Correction and retraction | A correction cue keeps the tail, a restated field label is stripped, and a retraction cancels an earlier positive value — including a cancelled prescription. |
+| Pronoun gender | Gender inferred from a single pronoun at low confidence, with explicit statements always winning and a companion-noun guard. Never inferred from the name. |
+| Chronic vs acute | Chronicity cues route a condition to medical history while presentation cues keep it in symptoms. |
+| Prescription as a list | `prescriptionNotes` is list-typed, one entry per drug, dictated wording preserved. Rows saved while it was a scalar are coerced on load. |
+
+**FR-4 now spans two screens** — the live transcript during dictation and the review screen after it. Extraction reads whatever the doctor approved on the second, never the raw recogniser output.
 
 **FR-1 now means the Dashboard**, not the old landing screen. `HomeScreen.jsx` was deleted; `AnimatedMicButton` and `SectionTitle` are still in use by `DashboardScreen`.
 
@@ -132,9 +172,11 @@ Fix requires `patch-package` on `VoiceToTextModule.kt` plus a native rebuild (~3
 - `EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS` and siblings, so the recognizer stops ending utterances so eagerly
 - Bundle the `EXTRA_LANGUAGE` fix in the same patch (see §9)
 
-### 2. Promote the 15 samples to permanent fixtures
+### 2. Promote the samples to permanent fixtures — done
 
-The realistic dictation samples are currently run ad-hoc, not committed as assertions. Until they are in `scripts/test-extraction.mjs`, a regression in any of those styles goes undetected.
+Delivered with Extraction v2: `scripts/test-extraction-samples.mjs` covers all
+twenty supplied samples, and `test-extraction-adversarial.mjs` covers the
+conflicting and cancelled dictation cases.
 
 ### 3. Recognition accuracy on `en-IN`
 
@@ -187,6 +229,29 @@ Three invariants. Each mirrors a convention this codebase already follows, and e
 - **`pdfService.js` is the only module that touches the native exporter.** No screen imports the TurboModule.
 - **`reportDraft.js` and `reportDocument.js` are pure and RN-free**, with explicit `.js` import extensions, so they run under plain Node exactly like the extraction pipeline — which is what makes `scripts/test-report.mjs` possible with zero test dependencies.
 
+### Layering, Phase 5
+
+```text
+RecordingScreen / TranscriptReviewScreen
+      │
+      ├── useSpeechRecognition        ← recogniser lifecycle, permission, restart loop
+      │        └── dictationSessionManager   ← session lifecycle
+      │                 ├── speechService            (engine driver only)
+      │                 ├── audioFeedbackService     → AudioCue TurboModule
+      │                 ├── sessionPersistenceService → active_sessions
+      │                 ├── extractionService        (debounced live fields)
+      │                 └── useRecordingStore        (segments, status, duration)
+      │
+      └── LiveFieldsPreview / TranscriptView / RecordingControls / modals
+```
+
+The split matters more than the box count:
+
+- **`speechService` remains a pure engine driver.** It starts, stops and normalizes events. It knows nothing about sessions, timers or persistence — which is what keeps an offline or on-device recogniser a one-file swap.
+- **`dictationSessionManager` owns everything that is true of a *session* rather than a *recogniser*:** the duration timer, the audio cues, the debounced autosave and the debounced live extraction. It is a plain singleton with no React dependency, so it can be driven from a voice command or a background trigger later without a hook to host it.
+- **`useSpeechRecognition` still owns the recogniser lifecycle** — permission, the restart loop, error classification, teardown — and delegates session concerns to the manager. Pause and resume are hook actions because they must also cancel the restart timer, which only the hook holds.
+- **The amplitude rule from Phase 2 is unchanged and still binding**: RMS goes to a Reanimated shared value, never to the store. The duration timer follows the same principle — the store holds no ticking value.
+
 ### The `reports` schema
 
 Migration 1, in `src/db/database.js`:
@@ -214,6 +279,27 @@ Two decisions here look redundant and are not:
 The id comes from a small `makeId()` (timestamp + random suffix). `crypto.randomUUID` is **not** assumed to exist on Hermes.
 
 **Migrations are append-only.** `MIGRATIONS` is an ordered array driven by `PRAGMA user_version`; index 0 takes a fresh database to version 1. Editing a migration that has already shipped will not re-run on an installed app — add a new entry instead.
+
+### The `active_sessions` schema
+
+Migration 2, added in Phase 5:
+
+```sql
+CREATE TABLE active_sessions (
+  id               TEXT PRIMARY KEY,   -- 'sess_<base36 timestamp>'
+  segments_json    TEXT NOT NULL,      -- the utterance array, verbatim
+  live_fields_json TEXT,               -- last live extraction result
+  duration_seconds INTEGER NOT NULL DEFAULT 0,
+  updated_at       INTEGER NOT NULL    -- epoch ms
+);
+```
+
+- **One row per session, with the utterances as JSON**, rather than a row per utterance. A session is only ever read whole, so an upsert of one row costs one write per debounce tick instead of N inserts, and it matches the `extracted_json` / `edited_json` convention already in `reports`. Each save rewrites the whole blob — irrelevant at consultation length.
+- **The row is transient by design.** It is deleted when the report is generated or the doctor discards a recovered session. A row that outlives its session means the app died, which is exactly the condition the recovery prompt exists for.
+- **Writes are debounced 2 s and every failure is swallowed.** Autosave is insurance; it must never be able to interrupt a dictation in progress.
+- `sessionPersistenceService` calls `runMigrations()` before every query through its own `openSessionDb()` helper, because dictation can be the first thing that touches the database on a fresh install — the reports store is not guaranteed to have run first.
+
+**Migration 0 must never be edited.** The array is append-only, driven by `PRAGMA user_version`; an installed app at version 1 only runs index 1 to reach version 2.
 
 ### The auto-restart loop — the core of Phase 2
 
@@ -243,24 +329,131 @@ The library forwards raw Android `SpeechRecognizer` error codes. They are split 
 
 **Amplitude never enters React state.** Android emits `onRmsChanged` 10–20×/second; routing that through the store re-rendered the whole screen subtree at that rate and pushed transcript updates 2–3 seconds behind speech. It is a Reanimated shared value (`amplitudeShared` in `speechService`) read inside worklets, so the waveform costs zero renders.
 
-### Extraction pipeline (FR-5)
+### Extraction pipeline (FR-5) — v2
 
-Six stage modules under `src/services/extraction/`, plus `extractionService.js` as a thin orchestrator:
+Ten stages under `src/services/extraction/`, with `extractionService.js` as a thin orchestrator and `clinicalCues.js` holding the contextual vocabulary:
 
 ```text
 Transcript
-   ↓  normalizeTranscript    fillers stripped, whitespace collapsed, + index map
-   ↓  detectMarkers          every field introducer, with positions
-   ↓  segmentTranscript      value = marker end → next marker start
-   ↓  postProcessors         age→number, phone→digits, symptoms→list
-   ↓  validators             reject implausible values
-   ↓  resolveConflicts       repeats, priority, confidence
+   ↓  normalizeTranscript   fillers stripped, whitespace collapsed, + index map
+   ↓  detectNegation        NegEx-lite scopes: cue → terminator
+   ↓  detectMarkers         every field introducer, with positions
+   ↓  segmentTranscript     value = marker end → next marker start
+   ↓  classifySegment       chronicity reroutes a symptom to history
+   ↓  postProcessors        age/phone/PIN typing, findings and medication lists
+   ↓  collectEvidence       gender from patient nouns and pronouns
+   ↓  suppressNegated       drops negated and cancelled candidates
+   ↓  validators            reject implausible values
+   ↓  resolveConflicts      confidence, then position
 Structured record
 ```
 
-**Segmentation is the load-bearing idea.** A value ends wherever the *next* marker begins — whatever field that marker belongs to. No field needs to know what may follow it, so **arbitrary dictation order works by construction**, not by enumerating orderings. An earlier design encoded "which keywords may follow this field" in each terminator and collapsed the moment a doctor led with the diagnosis.
+**Marker segmentation is still the load-bearing idea.** A value ends wherever the *next* marker begins — whatever field that marker belongs to. No field needs to know what may follow it, so **arbitrary dictation order works by construction**, not by enumerating orderings. An earlier design encoded "which keywords may follow this field" in each terminator and collapsed the moment a doctor led with the diagnosis.
 
-Candidate extraction (between segmentation and post-processing) is the **designated seam**: swap it for an NLP or local model to support free-form dictation, leaving every other stage intact.
+#### Scalar replacement vs accumulating fields
+
+`symptoms`, `prescriptionNotes` and `additionalRemarks` merge across sentence boundaries — a doctor lists them over several breaths. **Scalar fields do not.** A scalar restated in a later sentence is a correction, not a continuation.
+
+That distinction was missing originally, and its absence produced the worst class of bug found in validation: *"Diagnosis is viral fever. Actually, diagnosis is throat infection"* merged into one segment, so conflict resolution never saw two candidates and the field held both values concatenated. The same fault silently kept the first of two dictated patient names.
+
+#### Negation
+
+`detectNegation` scopes each cue (`no`, `not`, `denies`, `without`, `negative for`, `ruled out`) from its own position to the first terminator — a sentence end, or a contrast word such as `but` or `however`. Nothing is rewritten; the ranges are consulted by whoever builds a list.
+
+- Negated findings never enter a positive field. `splitFindings` separates positives from negatives item by item.
+- The negatives are still recorded, because a stated denial is clinical information: they surface in remarks as `Denies: chest pain, breathing difficulty`.
+- **Joined with `;`, not `.`** — a full stop trips the suite's no-sentence-bleed assertion, and a semicolon reads correctly in a printed record.
+- `suppressNegated` covers the scalar fields, where a marker fires happily inside a negation: `history of` matches "no history of diabetes" and would otherwise record diabetes as a positive condition.
+
+#### Correction and retraction
+
+Three mechanisms, in order:
+
+1. **Intra-segment cut.** A correction cue (`sorry`, `correction`, `I mean`, `make that`) discards everything before it and keeps the tail. Numeric fields additionally take the *last* plausible value, because `actually` is stripped as a filler in stage 1 and may not survive to be seen as a cue.
+2. **Restated-label strip.** The surviving tail often repeats the field label — *"…correction, diagnosis is viral infection"* — so `RESTATED_LABEL_PATTERN` removes it. Without this the diagnosis field literally read "Diagnosis is viral infection".
+3. **Cancellation of an earlier positive.** A negation *preceded by a retraction cue* cancels a previous value in the same field, matched on a 6-character stem so that "no history of diabetes" cancels "known diabetic", and "do not start Paracetamol" cancels the earlier prescription.
+
+The retraction-cue requirement is the safety guard. Without it a plain "no chest pain" would delete any earlier finding that merely shared a word.
+
+#### Pronoun-based gender evidence
+
+Precedence is strict: **explicit declaration > explicit patient noun > pronoun**. A single pronoun is enough, at confidence `0.45` — deliberately below `LOW_CONFIDENCE_THRESHOLD`, so an inferred gender always renders with the `UNCERTAIN` badge.
+
+- Conflicting evidence at the same level yields **blank**, never a guess.
+- Gender is **never** inferred from the patient's name.
+- A companion-noun guard ignores pronouns within ~40 characters of `mother`, `husband`, `attendant` and similar, so "Her husband says the patient has fever" does not set the patient's gender.
+
+That guard is a word list, not comprehension. It covers the common phrasings and will not catch every case, which is exactly why the inference sits below the uncertainty threshold.
+
+#### Symptoms vs medical history
+
+`classifySegment` reroutes a symptoms segment to medical history when chronicity cues are present (`for N years`, `known`, `chronic`, `k/c/o`) and no presentation cue contradicts them (`today`, `now`, `since yesterday`). It runs **before** segment merging — otherwise "has had diabetes for ten years" and "presents with fever", both symptoms markers, fuse into one span and the distinction is unrecoverable.
+
+**Trap worth remembering:** a bare `past` in the chronicity list matched *"for the past three days"* and silently moved acute symptoms into medical history, emptying the symptoms field in several real dictation samples. The cue now requires `past history`, and `for the past N days` counts as presentation.
+
+#### Prescription vs advice
+
+Both "advised paracetamol" and "advised blood tests" are grammatical, so the marker alone cannot decide. The rule: **only weak markers reroute.** A prescription segment opened by the ambiguous `advised` marker whose content parses as no medication moves to remarks; a segment opened by an explicit marker (`prescribed`, `Rx`, `prescription notes`) keeps its content even with no parsable dose, because "Prescribed paracetamol" is a prescription.
+
+`prescription notes` needs its own explicit marker specifically so that it spans the word `notes`. The bare `notes` remarks marker starts one word later and, before this existed, stole the medication out of nine of ten real dictation samples.
+
+#### Conversational cleanup is field-aware
+
+A value must hold the clinical information, not the phrasing that introduced
+it. Two mechanisms do that: the **marker consumes the introducer** ("diagnosis
+is", "known case of", "I am prescribing"), and `trimLeading`/`trimTrailing`
+strip whatever connective survives at the edges.
+
+Diagnostic hedging is the one piece that is **not** global. `looks like`,
+`seems to be`, `most likely` and friends live in `DIAGNOSIS_HEDGE_PATTERN` and
+are applied only by the `diagnosis` processor. They used to sit in the shared
+leading trim, where they cost an address its first word — "Likely Lane, Sector
+10" became "Lane, Sector 10".
+
+What is never stripped is clinical meaning: `suspected dengue` and `probable
+dengue` keep their qualifier, and `severe`, `mild`, `persistent`, `dry`,
+`productive` and `recurrent` stay attached to their symptom. Hedging that
+frames the doctor's confidence goes; hedging that qualifies the condition
+stays.
+
+Every extracted field also carries `sourceText` — the dictated words the value
+came from — beside the marker that matched and the offsets into the original
+transcript. The raw transcript is never rewritten.
+
+#### Numeric normalization
+
+Speech recognisers group digits arbitrarily, so `parseNumbers.js` recovers the
+number from the grouping rather than matching it literally. `digitGroups` joins
+a run **only** across spaces and hyphens; every other character ends it, which
+is what stops a PIN from swallowing the phone number in the next sentence.
+
+- **PIN** is six digits not starting at zero. Grouping applies only inside a
+  marked segment — the unmarked fallback keeps its strict contiguous pattern, so
+  an explicit "PIN code" stays stronger evidence than a bare six-digit number.
+- **Phone** reduces to the bare ten digits the report stores: `+91`, `91` and a
+  leading `0` are stripped when what remains is a plausible Indian mobile. A
+  candidate that cannot be reduced is rejected rather than stored half-parsed.
+- **Spoken digits** run through the same normalizer, so "plus nine one nine
+  five five six…" resolves to the same ten digits as "+91 9556774130".
+
+Dosage and duration are unaffected by construction: "500 milligrams" ends the
+run at `m`, and "5 days" is a single-digit group — neither reaches six or ten.
+
+#### Medication parsing
+
+`parseMedication` splits one entry per drug on `,` and `;`, and on `and` **only** when a drug-like token follows — so "twice daily for five days and review after three days" never splits mid-instruction. Strength, frequency, duration, route, form and timing are parsed for validation and traceability; the dictated wording is preserved verbatim and never normalised or reordered.
+
+#### Confidence and evidence
+
+Bands are unchanged and still mean **marker specificity, not probability**; nothing is calibrated. Explicit marker 0.90–0.95, typed pattern 0.75–0.90, contextual 0.60–0.75, pronoun inference 0.45.
+
+**There is no explicit conflict-precedence layer, and none is justified.** Every failure found in adversarial validation was a segment-merge bug or missing vocabulary — never a ranking error. Once two validated candidates reach `resolveConflicts`, "higher confidence wins, equal confidence means later wins" already produces the corrected value, which is why the age, contact-number and diagnosis corrections all pass. If a future case shows two validated candidates ranked wrongly, that is when precedence earns its place.
+
+**Conflict policy:** confidence first, then position. Equal confidence means a later value wins, which is what makes self-correction work — *"age 32… sorry, 22"*. Putting position first let a weak late marker override an explicit early one.
+
+**Precision over recall throughout.** No marker and no fallback means the field stays `null`. A wrong value in a patient record is worse than a blank one.
+
+Offsets are translated through the normalizer's index map. Filler-stripping shifts every position, and offsets taken from the normalized string would look valid while pointing at the wrong characters.
 
 **Results carry metadata, not bare strings:**
 
@@ -269,13 +462,7 @@ Candidate extraction (between segmentation and post-processing) is the **designa
   start: 244, end: 281 }   // offsets into the ORIGINAL transcript
 ```
 
-`confidence` is **marker specificity, not probability** — nothing is calibrated. Bands are documented in `fieldMarkers.js`. Values below `LOW_CONFIDENCE_THRESHOLD` render an `UNCERTAIN` badge, so a hedged "probably dengue" never reads as confidently as an explicit diagnosis.
-
-Offsets are translated through the normalizer's index map. Filler-stripping shifts every position, and offsets taken from the normalized string would look valid while pointing at the wrong characters.
-
-**Conflict policy:** confidence first, then position. Equal confidence means a later value wins, which is what makes self-correction work — *"age 32… sorry, 22"*. Putting position first let a weak late marker override an explicit early one.
-
-**Precision over recall throughout.** No marker and no fallback means the field stays `null`. A wrong value in a patient record is worse than a blank one.
+Candidate extraction remains the **designated seam**: swap it for an NLP or local model to support free-form dictation, leaving every other stage intact.
 
 ---
 
@@ -283,33 +470,39 @@ Offsets are translated through the normalizer's index map. Filler-stripping shif
 
 ```
 MedScribe/
-├── App.jsx                          # Root: SafeAreaProvider + NavigationContainer + dark theme
+├── App.jsx                          # Root: SafeAreaProvider + NavigationContainer + theme
 ├── index.js                         # AppRegistry entry
 ├── src/
 │   ├── components/
 │   │   ├── AnimatedMicButton.jsx    # Hero mic, Reanimated breathing + ripple
 │   │   ├── AppHeader.jsx            # Brand header, optional back button
 │   │   ├── ListeningVisualizer.jsx  # Aura + spectrum driven by real mic RMS
+│   │   ├── LiveFieldsPreview.jsx    # Fields recognised so far, shown mid-dictation
+│   │   ├── MicGlyph.jsx             # Mic icon drawn from Views (no icon font in use)
 │   │   ├── PermissionGate.jsx       # denied / blocked / unavailable states (NFR-4)
 │   │   ├── RecordingControls.jsx    # State-aware button row
 │   │   ├── ReportField.jsx          # One report row — editable when given onChange
 │   │   ├── ScreenContainer.jsx      # Safe-area wrapper, status bar
 │   │   ├── SectionTitle.jsx         # Title + subtitle block
+│   │   ├── SessionRecoveryModal.jsx # Restore / discard an interrupted dictation
+│   │   ├── StopConfirmationModal.jsx # Confirm before ending a session
 │   │   └── TranscriptView.jsx       # Live transcript, final + italic interim (FR-4)
 │   ├── constants/
 │   │   ├── recordingStates.js       # State machine, error maps, timings
 │   │   ├── patientFields.js         # The 11 SRS fields, order, "Not Available"
-│   │   └── fieldMarkers.js          # MARKER VOCABULARY — the extension point
+│   │   ├── fieldMarkers.js          # MARKER VOCABULARY — the extension point
+│   │   └── clinicalCues.js          # Negation, chronicity, pronoun, medication cues
 │   ├── db/
 │   │   ├── database.js              # Connection + user_version migrations (SQL lives here)
 │   │   └── reportsRepository.js     # CRUD; the ONLY other file that writes SQL
 │   ├── hooks/
 │   │   └── useSpeechRecognition.js  # Session orchestrator — the heart of Phase 2
 │   ├── navigation/
-│   │   └── RootNavigator.jsx        # Native stack: Dashboard → Recording → Report
+│   │   └── RootNavigator.jsx        # Dashboard → Recording → TranscriptReview → Report
 │   ├── screens/
-│   │   ├── DashboardScreen.jsx      # FR-1 launch screen: saved reports + New Dictation
-│   │   ├── RecordingScreen.jsx      # FR-2/3/4 state machine
+│   │   ├── DashboardScreen.jsx      # FR-1 launch screen: overview, quick actions, reports
+│   │   ├── RecordingScreen.jsx      # FR-2/3/4 state machine, pause/resume, recovery
+│   │   ├── TranscriptReviewScreen.jsx  # Correct the transcript before extraction (FR-4)
 │   │   └── ReportScreen.jsx         # Editable draft, Save, Finalize, Download PDF
 │   ├── services/
 │   │   ├── permissionService.js     # Mic permission, result → state mapping
@@ -318,30 +511,44 @@ MedScribe/
 │   │   ├── reportDraft.js           # Pure: extraction → editable draft, merge, diff
 │   │   ├── reportDocument.js        # Pure: draft → PDF payload
 │   │   ├── pdfService.js            # Native-exporter isolation layer
-│   │   └── extraction/              # One module per pipeline stage
+│   │   ├── dictationSessionManager.js   # Session lifecycle: timer, cues, autosave, live fields
+│   │   ├── audioFeedbackService.js  # AudioCue isolation layer; no-ops without the module
+│   │   ├── sessionPersistenceService.js # Debounced autosave + recovery (active_sessions)
+│   │   └── extraction/              # One module per pipeline stage (v2)
 │   │       ├── normalizeTranscript.js   #   fillers + index map
+│   │       ├── detectNegation.js        #   negation scopes, findings split
 │   │       ├── detectMarkers.js         #   find introducers
 │   │       ├── segmentTranscript.js     #   slice between markers
-│   │       ├── postProcessors.js        #   age/phone/symptom shaping
+│   │       ├── classifySegment.js       #   chronic condition -> history
+│   │       ├── postProcessors.js        #   typing, findings + medication lists
+│   │       ├── collectEvidence.js       #   gender from nouns and pronouns
+│   │       ├── suppressNegated.js       #   drop negated / cancelled values
+│   │       ├── parseMedication.js       #   one entry per drug, attributes
 │   │       ├── validators.js            #   reject implausible values
 │   │       └── resolveConflicts.js      #   repeats, self-correction
 │   ├── specs/
-│   │   └── NativePdfExporter.js     # TurboModule spec — codegen input, lint-ignored (§7)
+│   │   ├── NativePdfExporter.js     # TurboModule spec — codegen input, lint-ignored (§7)
+│   │   └── NativeAudioCue.js        # TurboModule spec — cues + system-tone suppression
 │   ├── store/
-│   │   ├── useRecordingStore.js     # Zustand: status, chunks, partial, error, amplitude
+│   │   ├── useRecordingStore.js     # Zustand: status, segments, partial, duration, live fields
 │   │   └── useReportsStore.js       # Zustand: saved reports, load/save/finalize/remove
 │   ├── utils/
-│   │   └── datetime.js              # Display timestamps + PDF filename stamps
+│   │   └── datetime.js              # Display + relative timestamps, PDF filename stamps
 │   └── theme/
 │       ├── colors.js  spacing.js  typography.js  index.js
 ├── scripts/
-│   ├── test-extraction.mjs          # 245 assertions, `npm run test:extraction`
-│   └── test-report.mjs              # 60 assertions,  `npm run test:report`
+│   ├── test-extraction.mjs          # 238 assertions — regression floor
+│   ├── test-extraction-natural.mjs  # 89  assertions — natural phrasing
+│   ├── test-extraction-adversarial.mjs # 31 assertions — conflicts and corrections
+│   ├── test-extraction-samples.mjs  # 142 assertions — 20 real dictation samples
+│   └── test-report.mjs              # 71  assertions — draft + PDF payload
 ├── android/                         # compileSdk/targetSdk 36, minSdk 24, New Arch + Hermes
 │   └── app/src/main/
 │       ├── java/com/medscribe/pdf/  # PdfExporterModule.kt + PdfExporterPackage.kt
+│       ├── java/com/medscribe/audio/ # AudioCueModule.kt + AudioCuePackage.kt
 │       └── res/xml/file_paths.xml   # FileProvider paths for the share sheet
 ├── ios/                             # Present but never built — see §9
+├── DESIGN.md                        # Design system: colour, type, spacing, components
 └── docs/
     ├── MedSrcibe_SRS.md             # Requirements (authoritative)
     ├── Antigravity_Plan.md          # Historical — Phase 1 plan
@@ -373,6 +580,8 @@ The spec is validated where it matters: React Native codegen reads it at build t
 
 So `pdfService` requires the spec inside a function, caches it, and converts the failure into *"PDF export is unavailable in this build. Rebuild the app natively…"*. Failing at the button press with a readable message beats failing at startup with none. The `require` is deliberate — a static `import` would defeat the whole arrangement.
 
+`audioFeedbackService` follows the identical pattern for `NativeAudioCue`, with one difference: it has no user-facing failure message. Every method simply no-ops when the module is absent, so a JS-only reload still dictates normally — it just beeps the way it did before Phase 5. **Editing anything under `src/specs/` requires a native rebuild**; codegen emits `NativePdfExporterSpec.java` and `NativeAudioCueSpec.java` at build time, and the Kotlin modules must satisfy them to compile.
+
 ### Migrations run from the store, not from `App.jsx`
 
 `ensureSchema()` fires on the first `useReportsStore` call that needs the database, not at app boot. That keeps a database failure attached to the operation that can actually surface it: `loadAll` catches it into `error`, and the dashboard renders a real message.
@@ -386,6 +595,56 @@ Running migrations in `App.jsx` instead would either crash the app before the na
 That is why **adding a report field is a JavaScript change in `reportDocument.js` only** — no Kotlin edit, no codegen, no native rebuild. It is also why the spec passes a JSON *string* rather than a structured object: the payload shape churns as fields are added, and a string keeps that churn out of the native ABI.
 
 The exporter writes to `getExternalFilesDir(DIRECTORY_DOCUMENTS)/MedScribe/`. App-scoped storage means **no runtime storage permission on any API level**, while still being shareable through `FileProvider` and reachable with `adb pull`.
+
+### ⚠️ Muted audio streams must always be restored
+
+`AudioCueModule` mutes `STREAM_MUSIC`, `STREAM_SYSTEM` and `STREAM_NOTIFICATION` for the length of a dictation, because the start/end tone heard between sentences is played by the **system** RecognitionService and cannot be disabled through `SpeechRecognizer`. Audio focus does not help — focus asks other apps to yield, it does not silence a system service.
+
+That makes "restore, always" the module's central obligation, and it is enforced five separate ways:
+
+1. JavaScript calls `restoreNow()` on pause, stop, error, unmount and backgrounding.
+2. `onHostPause`, `onHostDestroy` and `invalidate()` restore natively — these cover a JS crash, a red box and a Metro reload, none of which run JS cleanup.
+3. A 120-second watchdog inside the module restores unconditionally if JS never calls back.
+4. A `SharedPreferences` flag is `commit()`-ed *before* the first mute and read in the module's constructor, so a process death mid-session is undone on the next launch.
+5. Android's AudioService drops per-client mute requests when the process dies. A bonus, never relied upon.
+
+**Do not add the ring/notification/alarm group behind a Do-Not-Disturb permission request.** On API 23+ those streams need DND access, and asking a doctor to hand over DND control to silence a beep is not a trade this app makes. Each stream is muted in its own try/catch, and a refusal is logged rather than escalated.
+
+### ⚠️ The session starts inside `beginSession`, not around it
+
+`dictationSessionManager.startSession()` — which plays the cue and starts the duration timer — is called from inside `beginSession`, after the permission gate. It was originally called from a wrapper that only the retry button used, so the mount path never reached it: the timer never started and a whole consultation displayed `00:00`. Anything that must happen once per session belongs inside `beginSession`.
+
+### ⚠️ `stop()` must work from `PAUSED`
+
+`pause()` clears `shouldContinueRef`, and `stop()`'s guard used to return early when that ref was false. Stopping from a paused session therefore set the status to `PROCESSING`, scheduled no finalize, and hung there forever. The guard now admits `PAUSED` explicitly. Any new state that stops the restart loop has to be considered here too.
+
+### ⚠️ Crash recovery is answered before the recogniser starts
+
+`RecordingScreen` holds a `recoveryState` of `checking → prompting → settled` and passes `autoStart` to the hook; the mount effect only begins a session once that is settled. Starting first would run `beginSession`'s `reset()` against the very transcript being restored, and whichever won the race would decide whether the doctor keeps their dictation. A restored session then starts with `keepTranscript: true`, which is the same path "Resume Dictation" uses from the review screen.
+
+### ⚠️ Anything on a filled accent surface uses `colors.onPrimary`
+
+The palette is light (see `DESIGN.md`), so `colors.textPrimary` is near-black. On a `primaryAccent` button that fails contrast outright. Filled blue surfaces — primary buttons, the dashboard CTA, the round mic, active toggles — take `colors.onPrimary`; outline and surface variants keep `textPrimary`. The status bar is `dark-content` for the same reason.
+
+### ⚠️ Scalar fields must not merge across a sentence boundary
+
+`mergeAdjacentSameField` exists so "Additional remarks: advise hydration, CBC, and review after three days" stays one value. That case is intra-sentence. A **scalar** field restated in a *later* sentence is a correction, and merging it concatenates the retracted value onto the new one — *"Diagnosis is viral fever. Actually, diagnosis is throat infection"* produced a field holding both. Only `symptoms`, `prescriptionNotes` and `additionalRemarks` merge across sentences.
+
+### ⚠️ `past` is not a chronicity cue on its own
+
+A bare `past` matched *"for the past three days"* and rerouted acute symptoms into medical history, leaving the symptoms field empty in several real samples while medical history held the symptom text. The cue requires `past history`; `for the past N days` is a presentation cue. Any new chronicity vocabulary must be checked against an acute phrasing before it ships.
+
+### ⚠️ Cancellation requires a retraction cue
+
+`suppressNegated` lets a negation cancel an *earlier* positive value, matched on a 6-character word stem. That is only safe because it additionally requires a retraction cue (`correction`, `sorry`, `actually`) near the negation, or an explicit cancel instruction (`do not start`). Without that guard a plain "no chest pain" would delete any earlier finding sharing a word.
+
+### The restated field label is stripped after a correction
+
+Doctors repeat the label when restating a value: *"…correction, diagnosis is viral infection"*. The surviving tail therefore begins with the marker phrase, and the diagnosis field read "Diagnosis is viral infection" until `RESTATED_LABEL_PATTERN` was applied inside `afterLastCorrection`.
+
+### `prescription notes` needs its own marker
+
+The bare `notes` remarks marker starts one word after `prescription`, so it opened a remarks segment and left the prescription segment empty — the medication went to remarks in **nine of ten** real dictation samples. The explicit `prescription notes` marker spans the word `notes`, so overlap resolution drops the competitor. Any new two-word marker whose second word is itself a marker needs the same treatment.
 
 ### ⚠️ Never call `subscription.remove()` on speech listeners
 The library's native `removeListeners` iterates its event map **while deleting from that same map**:
@@ -492,6 +751,8 @@ Deliberate. Metro resolves extensionless imports, Node does not. The explicit ex
 | `react-native-screens` | ^4.26.2 | Native screen primitives. |
 | `react-native-safe-area-context` | ^5.8.0 | Safe-area insets. |
 
+**Phase 5 added no npm dependencies.** The app now ships **two** app-local Kotlin TurboModules — `com/medscribe/pdf` and `com/medscribe/audio`. Neither is autolinked; both are registered by hand in `MainApplication.kt`, and forgetting that line is a silent failure that only shows up as a missing module at runtime.
+
 **PDF generation has no dependency.** It is an in-app Kotlin TurboModule over the platform's own `android.graphics.pdf.PdfDocument` (`android/app/src/main/java/com/medscribe/pdf/`). No maintained React Native PDF *generator* currently supports the New Architecture, and an abandoned dependency sitting in the export path of a medical record is a liability. `androidx.core`'s `FileProvider`, already on the classpath, handles sharing.
 
 ### Installed but **not imported anywhere**
@@ -512,7 +773,19 @@ Android's `SpeechRecognizer` is single-utterance, so the hook restarts it after 
 
 Google's own voice typing holds one continuous streaming session, which is why it feels seamless; this library's API cannot do that.
 
-This is why **device results trail fixture results**. Extraction scores 165/165 on clean text, but a field whose introducer phrase was never transcribed is unrecoverable — no amount of marker vocabulary helps. Mitigation is documented in §4.
+This is why **device results trail fixture results**. Extraction passes its 238-assertion regression floor on clean text, but a field whose introducer phrase was never transcribed is unrecoverable — no amount of marker vocabulary helps. Mitigation is documented in §4.
+
+### Unpunctuated adjacent symptoms stay grouped
+
+Continuous dictation with no commas — "fever cough weakness" — yields `["Fever cough", "Weakness"]` rather than three items. Symptoms split on commas and `and` only.
+
+**This is deliberate and is not being fixed.** Splitting on whitespace would corrupt every multi-word symptom in real use: "chest pain", "body pain", "sore throat", "shortness of breath", "burning micturition". No word is lost — two simply share one list item, and the doctor can split them on the review screen. `scripts/test-extraction-adversarial.mjs` asserts the current grouped output, so changing it is a conscious decision rather than a surprise regression.
+
+A future fix would need a symptom lexicon or an NLP stage at the candidate-extraction seam, not a smarter separator.
+
+### Gender inference can follow the wrong person
+
+A single pronoun sets the gender, at low confidence and with the `UNCERTAIN` badge. The companion-noun guard covers "her husband", "his mother" and similar, but it is a word list rather than comprehension — an unusual phrasing that refers to an accompanying relative can still set the patient's gender. The badge is the mitigation; the doctor sees the field flagged for review.
 
 ### Extraction cannot infer meaning without a marker
 
@@ -520,9 +793,12 @@ Deterministic matching handles explicit and hedged phrasing, but not genuine inf
 
 Sparse dictation with almost no markers — *"Hema Sharma twenty-two female Sector Twelve…"* — is the concrete argument for replacing the candidate-extraction stage with an NLP model, not for adding more regexes. Pushing further with patterns means guessing, which violates the precision-over-recall rule.
 
-### The 15 realistic samples are not yet permanent fixtures
+### Dictation samples are now committed fixtures
 
-They were run ad-hoc during development and score 165/165, but only the earlier 245 assertions are committed in `scripts/test-extraction.mjs`. Until the samples are added there, a regression in one of those dictation styles will not be caught.
+Superseded. Twenty real dictation samples are committed in
+`scripts/test-extraction-samples.mjs`, asserting every field each sample
+states, plus a check that each prescription is populated and names its drug.
+A regression in any of those dictation styles now fails the gate.
 
 ### PDF layout is verified on one device only
 
@@ -583,6 +859,24 @@ Suggested cleanup (**not performed** — it rewrites the index and deserves a de
 git rm -r --cached android/app/.cxx
 # then add android/app/.cxx/ to .gitignore
 ```
+
+### Beep suppression is unverified across OEMs
+
+`AudioCueModule` mutes `STREAM_MUSIC`, `STREAM_SYSTEM` and `STREAM_NOTIFICATION`, which covers a stock Android recogniser. Which stream carries the tone is not contractual, and OEM skins differ. `suppressSystemTones` resolves with the streams it actually muted so the answer can be read from logcat on a real device rather than guessed. If a device turns out to need the ring group, that needs Do-Not-Disturb access, and the deliberate decision (§7) is not to ask for it.
+
+Two things follow: the feature has not been confirmed on the Oppo A059, and "no beeps on my phone" is not evidence it works on another.
+
+### Live extraction re-runs the whole pipeline
+
+`runLiveExtraction` extracts against the entire transcript on every debounce tick rather than incrementally. Extraction is pure and fast at consultation length, so this is the right trade today — incremental extraction would need per-utterance offsets and conflict resolution across ticks, which is real complexity for no current benefit. It is worth revisiting if sessions ever run to many minutes of continuous speech.
+
+### Session recovery is only offered on the recording screen
+
+An interrupted session is found when the doctor next enters Recording. A crash-killed session is invisible from the Dashboard, so a doctor who reopens the app and browses reports has no indication that unfinished dictation exists. A dashboard banner reading the same `getActiveSession()` would close it.
+
+### Release APKs are ignored, but only going forward
+
+The shared release APK is written to `dist/`, which `.gitignore` now covers. That only stops *new* accidents: `.gitignore` does not untrack anything already committed, so if an APK ever landed in the index it still needs `git rm --cached dist/<file>.apk` — the same caveat as the `.cxx` artifacts above.
 
 ### iOS is entirely unverified
 

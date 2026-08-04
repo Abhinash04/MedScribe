@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
-    color: colors.primaryBackground,
+    color: colors.onPrimary,
     backgroundColor: colors.textMuted,
     paddingHorizontal: spacing.xs,
     paddingVertical: 1,
@@ -160,8 +160,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
-    color: colors.primaryBackground,
-    backgroundColor: colors.secondaryAccent,
+    color: colors.onPrimary,
+    // primaryAccent, not secondaryAccent: white on #0284C7 is ~4:1, which
+    // fails AA for 10pt text. #2563EB reaches ~5.2:1 with the same white.
+    backgroundColor: colors.primaryAccent,
     paddingHorizontal: spacing.xs,
     paddingVertical: 1,
     borderRadius: 4,

@@ -7,32 +7,47 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import AppHeader from '../components/AppHeader';
+import MissingFieldsModal from '../components/MissingFieldsModal';
 import ReportField from '../components/ReportField';
 import ScreenContainer from '../components/ScreenContainer';
-import { PATIENT_FIELDS } from '../constants/patientFields';
+import { PATIENT_FIELDS, REQUIRED_FIELDS } from '../constants/patientFields';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import { extractPatientFields } from '../services/extractionService';
 import { exportReport, shareReport } from '../services/pdfService';
 import {
+  blockingFields,
+  validateReportCompleteness,
+} from '../services/reportCompleteness';
+import {
   applyEdit,
-  countFilledFields,
+  countRequiredFilled,
+  draftValues,
   fromStored,
   isDirty,
+  mergeExtraction,
   toDraft,
 } from '../services/reportDraft';
+import {
+  buildDiagnosticText,
+  capture,
+  DIAGNOSTICS_ENABLED,
+} from '../dev/diagnostics';
 import useRecordingStore, {
-  selectFullTranscript,
+  CONSULTATION_STAGE,
+  selectActiveTranscript,
 } from '../store/useRecordingStore';
+import dictationSessionManager from '../services/dictationSessionManager';
 import useReportsStore from '../store/useReportsStore';
 import { colors, spacing, typography } from '../theme';
 import { formatDateTime } from '../utils/datetime';
 
-const TOTAL_FIELDS = PATIENT_FIELDS.length;
+const TOTAL_REQUIRED = REQUIRED_FIELDS.length;
 
 /**
  * Structured report (SRS FR-6, FR-7, FR-8) — now an editable draft.
@@ -51,8 +66,10 @@ const ReportScreen = ({ route }) => {
   const navigation = useNavigation();
   const openedId = route?.params?.reportId ?? null;
 
-  const transcriptFromStore = useRecordingStore(selectFullTranscript);
+  const transcriptFromStore = useRecordingStore(selectActiveTranscript);
   const resetRecording = useRecordingStore(state => state.reset);
+  const setReportDraft = useRecordingStore(state => state.setReportDraft);
+  const setStage = useRecordingStore(state => state.setStage);
 
   const fetchReport = useReportsStore(state => state.fetchReport);
   const saveNew = useReportsStore(state => state.saveNew);
@@ -74,6 +91,8 @@ const ReportScreen = ({ route }) => {
   const [busy, setBusy] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [showMissing, setShowMissing] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   // Fresh dictation: extraction is pure and deterministic, so it runs once for
   // the transcript and the draft owns every value from then on.
@@ -81,11 +100,27 @@ const ReportScreen = ({ route }) => {
     if (openedId || draft) {
       return;
     }
-    const record = extractPatientFields(transcriptFromStore);
+    const record = capture(() => extractPatientFields(transcriptFromStore));
+    // A draft already exists when the doctor came through the completeness
+    // gate, or went back to dictate the missing details. Merging keeps the
+    // values they typed by hand; a fresh session has nothing to merge.
+    const stored = useRecordingStore.getState().reportDraft;
     setExtracted(record);
-    setDraft(toDraft(record));
+    setDraft(stored ? mergeExtraction(stored, record) : toDraft(record));
     setTranscript(transcriptFromStore);
   }, [openedId, transcriptFromStore, draft]);
+
+  // Mirrored into the session store so an "Add More Speech" round trip through
+  // the recording screen does not lose the edits, and written through to the
+  // database so a crash here does not either.
+  useEffect(() => {
+    if (openedId || !draft) {
+      return;
+    }
+    setReportDraft(draft);
+    setStage(CONSULTATION_STAGE.REPORT);
+    dictationSessionManager.persistCurrentSession();
+  }, [openedId, draft, setReportDraft, setStage]);
 
   // Saved report: load values, transcript and metadata from the database.
   useEffect(() => {
@@ -130,8 +165,16 @@ const ReportScreen = ({ route }) => {
   }, [openedId, fetchReport]);
 
   const captured = useMemo(
-    () => (draft ? countFilledFields(draft) : 0),
+    () => (draft ? countRequiredFilled(draft) : 0),
     [draft],
+  );
+  const completeness = useMemo(
+    () => (draft ? validateReportCompleteness(draft) : null),
+    [draft],
+  );
+  const blocking = useMemo(
+    () => (completeness ? blockingFields(completeness) : []),
+    [completeness],
   );
   const dirty = useMemo(
     () => (draft ? isDirty(draft, savedDraft) : false),
@@ -160,8 +203,13 @@ const ReportScreen = ({ route }) => {
     const now = Date.now();
     setCreatedAt(now);
     setSavedAt(now);
+    // The consultation now lives in the reports table, so the recovery row is
+    // no longer needed — this is the point the draft stops being "unfinished".
+    if (!openedId) {
+      await dictationSessionManager.clearSession();
+    }
     return id;
-  }, [draft, reportId, saveExisting, saveNew, transcript, extracted]);
+  }, [draft, reportId, saveExisting, saveNew, transcript, extracted, openedId]);
 
   const handleSave = useCallback(async () => {
     setBusy(true);
@@ -175,6 +223,10 @@ const ReportScreen = ({ route }) => {
   }, [persist]);
 
   const handleFinalize = useCallback(async () => {
+    if (completeness && !completeness.isComplete) {
+      setShowMissing(true);
+      return;
+    }
     setBusy(true);
     try {
       // Finalizing an unsaved report would lose the edits it claims to lock.
@@ -191,9 +243,13 @@ const ReportScreen = ({ route }) => {
     } finally {
       setBusy(false);
     }
-  }, [persist, finalizeReport]);
+  }, [persist, finalizeReport, completeness]);
 
   const handleExportPdf = useCallback(async () => {
+    if (completeness && !completeness.isComplete) {
+      setShowMissing(true);
+      return;
+    }
     setBusy(true);
     try {
       // Save first so the PDF and the stored record can never disagree.
@@ -211,15 +267,70 @@ const ReportScreen = ({ route }) => {
     } finally {
       setBusy(false);
     }
-  }, [persist, draft, createdAt, status]);
+  }, [persist, draft, createdAt, status, completeness]);
 
   const handleDone = useCallback(() => {
     resetRecording();
     navigation.navigate('Dashboard');
   }, [resetRecording, navigation]);
 
+  // Two steps: the unsaved-changes guard has to be disabled before the
+  // navigation is dispatched, or the doctor is asked to discard edits that are
+  // in fact being carried into the next dictation.
+  const shareDiagnostics = useCallback(async () => {
+    try {
+      await Share.share({
+        message: buildDiagnosticText({
+          segments: useRecordingStore.getState().segments,
+          transcript,
+          record: extracted,
+          draft,
+          rendered: draftValues(draft),
+        }),
+      });
+    } catch (error) {
+      Alert.alert(
+        'Diagnostics unavailable',
+        error?.message || 'The diagnostic dump could not be shared.',
+      );
+    }
+  }, [draft, transcript, extracted]);
+
+  /**
+   * The dump contains the entire consultation, so sharing it is an explicit,
+   * named decision rather than a side effect of a long press. Unreachable in a
+   * release build — the handler is not even attached.
+   */
+  const handleDiagnostics = useCallback(() => {
+    if (!draft || !DIAGNOSTICS_ENABLED) {
+      return;
+    }
+    Alert.alert(
+      'Share diagnostic dump?',
+      'This sends the full patient record — name, contact details, symptoms, ' +
+        'diagnosis and prescription — along with the original dictation, to ' +
+        'whichever app you pick.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Share', style: 'destructive', onPress: () => shareDiagnostics() },
+      ],
+    );
+  }, [draft, shareDiagnostics]);
+
+  const handleAddMoreSpeech = useCallback(() => {
+    setShowMissing(false);
+    setLeaving(true);
+  }, []);
+
+  useEffect(() => {
+    if (!leaving) {
+      return;
+    }
+    navigation.navigate('Recording', { resume: true });
+  }, [leaving, navigation]);
+
   // Guard unsaved edits on back, gesture back and hardware back alike.
-  usePreventRemove(dirty && !busy, ({ data }) => {
+  usePreventRemove(dirty && !busy && !leaving, ({ data }) => {
     Alert.alert(
       'Discard changes?',
       'This report has unsaved edits.',
@@ -259,6 +370,7 @@ const ReportScreen = ({ route }) => {
         showBack
         onBackPress={() => navigation.goBack()}
         title="Patient Report"
+        onLongPressTitle={DIAGNOSTICS_ENABLED ? handleDiagnostics : undefined}
       />
 
       <KeyboardAvoidingView
@@ -273,9 +385,9 @@ const ReportScreen = ({ route }) => {
         >
           <View style={styles.summaryCard}>
             <Text style={styles.summaryCount}>
-              {captured} of {TOTAL_FIELDS}
+              {captured} of {TOTAL_REQUIRED}
             </Text>
-            <Text style={styles.summaryLabel}>fields captured</Text>
+            <Text style={styles.summaryLabel}>required fields captured</Text>
             <View style={styles.metaRow}>
               <View
                 style={[
@@ -285,7 +397,14 @@ const ReportScreen = ({ route }) => {
                     : styles.statusDraft,
                 ]}
               >
-                <Text style={styles.statusText}>
+                <Text
+                  style={[
+                    styles.statusText,
+                    status === REPORT_STATUS.FINAL
+                      ? styles.statusTextFinal
+                      : styles.statusTextDraft,
+                  ]}
+                >
                   {status === REPORT_STATUS.FINAL ? 'FINAL' : 'DRAFT'}
                 </Text>
               </View>
@@ -297,6 +416,22 @@ const ReportScreen = ({ route }) => {
               Tap any field to correct it before saving.
             </Text>
           </View>
+
+          {blocking.length ? (
+            <View style={styles.missingCard}>
+              <Text style={styles.missingTitle}>
+                {blocking.length} required{' '}
+                {blocking.length === 1 ? 'detail is' : 'details are'} still
+                needed
+              </Text>
+              <Text style={styles.missingList}>
+                {blocking.map(field => field.label).join(' • ')}
+              </Text>
+              <Text style={styles.missingHint}>
+                Type them in below, or add more speech.
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.reportCard}>
             {PATIENT_FIELDS.map(field => (
@@ -350,7 +485,7 @@ const ReportScreen = ({ route }) => {
           accessibilityLabel="Save report"
         >
           {busy ? (
-            <ActivityIndicator color={colors.textPrimary} />
+            <ActivityIndicator color={colors.onPrimary} />
           ) : (
             <Text style={styles.primaryLabel}>
               {reportId ? 'Save Changes' : 'Save Report'}
@@ -399,6 +534,15 @@ const ReportScreen = ({ route }) => {
           <Text style={styles.doneText}>Back to dashboard</Text>
         </Pressable>
       </View>
+
+      <MissingFieldsModal
+        visible={showMissing}
+        missing={completeness?.missingFields ?? []}
+        invalid={completeness?.invalidFields ?? []}
+        onAddSpeech={handleAddMoreSpeech}
+        onReviewFields={() => setShowMissing(false)}
+        onDismiss={() => setShowMissing(false)}
+      />
     </ScreenContainer>
   );
 };
@@ -456,7 +600,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  // The draft pill is a pale surface fill, the final pill is solid green —
+  // one shared label colour cannot be readable on both.
+  statusTextDraft: {
     color: colors.textPrimary,
+  },
+  statusTextFinal: {
+    color: colors.onPrimary,
   },
   savedLabel: {
     ...typography.smallCaption,
@@ -468,6 +619,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: spacing.sm,
     paddingHorizontal: spacing.md,
+  },
+  missingCard: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.secondaryAccent,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  missingTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  missingList: {
+    ...typography.body,
+    color: colors.secondaryAccent,
+    fontWeight: '600',
+  },
+  missingHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   reportCard: {
     backgroundColor: colors.surface,
@@ -520,7 +693,7 @@ const styles = StyleSheet.create({
   primaryLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: colors.onPrimary,
     letterSpacing: 0.3,
   },
   secondaryRow: {

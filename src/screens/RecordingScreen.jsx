@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
@@ -13,8 +13,13 @@ import RecordingControls from '../components/RecordingControls';
 import ScreenContainer from '../components/ScreenContainer';
 import SectionTitle from '../components/SectionTitle';
 import TranscriptView from '../components/TranscriptView';
+import LiveFieldsPreview from '../components/LiveFieldsPreview';
+import StopConfirmationModal from '../components/StopConfirmationModal';
+import SessionRecoveryModal from '../components/SessionRecoveryModal';
 import { RECORDING_STATE } from '../constants/recordingStates';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
+import useRecordingStore from '../store/useRecordingStore';
+import { getActiveSession, clearActiveSession } from '../services/sessionPersistenceService';
 import { colors, spacing, typography } from '../theme';
 
 const HEADLINE = {
@@ -26,16 +31,20 @@ const HEADLINE = {
     title: 'Listening...',
     subtitle: 'Speak clearly into your device microphone.',
   },
+  [RECORDING_STATE.PAUSED]: {
+    title: 'Dictation Paused',
+    subtitle: 'Tap Resume to continue recording without losing progress.',
+  },
   [RECORDING_STATE.PROCESSING]: {
     title: 'Processing...',
     subtitle: 'Finalizing your dictation.',
   },
   [RECORDING_STATE.SUCCESS]: {
-    title: 'Dictation complete',
-    subtitle: 'Review the transcript below.',
+    title: 'Dictation Complete',
+    subtitle: 'Review the transcript before generating report.',
   },
   [RECORDING_STATE.ERROR]: {
-    title: 'Recognition stopped',
+    title: 'Recognition Stopped',
     subtitle: '',
   },
 };
@@ -46,56 +55,133 @@ const PERMISSION_STATES = [
   RECORDING_STATE.UNAVAILABLE,
 ];
 
-/**
- * Recording interface (SRS FR-2, FR-3, FR-4, NFR-4).
- *
- * Owns the entire dictation flow: this screen requests microphone permission
- * on mount, so HomeScreen stays presentational and every permission outcome
- * is handled in one place.
- */
-const RecordingScreen = ({ navigation }) => {
+function formatDuration(totalSeconds = 0) {
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+const RecordingScreen = ({ navigation, route }) => {
+  const resumeRequested = route?.params?.resume === true;
+
+  // Recovery is answered before the recognizer is allowed to start. Starting
+  // first would run beginSession's reset() against the very transcript being
+  // restored, and whichever won the race would decide whether the doctor keeps
+  // their dictation.
+  const [recoveryState, setRecoveryState] = useState(
+    resumeRequested ? 'settled' : 'checking',
+  );
+  const [recoveredSessionData, setRecoveredSessionData] = useState(null);
+  const [restoredTranscript, setRestoredTranscript] = useState(false);
+
   const {
     status,
     transcript,
     partialText,
     errorMessage,
+    durationSeconds,
+    liveExtractedFields,
+    isPaused,
+    pause,
+    resume,
+    resumeDictation,
     stop,
     retry,
     openAppSettings,
-  } = useSpeechRecognition();
+  } = useSpeechRecognition({
+    autoStart: recoveryState === 'settled',
+    keepTranscript: restoredTranscript || resumeRequested,
+  });
+
+  const restoreSession = useRecordingStore(state => state.restoreSession);
+
+  const [showStopModal, setShowStopModal] = useState(false);
+
+  // Check for an interrupted session before the first start.
+  useEffect(() => {
+    if (resumeRequested) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const active = await getActiveSession();
+      if (cancelled) {
+        return;
+      }
+      if (active?.segments?.length > 0) {
+        setRecoveredSessionData(active);
+        setRecoveryState('prompting');
+      } else {
+        setRecoveryState('settled');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeRequested]);
+
+  const handleRestoreSession = useCallback(() => {
+    if (recoveredSessionData) {
+      restoreSession(recoveredSessionData);
+      setRestoredTranscript(true);
+    }
+    setRecoveredSessionData(null);
+    setRecoveryState('settled');
+  }, [recoveredSessionData, restoreSession]);
+
+  const handleDiscardRecovery = useCallback(async () => {
+    if (recoveredSessionData) {
+      await clearActiveSession(recoveredSessionData.id);
+    }
+    setRecoveredSessionData(null);
+    setRecoveryState('settled');
+  }, [recoveredSessionData]);
+
+  // Coming back from the transcript review to add more. The screen is still
+  // mounted and already settled, so the session has to be told explicitly.
+  useEffect(() => {
+    if (!resumeRequested) {
+      return;
+    }
+    navigation.setParams({ resume: false });
+    resumeDictation();
+  }, [resumeRequested, resumeDictation, navigation]);
 
   const goBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
 
   /**
-   * Hand off to extraction + report preview (FR-5 to FR-8). The transcript is
-   * already in the recording store, so nothing needs passing as a param.
+   * Hand off to Transcript Review step.
    */
-  const handleContinue = useCallback(() => {
-    navigation.navigate('Report');
+  const handleContinueToReview = useCallback(() => {
+    navigation.navigate('TranscriptReview');
   }, [navigation]);
 
+  const handleTapStop = useCallback(() => {
+    setShowStopModal(true);
+  }, []);
+
+  const handleConfirmStop = useCallback(async () => {
+    setShowStopModal(false);
+    await stop();
+    navigation.navigate('TranscriptReview');
+  }, [stop, navigation]);
+
   const handleBackPress = useCallback(async () => {
-    // Release the recognizer before unmounting; the hook's cleanup also
-    // destroys it, but stopping first avoids a trailing error event.
     await stop();
     goBack();
   }, [stop, goBack]);
 
-  /**
-   * Route the hardware/gesture back through the same teardown as the header
-   * arrow. Without this the press can fall through to the default activity
-   * finish while the recognizer is still live, which tears down the React root
-   * and leaves a blank screen with "Dropping event due to root view being
-   * removed" in logcat.
-   */
   useEffect(() => {
     const subscription = BackHandler.addEventListener(
       'hardwareBackPress',
       () => {
         handleBackPress();
-        return true; // consumed — never fall through to the default handler
+        return true;
       },
     );
 
@@ -122,11 +208,40 @@ const RecordingScreen = ({ navigation }) => {
   const isProcessing = status === RECORDING_STATE.PROCESSING;
   const isError = status === RECORDING_STATE.ERROR;
   const showTranscript =
-    !isChecking && (!!transcript || !!partialText || isListening);
+    !isChecking && (!!transcript || !!partialText || isListening || isPaused);
 
   return (
     <ScreenContainer style={styles.container}>
-      <AppHeader showBack onBackPress={handleBackPress} title="" />
+      <View style={styles.headerBar}>
+        <AppHeader showBack onBackPress={handleBackPress} title="" />
+        <View style={styles.headerRight}>
+          <View
+            style={[
+              styles.statusPill,
+              isListening && styles.statusPillListening,
+              isPaused && styles.statusPillPaused,
+            ]}
+          >
+            <View
+              style={[
+                styles.statusDot,
+                isListening && styles.dotListening,
+                isPaused && styles.dotPaused,
+              ]}
+            />
+            <Text style={styles.statusText}>
+              {isListening
+                ? 'Listening'
+                : isPaused
+                ? 'Paused'
+                : isProcessing
+                ? 'Processing'
+                : 'Stopped'}
+            </Text>
+          </View>
+          <Text style={styles.timerText}>{formatDuration(durationSeconds)}</Text>
+        </View>
+      </View>
 
       <View style={styles.centerSection}>
         <SectionTitle
@@ -143,7 +258,7 @@ const RecordingScreen = ({ navigation }) => {
         ) : null}
 
         {!isChecking && !isError ? (
-          <ListeningVisualizer isActive={isListening} />
+          <ListeningVisualizer isActive={isListening} isPaused={isPaused} />
         ) : null}
 
         {isProcessing ? (
@@ -154,6 +269,9 @@ const RecordingScreen = ({ navigation }) => {
           />
         ) : null}
       </View>
+
+      {/* Live Extracted Fields Preview */}
+      <LiveFieldsPreview fields={liveExtractedFields} style={styles.livePreview} />
 
       {showTranscript ? (
         <TranscriptView
@@ -167,10 +285,12 @@ const RecordingScreen = ({ navigation }) => {
         <RecordingControls
           status={status}
           hasTranscript={!!transcript}
-          onStop={stop}
+          onPause={pause}
+          onResume={resume}
+          onStop={handleTapStop}
           onRestart={retry}
           onRetry={retry}
-          onContinue={handleContinue}
+          onContinue={handleContinueToReview}
         />
 
         {isListening ? (
@@ -180,8 +300,33 @@ const RecordingScreen = ({ navigation }) => {
               Pause freely — recording continues until you tap stop.
             </Text>
           </View>
+        ) : isPaused ? (
+          <View style={styles.hintRow}>
+            <Text style={[typography.smallCaption, styles.hintText]}>
+              Dictation paused. Tap Resume to continue recording.
+            </Text>
+          </View>
         ) : null}
       </View>
+
+      {/* Stop Confirmation Dialog */}
+      <StopConfirmationModal
+        visible={showStopModal}
+        onCancel={() => setShowStopModal(false)}
+        onConfirm={handleConfirmStop}
+      />
+
+      {/* Crash Recovery Dialog */}
+      <SessionRecoveryModal
+        visible={recoveryState === 'prompting'}
+        onRestore={handleRestoreSession}
+        onDiscard={handleDiscardRecovery}
+        savedTime={
+          recoveredSessionData?.updatedAt
+            ? new Date(recoveredSessionData.updatedAt).toLocaleTimeString()
+            : ''
+        }
+      />
     </ScreenContainer>
   );
 };
@@ -189,6 +334,56 @@ const RecordingScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     justifyContent: 'space-between',
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  statusPillListening: {
+    borderColor: colors.primaryAccent,
+  },
+  statusPillPaused: {
+    borderColor: colors.secondaryAccent,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.textMuted,
+  },
+  dotListening: {
+    backgroundColor: colors.primaryAccent,
+  },
+  dotPaused: {
+    backgroundColor: colors.secondaryAccent,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  timerText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primaryAccent,
+    fontVariant: ['tabular-nums'],
   },
   centerSection: {
     flex: 1,
@@ -198,6 +393,10 @@ const styles = StyleSheet.create({
   },
   spinner: {
     marginTop: spacing.lg,
+  },
+  livePreview: {
+    marginHorizontal: spacing.sm,
+    marginBottom: spacing.xs,
   },
   transcript: {
     marginHorizontal: spacing.sm,

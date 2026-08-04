@@ -99,7 +99,11 @@ xcuserdata/
 /coverage/
 *.lcov
 
-# Temporary files
+# Build output
+dist/
+
+# Temporary & log files
 *.tmp
 *.temp
 *.log
+

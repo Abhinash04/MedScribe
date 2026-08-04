@@ -78,12 +78,33 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.medscribe"
+
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId "com.medscribe"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+
+        // The Anuvadini credential is injected from android/local.properties,
+        // which is gitignored, so it is never committed and is never a literal
+        // in a JavaScript source file. A checkout without it still builds — the
+        // app then reports the alternative transcription as unconfigured.
+        //
+        // This keeps the token out of Git. It does NOT make it secret inside a
+        // compiled APK; only moving the call behind our own service does that.
+        def localProperties = new Properties()
+        def localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.withInputStream { localProperties.load(it) }
+        }
+        buildConfigField "String",
+            "ANUVADINI_STT_TOKEN",
+            "\"${localProperties.getProperty('ANUVADINI_STT_TOKEN', '')}\""
     }
     signingConfigs {
         debug {

@@ -92,7 +92,7 @@ expectFields(
     age: '22 Years',
     symptoms: ['Fever', 'Cough'],
     medicalHistory: 'Diabetes',
-    prescriptionNotes: 'Paracetamol',
+    prescriptionNotes: ['Paracetamol'],
   },
 );
 
@@ -162,7 +162,7 @@ const REALISTIC = [
    "Good morning. The patient's name is Hema Sharma. She's 22 years old. She's been running a fever since Monday and also has a persistent cough and headache. She is diabetic. I think this is most likely a viral infection. Please start her on paracetamol twice daily. She stays in Sector 12, Dwarka, New Delhi, PIN code 110078. Her phone number is 9876543210. Ask her to come back after three days with blood reports.",
    { patientName: 'Hema Sharma', age: '22 Years', pinCode: '110078',
      contactNumber: '9876543210', diagnosis: 'Viral infection',
-     prescriptionNotes: 'Paracetamol twice daily' }],
+     prescriptionNotes: ['Paracetamol twice daily'] }],
 
   ['R5 fillers',
    "Okay... so... um... the patient's name is Hema Sharma. She's, uh, around 22 years old. Female. She lives in Sector 12, Dwarka, New Delhi. PIN code 110078. Her contact number is 9876543210. She's been having fever, cough, and headache. She is actually a known diabetic. I think it's probably a viral infection. Let's start paracetamol twice a day. We'll also advise blood tests.",

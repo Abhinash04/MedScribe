@@ -14,6 +14,7 @@
 import { NOT_AVAILABLE } from '../src/constants/patientFields.js';
 import { extractPatientFields } from '../src/services/extractionService.js';
 import { buildReportDocument, slugify } from '../src/services/reportDocument.js';
+import { formatRelativeDateTime } from '../src/utils/datetime.js';
 import {
   addListItem,
   applyEdit,
@@ -192,6 +193,40 @@ check('9 slug of nothing', slugify('   '), 'patient-report');
 // Edits, not extraction, are what gets printed.
 const editedDoc = buildReportDocument(corrected, { now: NOW });
 check('9 pdf prints the edited value', editedDoc.patient[0].value, 'Rahul Sharma');
+
+// ── 11. Prescription became a list ──────────────────────────────────────────
+// Rows saved while the field was a scalar must survive the type change.
+const legacy = fromStored({
+  prescriptionNotes: {
+    value: 'Paracetamol 500 mg twice daily',
+    original: 'Paracetamol 500 mg twice daily',
+    confidence: 0.95,
+    source: 'prescribed',
+  },
+});
+check('11 legacy string becomes a list', legacy.prescriptionNotes.value, [
+  'Paracetamol 500 mg twice daily',
+]);
+check('11 legacy original is coerced too', legacy.prescriptionNotes.original, [
+  'Paracetamol 500 mg twice daily',
+]);
+check('11 legacy row is not marked edited', legacy.prescriptionNotes.edited, false);
+check('11 empty legacy string becomes an empty list', fromStored({
+  prescriptionNotes: { value: '', original: '' },
+}).prescriptionNotes.value, []);
+
+// ── 10. Dashboard timestamps ────────────────────────────────────────────────
+// The list is scanned between consultations, so today and yesterday read as
+// words; anything older stays an unambiguous date.
+const CLOCK = new Date(2026, 2, 12, 14, 5).getTime();
+const MINUTE = 60 * 1000;
+check('10 today', formatRelativeDateTime(CLOCK - 30 * MINUTE, CLOCK), 'Today, 13:35');
+check('10 start of today', formatRelativeDateTime(new Date(2026, 2, 12, 0, 0).getTime(), CLOCK), 'Today, 00:00');
+check('10 yesterday', formatRelativeDateTime(new Date(2026, 2, 11, 19, 15).getTime(), CLOCK), 'Yesterday, 19:15');
+check('10 last minute of yesterday', formatRelativeDateTime(new Date(2026, 2, 11, 23, 59).getTime(), CLOCK), 'Yesterday, 23:59');
+check('10 older falls back to a date', formatRelativeDateTime(new Date(2026, 2, 9, 8, 5).getTime(), CLOCK), '9 Mar 2026, 08:05');
+check('10 missing timestamp', formatRelativeDateTime(0, CLOCK), '');
+check('10 invalid timestamp', formatRelativeDateTime(Number.NaN, CLOCK), '');
 
 // ── Report ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed\n`);

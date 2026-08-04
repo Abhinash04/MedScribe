@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     borderColor: colors.secondaryAccent,
   },
   micButtonPressed: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: colors.primaryHover,
   },
   micIconContainer: {
     width: 44,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 28,
     borderRadius: 9,
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.onPrimary,
     alignItems: 'center',
     paddingTop: 4,
   },
@@ -230,20 +230,20 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14,
     borderWidth: 3,
-    borderColor: colors.textPrimary,
+    borderColor: colors.onPrimary,
     borderTopWidth: 0,
     marginTop: -10,
   },
   micStem: {
     width: 3,
     height: 8,
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.onPrimary,
     marginTop: 1,
   },
   micBase: {
     width: 18,
     height: 3,
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.onPrimary,
     borderRadius: 1.5,
   },
 });

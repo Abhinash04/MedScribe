@@ -49,6 +49,33 @@ const MIGRATIONS = [
       'CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports (created_at DESC);',
     );
   },
+  db => {
+    db.executeSync(`
+      CREATE TABLE IF NOT EXISTS active_sessions (
+        id               TEXT PRIMARY KEY,
+        segments_json    TEXT NOT NULL,
+        live_fields_json TEXT,
+        duration_seconds INTEGER NOT NULL DEFAULT 0,
+        updated_at       INTEGER NOT NULL
+      );
+    `);
+  },
+  // A consultation is more than its transcript: the report draft and the
+  // doctor's manual edits have to survive an interruption too, and `stage`
+  // is what lets recovery reopen where they left off.
+  db => {
+    const columns = [
+      "draft_json        TEXT",
+      "native_json       TEXT",
+      "anuvadini_json    TEXT",
+      "transcript_source TEXT NOT NULL DEFAULT 'native'",
+      "stage             TEXT NOT NULL DEFAULT 'recording'",
+      'created_at        INTEGER',
+    ];
+    for (const column of columns) {
+      db.executeSync(`ALTER TABLE active_sessions ADD COLUMN ${column};`);
+    }
+  },
 ];
 
 /**

@@ -20,7 +20,7 @@ const ScreenContainer = ({ children, style }) => {
       ]}
     >
       <StatusBar
-        barStyle="light-content"
+        barStyle="dark-content"
         backgroundColor={colors.primaryBackground}
         translucent
       />

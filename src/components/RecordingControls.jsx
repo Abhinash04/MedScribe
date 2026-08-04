@@ -3,13 +3,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { RECORDING_STATE } from '../constants/recordingStates';
 import { colors, spacing } from '../theme';
 
-const ControlButton = ({ label, onPress, variant = 'primary', disabled, hint }) => (
+const ControlButton = ({ label, onPress, variant = 'primary', disabled, hint, style }) => (
   <Pressable
     style={({ pressed }) => [
       styles.button,
       styles[variant],
       disabled && styles.disabled,
       pressed && !disabled && styles.pressed,
+      style,
     ]}
     onPress={onPress}
     disabled={disabled}
@@ -18,20 +19,26 @@ const ControlButton = ({ label, onPress, variant = 'primary', disabled, hint }) 
     accessibilityHint={hint}
     accessibilityState={{ disabled: !!disabled }}
   >
-    <Text style={[styles.label, disabled && styles.labelDisabled]}>{label}</Text>
+    <Text
+      style={[
+        styles.label,
+        variant === 'primary' && styles.labelOnAccent,
+        disabled && styles.labelDisabled,
+      ]}
+    >
+      {label}
+    </Text>
   </Pressable>
 );
 
 /**
  * State-aware control row for the recording session.
- *
- * "Continue to report" hands the captured transcript to the extraction and
- * report preview flow (SRS FR-5 to FR-8). It is disabled when nothing was
- * transcribed, since there would be nothing to extract.
  */
 const RecordingControls = ({
   status,
   hasTranscript,
+  onPause,
+  onResume,
   onStop,
   onRestart,
   onRetry,
@@ -41,10 +48,39 @@ const RecordingControls = ({
     return (
       <View style={styles.row}>
         <ControlButton
+          label="Pause"
+          variant="secondary"
+          onPress={onPause}
+          hint="Pauses speech recognition"
+          style={styles.flexButton}
+        />
+        <ControlButton
           label="Stop dictation"
           variant="danger"
           onPress={onStop}
-          hint="Ends recording and finalizes the transcript"
+          hint="Ends recording and finalizes transcript"
+          style={styles.flexButton}
+        />
+      </View>
+    );
+  }
+
+  if (status === RECORDING_STATE.PAUSED) {
+    return (
+      <View style={styles.row}>
+        <ControlButton
+          label="Resume"
+          variant="primary"
+          onPress={onResume}
+          hint="Resumes speech recognition"
+          style={styles.flexButton}
+        />
+        <ControlButton
+          label="Stop dictation"
+          variant="danger"
+          onPress={onStop}
+          hint="Ends recording and finalizes transcript"
+          style={styles.flexButton}
         />
       </View>
     );
@@ -54,10 +90,10 @@ const RecordingControls = ({
     return (
       <View style={styles.column}>
         <ControlButton
-          label="Continue to report"
+          label="Review Transcript"
           onPress={onContinue}
           disabled={!hasTranscript}
-          hint="Extracts patient details and opens the structured report"
+          hint="Opens the transcript review screen before report generation"
         />
         {!hasTranscript ? (
           <Text style={styles.phaseNote}>
@@ -75,23 +111,20 @@ const RecordingControls = ({
   }
 
   if (status === RECORDING_STATE.ERROR) {
-    // A failure part-way through must not discard what was already captured.
-    // "Try again" resets the store, so when there is text worth keeping the
-    // primary action is to carry it forward instead.
     return (
       <View style={styles.column}>
         {hasTranscript ? (
           <ControlButton
-            label="Continue to report"
+            label="Review Transcript"
             onPress={onContinue}
-            hint="Builds a report from the text captured before the error"
+            hint="Review text captured before error"
           />
         ) : null}
         <ControlButton
           label={hasTranscript ? 'Record again' : 'Try again'}
           variant={hasTranscript ? 'secondary' : 'primary'}
           onPress={onRetry}
-          hint="Discards the current transcript and restarts recognition"
+          hint="Restarts speech recognition"
         />
       </View>
     );
@@ -104,7 +137,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   column: {
     alignItems: 'center',
@@ -112,10 +147,14 @@ const styles = StyleSheet.create({
   },
   button: {
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     borderRadius: 999,
-    minWidth: 220,
+    minWidth: 140,
     alignItems: 'center',
+  },
+  flexButton: {
+    flex: 1,
+    maxWidth: 180,
   },
   primary: {
     backgroundColor: colors.primaryAccent,
@@ -138,10 +177,14 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.textPrimary,
     letterSpacing: 0.3,
+  },
+  // Filled blue button: ink-on-blue fails contrast, so the label flips.
+  labelOnAccent: {
+    color: colors.onPrimary,
   },
   labelDisabled: {
     color: colors.textMuted,

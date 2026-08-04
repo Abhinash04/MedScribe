@@ -9,6 +9,11 @@
  *      field is normally correcting themselves ("age 22... sorry, 42"), and a
  *      repeated marker carries equal confidence, so this is what makes
  *      self-correction work.
+ *   3. List fields accumulate instead. "Complains of fever and cough... she
+ *      also complains of headache" is three findings, not one — a doctor
+ *      adding to a list is adding, not correcting. Retractions and negations
+ *      are already removed before this stage, so nothing the doctor took back
+ *      can survive the union.
  *
  * @param {Array} candidates validated candidates
  * @returns {Object} field key -> winning candidate
@@ -24,12 +29,38 @@ export function resolveConflicts(candidates) {
       continue;
     }
 
+    if (Array.isArray(current.value) && Array.isArray(candidate.value)) {
+      byField[candidate.field] = accumulate(current, candidate);
+      continue;
+    }
+
     if (shouldReplace(current, candidate)) {
       byField[candidate.field] = candidate;
     }
   }
 
   return byField;
+}
+
+function accumulate(current, next) {
+  const [first, second] = next.start > current.start ? [current, next] : [next, current];
+  const seen = new Set();
+  const value = [...first.value, ...second.value].filter(item => {
+    const key = String(item).toLowerCase();
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+
+  const winner = shouldReplace(current, next) ? next : current;
+  return {
+    ...winner,
+    value,
+    start: Math.min(current.start, next.start),
+    end: Math.max(current.end, next.end),
+  };
 }
 
 function shouldReplace(current, next) {
