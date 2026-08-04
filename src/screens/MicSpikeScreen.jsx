@@ -304,6 +304,13 @@ const MicSpikeScreen = ({ navigation }) => {
       activeRef.current = true;
       await safeStart();
 
+      // An abort landing during safeStart would otherwise arm the timers below
+      // and overwrite resolvePhaseRef, which belongs to whichever run is
+      // current by then.
+      if (runTokenRef.current !== token) {
+        return null;
+      }
+
       if (phase.capture && phase.captureDelayMs > 0) {
         captureDelayRef.current = setTimeout(async () => {
           captureDelayRef.current = null;

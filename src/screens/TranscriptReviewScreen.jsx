@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -62,6 +62,28 @@ const TranscriptReviewScreen = ({ navigation }) => {
    */
   const [viewedSource, setViewedSource] = useState(selectedSource);
   const [blocked, setBlocked] = useState(null);
+  /**
+   * Both footer actions persist and then navigate. A second tap arriving before
+   * the first await settles would extract twice and dispatch two navigations,
+   * so the guard is a ref — state would not update until the next render, which
+   * is exactly the window a double tap lands in.
+   */
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+
+  const beginSubmit = useCallback(() => {
+    if (submittingRef.current) {
+      return false;
+    }
+    submittingRef.current = true;
+    setSubmitting(true);
+    return true;
+  }, []);
+
+  const endSubmit = useCallback(() => {
+    submittingRef.current = false;
+    setSubmitting(false);
+  }, []);
 
   const viewingAi = viewedSource === TRANSCRIPT_SOURCE.ANUVADINI;
   const aiReady = anuvadini.status === ANUVADINI_STATUS.READY && !!anuvadini.text.trim();
@@ -127,25 +149,51 @@ const TranscriptReviewScreen = ({ navigation }) => {
   }, [navigation, editableText, commitEditor, setStage]);
 
   const handleGenerateReport = useCallback(async () => {
-    commitEditor(editableText);
-    // Extraction always runs against the SELECTED transcript, which is not
-    // necessarily the one being viewed.
-    const text = selectActiveTranscript(useRecordingStore.getState());
-
-    const record = extractPatientFields(text);
-    const draft = reportDraft ? mergeExtraction(reportDraft, record) : toDraft(record);
-    setReportDraft(draft);
-
-    const result = validateReportCompleteness(draft);
-    if (!result.isComplete) {
-      setBlocked(result);
+    if (!beginSubmit()) {
       return;
     }
+    try {
+      commitEditor(editableText);
+      // Extraction always runs against the SELECTED transcript, which is not
+      // necessarily the one being viewed.
+      const text = selectActiveTranscript(useRecordingStore.getState());
 
-    setStage(CONSULTATION_STAGE.REPORT);
-    await dictationSessionManager.persistNow();
-    navigation.navigate('Report');
-  }, [editableText, commitEditor, navigation, reportDraft, setReportDraft, setStage]);
+      const record = extractPatientFields(text);
+      const draft = reportDraft ? mergeExtraction(reportDraft, record) : toDraft(record);
+      setReportDraft(draft);
+
+      const result = validateReportCompleteness(draft);
+      if (!result.isComplete) {
+        setBlocked(result);
+        return;
+      }
+
+      setStage(CONSULTATION_STAGE.REPORT);
+      await dictationSessionManager.persistNow();
+      // Released before navigating: this screen is popped straight afterwards,
+      // so clearing in a finally would land on an unmounted component.
+      endSubmit();
+      navigation.navigate('Report');
+    } catch (error) {
+      Alert.alert(
+        'Could not open the report',
+        error?.message || 'The consultation was not lost — try again.',
+      );
+    } finally {
+      if (submittingRef.current) {
+        endSubmit();
+      }
+    }
+  }, [
+    editableText,
+    commitEditor,
+    navigation,
+    reportDraft,
+    setReportDraft,
+    setStage,
+    beginSubmit,
+    endSubmit,
+  ]);
 
   /**
    * The only thing that changes which transcript the report is built from.
@@ -186,11 +234,26 @@ const TranscriptReviewScreen = ({ navigation }) => {
   }, [handleResumeRecording]);
 
   const handleReviewFields = useCallback(async () => {
-    setBlocked(null);
-    setStage(CONSULTATION_STAGE.REPORT);
-    await dictationSessionManager.persistNow();
-    navigation.navigate('Report');
-  }, [navigation, setStage]);
+    if (!beginSubmit()) {
+      return;
+    }
+    try {
+      setBlocked(null);
+      setStage(CONSULTATION_STAGE.REPORT);
+      await dictationSessionManager.persistNow();
+      endSubmit();
+      navigation.navigate('Report');
+    } catch (error) {
+      Alert.alert(
+        'Could not open the report',
+        error?.message || 'The consultation was not lost — try again.',
+      );
+    } finally {
+      if (submittingRef.current) {
+        endSubmit();
+      }
+    }
+  }, [navigation, setStage, beginSubmit, endSubmit]);
 
   const aiStatusLine = () => {
     if (!isTranscriptionAvailable()) {
@@ -310,15 +373,27 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
       <View style={styles.footer}>
         <Pressable
-          style={({ pressed }) => [styles.button, styles.resumeBtn, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.button,
+            styles.resumeBtn,
+            pressed && styles.pressed,
+            submitting && styles.disabled,
+          ]}
           onPress={handleResumeRecording}
+          disabled={submitting}
         >
           <Text style={styles.resumeBtnText}>+ Add More Speech</Text>
         </Pressable>
 
         <Pressable
-          style={({ pressed }) => [styles.button, styles.generateBtn, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.button,
+            styles.generateBtn,
+            pressed && styles.pressed,
+            submitting && styles.disabled,
+          ]}
           onPress={handleGenerateReport}
+          disabled={submitting}
         >
           <Text style={styles.generateBtnText}>Generate Report ➔</Text>
         </Pressable>
@@ -482,6 +557,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   resumeBtnText: {
     fontSize: 16,

@@ -10,6 +10,14 @@ import { setTraceSink } from '../services/extraction/trace.js';
  * stores nothing.
  */
 
+/**
+ * The dump is complete by design — it carries the whole patient record and the
+ * original dictation, which is exactly what makes it useful for debugging and
+ * exactly why it must not exist in a build handed to a doctor. Development
+ * only; there is no hidden production path for exporting patient data.
+ */
+export const DIAGNOSTICS_ENABLED = typeof __DEV__ !== 'undefined' && __DEV__;
+
 const stages = new Map();
 
 const record = (stage, payload) => {

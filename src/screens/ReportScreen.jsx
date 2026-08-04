@@ -33,7 +33,11 @@ import {
   mergeExtraction,
   toDraft,
 } from '../services/reportDraft';
-import { buildDiagnosticText, capture } from '../dev/diagnostics';
+import {
+  buildDiagnosticText,
+  capture,
+  DIAGNOSTICS_ENABLED,
+} from '../dev/diagnostics';
 import useRecordingStore, {
   CONSULTATION_STAGE,
   selectActiveTranscript,
@@ -273,10 +277,7 @@ const ReportScreen = ({ route }) => {
   // Two steps: the unsaved-changes guard has to be disabled before the
   // navigation is dispatched, or the doctor is asked to discard edits that are
   // in fact being carried into the next dictation.
-  const handleDiagnostics = useCallback(async () => {
-    if (!draft) {
-      return;
-    }
+  const shareDiagnostics = useCallback(async () => {
     try {
       await Share.share({
         message: buildDiagnosticText({
@@ -294,6 +295,27 @@ const ReportScreen = ({ route }) => {
       );
     }
   }, [draft, transcript, extracted]);
+
+  /**
+   * The dump contains the entire consultation, so sharing it is an explicit,
+   * named decision rather than a side effect of a long press. Unreachable in a
+   * release build — the handler is not even attached.
+   */
+  const handleDiagnostics = useCallback(() => {
+    if (!draft || !DIAGNOSTICS_ENABLED) {
+      return;
+    }
+    Alert.alert(
+      'Share diagnostic dump?',
+      'This sends the full patient record — name, contact details, symptoms, ' +
+        'diagnosis and prescription — along with the original dictation, to ' +
+        'whichever app you pick.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Share', style: 'destructive', onPress: () => shareDiagnostics() },
+      ],
+    );
+  }, [draft, shareDiagnostics]);
 
   const handleAddMoreSpeech = useCallback(() => {
     setShowMissing(false);
@@ -348,7 +370,7 @@ const ReportScreen = ({ route }) => {
         showBack
         onBackPress={() => navigation.goBack()}
         title="Patient Report"
-        onLongPressTitle={handleDiagnostics}
+        onLongPressTitle={DIAGNOSTICS_ENABLED ? handleDiagnostics : undefined}
       />
 
       <KeyboardAvoidingView
