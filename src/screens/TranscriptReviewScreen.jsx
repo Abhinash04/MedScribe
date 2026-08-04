@@ -12,7 +12,15 @@ import AppHeader from '../components/AppHeader';
 import MissingFieldsModal from '../components/MissingFieldsModal';
 import ScreenContainer from '../components/ScreenContainer';
 import SectionTitle from '../components/SectionTitle';
+import RefinedTranscriptCard from '../components/RefinedTranscriptCard';
+import { refineTranscript } from '../services/transcriptRefinement';
+import {
+  canOffer,
+  TRANSCRIPT_SOURCE,
+} from '../services/consultationTranscripts';
 import useRecordingStore, {
+  CONSULTATION_STAGE,
+  selectActiveTranscript,
   selectFullTranscript,
 } from '../store/useRecordingStore';
 import { colors, spacing, typography } from '../theme';
@@ -39,9 +47,18 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const setFullTranscript = useRecordingStore(state => state.setFullTranscript);
   const reportDraft = useRecordingStore(state => state.reportDraft);
   const setReportDraft = useRecordingStore(state => state.setReportDraft);
+  const setStage = useRecordingStore(state => state.setStage);
+  const activeTranscript = useRecordingStore(selectActiveTranscript);
+  const anuvadini = useRecordingStore(state => state.anuvadini);
+  const transcriptSource = useRecordingStore(state => state.transcriptSource);
+  const setTranscriptSource = useRecordingStore(state => state.setTranscriptSource);
+  const setAnuvadiniText = useRecordingStore(state => state.setAnuvadiniText);
+
+  const usingAnuvadini = transcriptSource === TRANSCRIPT_SOURCE.ANUVADINI;
+  const alternativeAvailable = canOffer({ nativeText: fullTranscript, anuvadini });
 
   const [blocked, setBlocked] = useState(null);
-  const [editableText, setEditableText] = useState(fullTranscript);
+  const [editableText, setEditableText] = useState(activeTranscript);
   const [editingSegmentId, setEditingSegmentId] = useState(null);
   const [segmentEditText, setSegmentEditText] = useState('');
   const [viewMode, setViewMode] = useState('full'); // 'full' or 'segments'
@@ -51,8 +68,30 @@ const TranscriptReviewScreen = ({ navigation }) => {
   // text, and Resume or Generate would write that stale copy back over the
   // correction the doctor just made.
   useEffect(() => {
-    setEditableText(fullTranscript);
-  }, [fullTranscript]);
+    setEditableText(activeTranscript);
+  }, [activeTranscript]);
+
+  // The editor writes back to whichever transcript is active, so switching
+  // source never destroys the edits made to the other one.
+  const commitEditor = useCallback(
+    text => {
+      if (text === activeTranscript) {
+        return activeTranscript;
+      }
+      if (usingAnuvadini) {
+        setAnuvadiniText(text);
+      } else {
+        setFullTranscript(text);
+      }
+      return text;
+    },
+    [activeTranscript, usingAnuvadini, setAnuvadiniText, setFullTranscript],
+  );
+
+  useEffect(() => {
+    setStage(CONSULTATION_STAGE.REVIEW);
+    dictationSessionManager.persistCurrentSession();
+  }, [setStage]);
 
   const goBack = useCallback(() => {
     navigation.goBack();
@@ -62,23 +101,19 @@ const TranscriptReviewScreen = ({ navigation }) => {
     // Any edit made in the full-text editor has to be committed before going
     // back, otherwise the newly dictated utterances would append to the
     // pre-edit transcript and the correction would silently vanish.
-    if (viewMode === 'full' && editableText !== fullTranscript) {
-      setFullTranscript(editableText);
+    if (viewMode === 'full') {
+      commitEditor(editableText);
     }
+    setStage(CONSULTATION_STAGE.RECORDING);
+    dictationSessionManager.persistCurrentSession();
     // `resume` tells the recording screen to keep what is already transcribed
     // rather than starting a new consultation.
     navigation.navigate('Recording', { resume: true });
-  }, [navigation, viewMode, editableText, fullTranscript, setFullTranscript]);
+  }, [navigation, viewMode, editableText, commitEditor, setStage]);
 
   const handleGenerateReport = useCallback(async () => {
-    // If the full text editor was modified, sync it to store
     const text =
-      viewMode === 'full' && editableText !== fullTranscript
-        ? editableText
-        : fullTranscript;
-    if (text !== fullTranscript) {
-      setFullTranscript(text);
-    }
+      viewMode === 'full' ? commitEditor(editableText) : activeTranscript;
 
     // Extraction is deterministic, so validating here and again on the report
     // screen cannot disagree. The draft is kept so a manual edit survives an
@@ -95,19 +130,50 @@ const TranscriptReviewScreen = ({ navigation }) => {
       return;
     }
 
-    // Clean active session
-    await dictationSessionManager.clearSession();
-    // Navigate to Report screen
+    // The session is NOT cleared here. It is cleared once the report is
+    // actually persisted — until then an interruption on the report screen has
+    // to be recoverable.
+    setStage(CONSULTATION_STAGE.REPORT);
+    await dictationSessionManager.persistNow();
     navigation.navigate('Report');
   }, [
     editableText,
-    fullTranscript,
+    activeTranscript,
+    commitEditor,
     viewMode,
-    setFullTranscript,
     navigation,
     reportDraft,
     setReportDraft,
+    setStage,
   ]);
+
+  // Switching source re-extracts, and mergeExtraction is what keeps the
+  // doctor's manual field corrections through it.
+  const applySource = useCallback(
+    source => {
+      setTranscriptSource(source);
+      const next = useRecordingStore.getState();
+      const text = selectActiveTranscript(next);
+      const record = extractPatientFields(text);
+      const previous = next.reportDraft;
+      const kept = previous
+        ? Object.keys(previous).filter(key => previous[key]?.edited).length
+        : 0;
+      setReportDraft(previous ? mergeExtraction(previous, record) : toDraft(record));
+      dictationSessionManager.persistCurrentSession();
+      if (kept) {
+        Alert.alert(
+          'Transcript switched',
+          `${kept} ${kept === 1 ? 'field you edited was' : 'fields you edited were'} kept.`,
+        );
+      }
+    },
+    [setTranscriptSource, setReportDraft],
+  );
+
+  const handleRetryRefinement = useCallback(() => {
+    refineTranscript().catch(() => {});
+  }, []);
 
   const handleAddMoreSpeech = useCallback(() => {
     setBlocked(null);
@@ -116,9 +182,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const handleReviewFields = useCallback(async () => {
     setBlocked(null);
-    await dictationSessionManager.clearSession();
+    setStage(CONSULTATION_STAGE.REPORT);
+    await dictationSessionManager.persistNow();
     navigation.navigate('Report');
-  }, [navigation]);
+  }, [navigation, setStage]);
 
   const handleDeleteSegment = useCallback(
     segment => {
@@ -178,6 +245,15 @@ const TranscriptReviewScreen = ({ navigation }) => {
           </View>
         </View>
 
+        <RefinedTranscriptCard
+          status={anuvadini.status}
+          source={transcriptSource}
+          available={alternativeAvailable}
+          onUse={() => applySource(TRANSCRIPT_SOURCE.ANUVADINI)}
+          onKeepOriginal={() => applySource(TRANSCRIPT_SOURCE.NATIVE)}
+          onRetry={handleRetryRefinement}
+        />
+
         {/* Toggle mode: Full editor vs Segments */}
         <View style={styles.toggleRow}>
           <Pressable
@@ -214,7 +290,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
         {viewMode === 'full' ? (
           <View style={styles.editorCard}>
-            <Text style={styles.cardLabel}>FULL TRANSCRIPT</Text>
+            <Text style={styles.cardLabel}>
+              {usingAnuvadini ? 'AI TRANSCRIPTION' : 'ORIGINAL TRANSCRIPTION'}
+            </Text>
             <TextInput
               style={styles.fullTextInput}
               multiline

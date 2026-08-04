@@ -13,7 +13,14 @@ import {
 import MicGlyph from '../components/MicGlyph';
 import ScreenContainer from '../components/ScreenContainer';
 import { REPORT_STATUS } from '../db/reportsRepository';
-import useRecordingStore from '../store/useRecordingStore';
+import { purgeAbandoned } from '../services/consultationAudio';
+import {
+  clearActiveSession,
+  getActiveSession,
+} from '../services/sessionPersistenceService';
+import useRecordingStore, {
+  CONSULTATION_STAGE,
+} from '../store/useRecordingStore';
 import useReportsStore from '../store/useReportsStore';
 import { colors, spacing, typography } from '../theme';
 import { formatRelativeDateTime } from '../utils/datetime';
@@ -109,7 +116,9 @@ const DashboardScreen = ({ navigation }) => {
   const loadAll = useReportsStore(state => state.loadAll);
   const remove = useReportsStore(state => state.remove);
   const resetRecording = useRecordingStore(state => state.reset);
+  const restoreSession = useRecordingStore(state => state.restoreSession);
 
+  const [unfinished, setUnfinished] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [draftsOnly, setDraftsOnly] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -120,6 +129,23 @@ const DashboardScreen = ({ navigation }) => {
     useCallback(() => {
       loadAll();
     }, [loadAll]),
+  );
+
+  // An interrupted consultation is offered here as well as on the recording
+  // screen, because a crash on the report screen leaves nothing else to find.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const active = await getActiveSession();
+        if (!cancelled) {
+          setUnfinished(active?.segments?.length ? active : null);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []),
   );
 
   const stats = useMemo(() => {
@@ -168,6 +194,43 @@ const DashboardScreen = ({ navigation }) => {
     id => navigation.navigate('Report', { reportId: id }),
     [navigation],
   );
+
+  const handleResumeUnfinished = useCallback(() => {
+    if (!unfinished) {
+      return;
+    }
+    restoreSession(unfinished);
+    setUnfinished(null);
+    if (unfinished.stage === CONSULTATION_STAGE.REPORT) {
+      navigation.navigate('Report');
+    } else if (unfinished.stage === CONSULTATION_STAGE.REVIEW) {
+      navigation.navigate('TranscriptReview');
+    } else {
+      navigation.navigate('Recording', { resume: true });
+    }
+  }, [unfinished, restoreSession, navigation]);
+
+  const handleDiscardUnfinished = useCallback(() => {
+    Alert.alert(
+      'Discard this consultation?',
+      'The dictation and any report details captured for it will be removed.',
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: async () => {
+            await clearActiveSession(unfinished?.id);
+            // Discarding the only unfinished consultation means no consultation
+            // audio should survive it, and after a restart the path is no
+            // longer known in memory.
+            await purgeAbandoned(0);
+            setUnfinished(null);
+          },
+        },
+      ],
+    );
+  }, [unfinished]);
 
   const handleDelete = useCallback(
     report => {
@@ -298,6 +361,34 @@ const DashboardScreen = ({ navigation }) => {
         </View>
         <Text style={styles.ctaChevron}>›</Text>
       </Pressable>
+
+      {unfinished ? (
+        <View style={styles.resumeCard}>
+          <Text style={styles.resumeTitle}>Unfinished consultation</Text>
+          <Text style={styles.resumeMeta}>
+            {formatRelativeDateTime(unfinished.updatedAt)} ·{' '}
+            {unfinished.segments.length}{' '}
+            {unfinished.segments.length === 1 ? 'utterance' : 'utterances'}
+          </Text>
+          <View style={styles.resumeActions}>
+            <Pressable
+              style={({ pressed }) => [styles.resumeBtn, pressed && styles.pressed]}
+              onPress={handleResumeUnfinished}
+              accessibilityRole="button"
+              accessibilityLabel="Resume the unfinished consultation"
+            >
+              <Text style={styles.resumeBtnText}>Resume</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleDiscardUnfinished}
+              accessibilityRole="button"
+              accessibilityLabel="Discard the unfinished consultation"
+            >
+              <Text style={styles.linkText}>Discard</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       {error ? (
         <View style={styles.errorCard}>
@@ -758,6 +849,41 @@ const styles = StyleSheet.create({
     ...typography.mediumSubtitle,
     fontSize: 13,
     marginTop: spacing.xs,
+  },
+  resumeCard: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.secondaryAccent,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    gap: spacing.xs,
+  },
+  resumeTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  resumeMeta: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  resumeActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.xs,
+  },
+  resumeBtn: {
+    backgroundColor: colors.primaryAccent,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderRadius: 999,
+  },
+  resumeBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.onPrimary,
   },
   errorCard: {
     backgroundColor: colors.surface,

@@ -574,72 +574,46 @@ const MicSpikeScreen = ({ navigation }) => {
     <ScreenContainer>
       <AppHeader showBack onBackPress={() => navigation.goBack()} title="Mic Spike v2" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.scriptCard}>
-          <Text style={styles.scriptLabel}>DICTATION SCRIPT (Read during test phase)</Text>
-          <Text style={styles.scriptText} selectable>
-            {SCRIPT}
-          </Text>
-        </View>
+        <Text style={styles.script} selectable>
+          Read this continuously, in every phase:{'\n'}
+          {SCRIPT}
+        </Text>
 
-        <View style={styles.buttonContainer}>
+        <View style={styles.row}>
           <Pressable
-            style={[styles.button, styles.buttonPrimary, running && styles.buttonDisabled]}
+            style={[styles.button, running && styles.buttonDisabled]}
             onPress={handleRun}
             disabled={running}
-            accessibilityRole="button"
-            accessibilityLabel={`Run ${PHASES.length} phases`}
           >
-            <Text style={styles.buttonPrimaryText}>Run {PHASES.length} phases</Text>
+            <Text style={styles.buttonText}>Run {PHASES.length} phases</Text>
           </Pressable>
-
           <Pressable
-            style={[
-              styles.button,
-              running ? styles.buttonDanger : styles.buttonDangerDisabled,
-            ]}
+            style={[styles.button, !running && styles.buttonDisabled]}
             onPress={handleAbort}
             disabled={!running}
-            accessibilityRole="button"
-            accessibilityLabel="Abort current run"
           >
-            <Text style={running ? styles.buttonDangerText : styles.buttonDisabledText}>
-              Abort
-            </Text>
+            <Text style={styles.buttonText}>Abort</Text>
           </Pressable>
-
           <Pressable
-            style={[styles.button, styles.buttonSecondary, running && styles.buttonDisabled]}
+            style={[styles.button, running && styles.buttonDisabled]}
             onPress={() => handleRunSharedMic(true)}
             disabled={running}
-            accessibilityRole="button"
-            accessibilityLabel="Run shared mic segmented"
           >
-            <Text style={styles.buttonSecondaryText}>Shared mic (segmented)</Text>
+            <Text style={styles.buttonText}>Shared mic (segmented)</Text>
           </Pressable>
-
           <Pressable
-            style={[styles.button, styles.buttonSecondary, running && styles.buttonDisabled]}
+            style={[styles.button, running && styles.buttonDisabled]}
             onPress={() => handleRunSharedMic(false)}
             disabled={running}
-            accessibilityRole="button"
-            accessibilityLabel="Run shared mic classic"
           >
-            <Text style={styles.buttonSecondaryText}>Shared mic (classic)</Text>
+            <Text style={styles.buttonText}>Shared mic (classic)</Text>
           </Pressable>
-
           <Pressable
-            style={[
-              styles.button,
-              results.length ? styles.buttonSuccess : styles.buttonSecondaryDisabled,
-            ]}
+            style={[styles.button, !results.length && styles.buttonDisabled]}
             onPress={handleShareResults}
             disabled={!results.length}
-            accessibilityRole="button"
-            accessibilityLabel="Share results"
           >
-            <Text style={results.length ? styles.buttonSuccessText : styles.buttonDisabledText}>
-              Share results
-            </Text>
+            <Text style={styles.buttonText}>Share results</Text>
           </Pressable>
         </View>
 
@@ -719,106 +693,31 @@ const MicSpikeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: spacing.xl, gap: spacing.sm },
-  scriptCard: {
+  content: { paddingBottom: spacing.xl, gap: spacing.xs },
+  script: {
+    ...typography.body,
+    fontSize: 13,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     borderRadius: 12,
-    padding: spacing.md,
-    marginTop: spacing.xs,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
   },
-  scriptLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.5,
-    marginBottom: spacing.xs,
-  },
-  scriptText: {
-    ...typography.body,
-    fontSize: 13,
-    lineHeight: 19,
-    color: colors.textPrimary,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginVertical: spacing.sm,
-    alignItems: 'center',
-  },
+  row: { flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.sm },
   button: {
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    borderRadius: 10,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonPrimary: {
     backgroundColor: colors.primaryAccent,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 999,
   },
-  buttonPrimaryText: {
-    color: colors.onPrimary,
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  buttonSecondary: {
-    backgroundColor: colors.primaryLight,
-    borderWidth: 1,
-    borderColor: colors.primaryDisabled,
-  },
-  buttonSecondaryText: {
-    color: colors.primaryAccent,
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  buttonDanger: {
-    backgroundColor: colors.errorLight,
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  buttonDangerText: {
-    color: colors.danger,
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  buttonDangerDisabled: {
-    backgroundColor: colors.surfaceSoft,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    opacity: 0.5,
-  },
-  buttonSecondaryDisabled: {
-    backgroundColor: colors.surfaceSoft,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    opacity: 0.5,
-  },
-  buttonSuccess: {
-    backgroundColor: colors.successLight,
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  buttonSuccessText: {
-    color: colors.success,
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonDisabledText: {
-    color: colors.textMuted,
-    fontWeight: '600',
-    fontSize: 13,
-  },
+  buttonDisabled: { opacity: 0.4 },
+  buttonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 13 },
   currentBox: {
     backgroundColor: colors.accentSoft,
     borderRadius: 12,
-    padding: spacing.md,
-    gap: 4,
+    padding: spacing.sm,
+    gap: 2,
   },
   currentTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   currentHint: { fontSize: 12, color: colors.textSecondary },
@@ -827,8 +726,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     borderRadius: 12,
-    padding: spacing.md,
-    marginTop: spacing.xs,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
     gap: 4,
   },
   phaseHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -837,8 +736,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: colors.onPrimary,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
     overflow: 'hidden',
   },

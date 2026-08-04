@@ -35,8 +35,10 @@ import {
 } from '../services/reportDraft';
 import { buildDiagnosticText, capture } from '../dev/diagnostics';
 import useRecordingStore, {
-  selectFullTranscript,
+  CONSULTATION_STAGE,
+  selectActiveTranscript,
 } from '../store/useRecordingStore';
+import dictationSessionManager from '../services/dictationSessionManager';
 import useReportsStore from '../store/useReportsStore';
 import { colors, spacing, typography } from '../theme';
 import { formatDateTime } from '../utils/datetime';
@@ -60,9 +62,10 @@ const ReportScreen = ({ route }) => {
   const navigation = useNavigation();
   const openedId = route?.params?.reportId ?? null;
 
-  const transcriptFromStore = useRecordingStore(selectFullTranscript);
+  const transcriptFromStore = useRecordingStore(selectActiveTranscript);
   const resetRecording = useRecordingStore(state => state.reset);
   const setReportDraft = useRecordingStore(state => state.setReportDraft);
+  const setStage = useRecordingStore(state => state.setStage);
 
   const fetchReport = useReportsStore(state => state.fetchReport);
   const saveNew = useReportsStore(state => state.saveNew);
@@ -104,13 +107,16 @@ const ReportScreen = ({ route }) => {
   }, [openedId, transcriptFromStore, draft]);
 
   // Mirrored into the session store so an "Add More Speech" round trip through
-  // the recording screen does not lose the edits.
+  // the recording screen does not lose the edits, and written through to the
+  // database so a crash here does not either.
   useEffect(() => {
     if (openedId || !draft) {
       return;
     }
     setReportDraft(draft);
-  }, [openedId, draft, setReportDraft]);
+    setStage(CONSULTATION_STAGE.REPORT);
+    dictationSessionManager.persistCurrentSession();
+  }, [openedId, draft, setReportDraft, setStage]);
 
   // Saved report: load values, transcript and metadata from the database.
   useEffect(() => {
@@ -193,8 +199,13 @@ const ReportScreen = ({ route }) => {
     const now = Date.now();
     setCreatedAt(now);
     setSavedAt(now);
+    // The consultation now lives in the reports table, so the recovery row is
+    // no longer needed — this is the point the draft stops being "unfinished".
+    if (!openedId) {
+      await dictationSessionManager.clearSession();
+    }
     return id;
-  }, [draft, reportId, saveExisting, saveNew, transcript, extracted]);
+  }, [draft, reportId, saveExisting, saveNew, transcript, extracted, openedId]);
 
   const handleSave = useCallback(async () => {
     setBusy(true);
