@@ -55,7 +55,10 @@ Full requirements live in [`MedSrcibe_SRS.md`](./MedSrcibe_SRS.md). The two Anti
 | **Phase 3** | Field extraction + structured report | Complete |
 | **Hardening** | Post-Phase-3 correctness pass | Complete, verified on hardware |
 | **Phase 4** | Editable reports, SQLite persistence, doctor dashboard, PDF export | Complete, verified on hardware |
-| **Phase 5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete; host checks green, audio module unverified on hardware |
+| **Phase 5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete, verified on hardware |
+| **Phase 6** | Extraction v2 — natural phrasing, negation, retraction, pronoun gender, prescription list | Complete |
+| **Phase 7** | Auto-save and consultation recovery, mandatory-field completeness gate | Complete |
+| **Phase 8** | Shared microphone, Anuvadini second transcription, editable AI transcript, continuation, diff | Complete, verified on hardware in **both Debug and Release** |
 
 The hardening round is five commits: `c02369d` (extraction pipeline correctness), `b0c9b6f` (permission rejection + native error surfacing), `9d4ddff` (transcript preserved on error, reset on new dictation), `3095391` (phone numbers + trailing unmarked values), `c59877d` (recording restarts after leaving the screen).
 
@@ -67,7 +70,7 @@ Re-verified on the same device on **2026-07-31**, including the cycle that `c598
 
 This matters: **dictation cannot be tested on the Android emulator at all.** See [§9](#9-known-limitations--future-considerations). Any future agent that tries to validate speech features on an emulator will waste hours reaching a dead end that has already been investigated and ruled out.
 
-**What Phase 5 has and has not been proven on:** `npm run lint` is clean and all five fixture suites pass (see the gate table below), and the release APK builds with both native modules compiled in. What no host check can cover is which audio stream the recogniser's tone plays on — that varies by OEM, and `suppressSystemTones` resolves with the list it actually muted precisely so it can be read out of logcat on the device. Treat beep suppression as implemented-but-unconfirmed until someone runs it on the Oppo A059.
+**Phase 8 was measured, not assumed.** The microphone-contention question was answered with a six-phase matrix on the Oppo A059 (§5), and the shared-microphone path that came out of it scores **88% word recall against a 75% recognizer-only baseline**, with partials from 3.0 s and a clean segmented finalisation. The full workflow — dictate → live transcript → Anuvadini → review → select → report — passes on both the Debug and Release APKs.
 
 The extraction and report layers are pure and deterministic, so they are measured against fixtures rather than the device. The full automated gate:
 
@@ -81,9 +84,10 @@ The extraction and report layers are pure and deterministic, so they are measure
 | `npm run test:extraction:numeric` | **49 / 49** | PIN and phone grouping, country codes, spoken digits, and the numbers that must never become either |
 | `npm run test:extraction:cleanup` | **54 / 54** | Conversational scaffolding removed from all eleven fields, and the clinical modifiers that must survive it |
 | `npm run test:report` | **71 / 71** | Draft bookkeeping, the list-typed prescription round-trip and the PDF payload |
-| `npm run test:completeness` | **61 / 61** | The ten mandatory fields, optional remarks, explicit-none history and prescription, and the Add-More-Speech merge |
-| `npm run test:transcripts` | **35 / 35** | Native vs Anuvadini transcript state, offer rules, and manual edits surviving a source switch |
-| `npm run test:anuvadini` | **66 / 66** | Proxy request assembly, language normalization, every failure path, no auto-retry, and no audio in error payloads |
+| `npm run test:completeness` | **63 / 63** | The ten mandatory fields, optional remarks, explicit-none history and prescription, and the Add-More-Speech merge |
+| `npm run test:transcripts` | **63 / 63** | Native vs Anuvadini state, raw baselines versus editable drafts, the continuation base, and a full pass-1 → edit → fail → retry → pass-3 sequence |
+| `npm run test:diff` | **30 / 30** | "What AI changed": word-level LCS, punctuation and casing normalization, medical substitutions, insertion and deletion |
+| `npm run test:anuvadini` | **78 / 78** | Both transports, request assembly, language normalization, every failure path, no auto-retry, and no audio or token in any result or error |
 | `npm run test:audio` | **31 / 31** | Capture upload budget: WAV sizing, Base64 growth, the 120 s ceiling and its boundaries |
 | `npm run test:proxy` | **77 / 77** | Proxy field translation, Bearer containment, guards before any upstream call, and every error mapping |
 | `npm run lint` | **0 errors** | — |
@@ -164,13 +168,23 @@ Two questions were live during Phase 3 planning and are now **closed**:
 - **Extraction approach: rule-based.** SRS §8 lists "AI-assisted medical entity extraction" under *Future Enhancements*, so this phase parses deterministically. `axios` and `zod` remain installed and unused; they are **not** a pending API integration.
 - **Accuracy vs parser ordering.** Resolved structurally rather than by choosing: the extractor has no React Native imports and is tested against fixtures under plain Node, so parser correctness is decoupled from transcription quality entirely.
 
-### 1. Recognizer restart gaps — highest priority
+### 1. Deploy `server/` and move the token off the device — highest priority
 
-The microphone is deaf for roughly 0.5–1.5 s after each utterance while the recognizer restarts, so words are dropped from real dictation. **This is the single largest gap between fixture results and device results**, and no extraction change can close it — a field whose marker was never transcribed is unrecoverable.
+The Anuvadini Bearer token is compiled into the APK. That is acceptable for internal testing and **not** for distribution: it can be extracted from the artifact, and rotating it requires a rebuild for every installed device.
 
-Fix requires `patch-package` on `VoiceToTextModule.kt` plus a native rebuild (~3 min):
-- `EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS` and siblings, so the recognizer stops ending utterances so eagerly
-- Bundle the `EXTRA_LANGUAGE` fix in the same patch (see §9)
+Everything needed is already written. `server/` is a dependency-free Node proxy with 77 assertions covering field translation, credential containment and error mapping, and the client already speaks its contract. Deployment is:
+
+1. Host `server/` behind HTTPS with `VOICE_TO_TEXT_API_URL` and `VOICE_TO_TEXT_API_KEY` in its environment.
+2. Point `MEDSCRIBE_PROXY_BASE_URL` at it and set `TRANSCRIPTION_TRANSPORT = TRANSPORT.PROXY`.
+3. Drop `ANUVADINI_STT_TOKEN` from `android/local.properties`.
+
+No feature code changes.
+
+### 2. Recognizer restart gaps — largely addressed
+
+The restart loop left the microphone deaf for roughly 0.5–1.5 s after each utterance, dropping words from real dictation. The shared-microphone path (§5) replaces it with **one continuous segmented session**, measured at 88% recall against the 75% restart-loop baseline on the target device.
+
+Remaining: the vendor recogniser path is still the fallback when `SharedMic` is unavailable, and it still has the gap. `EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS` via `patch-package` remains the fix for that path if it is ever needed on a device below API 31.
 
 ### 2. Promote the samples to permanent fixtures — done
 
@@ -251,6 +265,65 @@ The split matters more than the box count:
 - **`dictationSessionManager` owns everything that is true of a *session* rather than a *recogniser*:** the duration timer, the audio cues, the debounced autosave and the debounced live extraction. It is a plain singleton with no React dependency, so it can be driven from a voice command or a background trigger later without a hook to host it.
 - **`useSpeechRecognition` still owns the recogniser lifecycle** — permission, the restart loop, error classification, teardown — and delegates session concerns to the manager. Pause and resume are hook actions because they must also cancel the restart timer, which only the hook holds.
 - **The amplitude rule from Phase 2 is unchanged and still binding**: RMS goes to a Reanimated shared value, never to the store. The duration timer follows the same principle — the store holds no ticking value.
+
+### One microphone, two consumers — Phase 8
+
+**Two audio clients cannot share the microphone on Android.** This was measured, not assumed. Six phases on the Oppo A059, 30 s each, reading a fixed script:
+
+| Phase | Source | Word recall | Recognizer result |
+| :-- | :-- | --: | :-- |
+| A | none (baseline) | 75% | 3 finals |
+| B | MIC | 0% | `NO_MATCH` ×5 |
+| C | VOICE_RECOGNITION | 0% | `NO_MATCH` ×5 |
+| D | MIC, started 5 s late | 22% | died the moment capture began |
+| E | VOICE_COMMUNICATION | 0% | `NO_MATCH` ×5 |
+| F | CAMCORDER | 0% | `NO_MATCH` ×5 |
+
+`isClientSilenced` was **false** throughout and our capture was healthy (peak 9.5k–16k), so it is not that the OS silenced us — **our `AudioRecord` wins the microphone outright and the recognizer starves.** Start order does not decide it: phase D shows the recognizer working until capture begins, then stopping.
+
+The fix inverts the arrangement. `SharedMicModule` owns the only `AudioRecord` and hands the recognizer a pipe via `RecognizerIntent.EXTRA_AUDIO_SOURCE` (API 31+), so nothing contends. Three properties of that module are load-bearing:
+
+- **The WAV is written first and unconditionally**, then the frame is offered to a bounded drop-oldest queue for the pipe. A slow recognition service can therefore never damage the recording.
+- **Segmented session mode** (`EXTRA_SEGMENTED_SESSION = EXTRA_AUDIO_SOURCE`) is the only shape that works. The classic per-utterance mode streams partials over a pipe but **never finalises** — measured: `TIMED OUT after EOF · segments=0`.
+- Results arrive at **end-of-audio**, so partials carry the live view during dictation and the confirmed transcript lands at Stop.
+
+Result: 88% recall against the 75% baseline, partials from 3.0 s, one clean finalisation.
+
+### Transcript state — Phase 8
+
+Four values, and the distinction between them is the whole design:
+
+```text
+nativeRaw          recognizer output, frozen when dictation stops
+anuvadini.raw      service response, frozen on arrival
+segments           the editable native transcript
+anuvadini.text     the editable AI transcript
+```
+
+**The diff always compares raw against raw.** A doctor's correction can never appear as something the AI did, and cannot rewrite history.
+
+**A continuation appends to a snapshot, not to live state.** When "Add More Speech" begins recording, `transcriptRefinement.beginContinuation()` captures `{ text, raw }` as it stands. The result is then folded in as:
+
+```text
+raw  = base.raw  + "\n" + new     only what the service produced
+text = base.text + "\n" + new     the doctor's corrections survive
+```
+
+Appending to the snapshot rather than to live state is what makes **Retry idempotent by construction** — replaying the same continuation any number of times yields exactly one appended chunk. The base belongs to the *recording*, not the request: retained on failure so Retry replays the same starting point, cleared on success, and cleared by `clearSession`, consultation discard and starting a new consultation.
+
+**Viewing is separate from selecting.** `viewedSource` is screen-local; `transcriptSource` in the store is what the report is built from. Only the explicit *Use …* action changes the latter, and only that re-runs extraction — folded through the existing `mergeExtraction`, so manually corrected report fields survive.
+
+### Transcription transport — Phase 8
+
+`TRANSCRIPTION_TRANSPORT` in `src/config/endpoints.js` is a **declared constant**, not inferred from whichever URL happens to be set — a debug default silently winning on a device cost a test cycle before it was made explicit.
+
+| Mode | Request | Credential |
+| :-- | :-- | :-- |
+| `direct` (shipping) | `{ audioBuffer, audioLanguage }` → Anuvadini | `Authorization: Bearer <token>` from `BuildConfig` |
+| `proxy` (local dev, future prod) | `{ audio_buffer, audio_language }` → `server/` | none on the device |
+| `none` | — | feature reports unconfigured |
+
+Direct mode **ignores the proxy URL entirely**, even in a debug build. Switching to the proxy after deployment is one constant and no feature code.
 
 ### The `reports` schema
 
@@ -718,6 +791,36 @@ A related trap: verifying a post-processor *through* `extractPatientFields` with
 
 Deliberate. Metro resolves extensionless imports, Node does not. The explicit extensions let the whole pipeline run under plain Node, which is what makes `scripts/test-extraction.mjs` possible with zero test dependencies. Do not "tidy" them away.
 
+### ⚠️ A segmented session must be closed before the recognizer is destroyed
+
+`stop()` in `SharedMicModule` closes the **write** end of the pipe, waits on a latch for `onEndOfSegmentedSession` (10 s ceiling), and only then destroys the recognizer. The reverse order — destroy, then close — produced a session that opened cleanly, detected speech and returned **nothing**, because the results were discarded microseconds before they arrived. The docs are explicit that a segmented session "will end when and only when the audio is closed"; closing the audio *is* the request to finalise.
+
+`EXTRA_AUDIO_SOURCE` also states that "the caller of the recognizer is responsible for closing the audio" — so the read descriptor is held for the life of the session, not closed after `startListening`. Closing it immediately raced the service and produced `ERROR_CLIENT` on every attempt.
+
+### ⚠️ The continuation base belongs to the recording, not the request
+
+`continuationBase` is captured when "Add More Speech" starts recording and cleared only on success or teardown. A failed attempt keeps it so Retry replays against the same starting point. Appending to live state instead would make a retry duplicate the continuation the moment any path updated the store first.
+
+### ⚠️ Production file operations must not live in a debug-only package
+
+`AudioCapturePackage` is registered only when `BuildConfig.DEBUG`. When consultation audio's `readCaptureBase64` / `deleteCapture` / `purgeCaptures` still lived there, a **release** APK recorded audio it could neither read nor delete — no AI transcription, and patient WAVs accumulating forever. Nothing crashed, because the service degrades when a module is absent, so it failed silently.
+
+They now live in `SharedMicModule`, which writes the file and is registered in every build. Before moving anything into `audio/AudioCaptureModule.kt`, check which variants register it.
+
+### ⚠️ Recording file paths are validated, not trusted
+
+`readCaptureBase64` and `deleteCapture` resolve the canonical path and refuse anything whose parent is not `filesDir/consultations`, which also closes `..` traversal and symlinks. The path arrives from JavaScript and these methods only ever need one directory.
+
+### ⚠️ The Anuvadini token is never logged, returned or dumped
+
+It reaches JavaScript only through `appConfigService.getAnuvadiniToken()`, is attached as a header, and appears in no result, no error payload, no log line and not in the diagnostic dump. `test-anuvadini-client.mjs` and `test-proxy.mjs` both assert this across every failure path.
+
+Build-time injection keeps it out of Git. It does **not** make it secret inside a compiled APK — see §9.
+
+### ⚠️ The diagnostic dump is development-only
+
+`DIAGNOSTICS_ENABLED = __DEV__`. `ReportScreen` passes `onLongPressTitle` only when it is true, so a release build has no handler at all rather than an inert one. The dump carries the entire patient record; there must be no path to exporting patient data from a shipped APK.
+
 ### Build & tooling gotchas
 - **Manifest changes require a full native rebuild.** Metro fast-refresh will not pick them up. If permission dialogs silently stop appearing after a manifest edit, this is why.
 - **Three Phase 4 pieces are native and each needs a rebuild:** `@op-engineering/op-sqlite` (JSI library), the `PdfExporter` TurboModule (codegen + Kotlin), and the `FileProvider` entry in `AndroidManifest.xml`. Pulling these changes and running only `npm start` gives you a dashboard that cannot open its database and a PDF button that reports itself unavailable. Neither is a code defect.
@@ -767,13 +870,39 @@ Listed honestly so nobody assumes they are load-bearing:
 
 ## 9. Known Limitations & Future Considerations
 
-### Dropped words during recognizer restarts — the largest gap
+### ⚠️ The Anuvadini token ships inside the APK
+
+`ANUVADINI_STT_TOKEN` is injected from `android/local.properties` into `BuildConfig` at build time. That keeps it out of Git, and **that is all it does** — anyone with the APK can extract it, and rotating it means rebuilding for every installed device.
+
+Accepted deliberately, for internal testing only. It must not go to a clinic in this form. The remedy is §4 item 1, and it is written and tested, not speculative.
+
+### The proxy exists but is not deployed
+
+`server/` is complete and covered by 77 assertions, but runs only on a developer machine. Until it is hosted, `TRANSCRIPTION_TRANSPORT` stays `direct`.
+
+### Second transcription is capped at two minutes of audio
+
+Base64 inside JSON is a third larger than the bytes and lands in memory as UTF-16 on top of that. At 16 kHz mono 16-bit — 32 KB/s — a 120-second ceiling is ~3.8 MB of WAV and ~5.1 MB of Base64, which is already a meaningful allocation on an entry-level device. Longer dictations still produce a native transcript and a report; only the second transcription is skipped, and the recording is discarded rather than kept.
+
+The real limit is whatever the service accepts, which has not been published. `src/services/audioBudget.js` is the single place it is expressed.
+
+### Confirmed AI text arrives at Stop, not while speaking
+
+Segmented recognition delivers its result at end-of-audio. During dictation the live view is carried by partials — continuous, from about three seconds in — and the confirmed transcript lands when the doctor stops. This is a property of the platform's segmented session, not a delay we introduced.
+
+### Only `en-IN` has been exercised
+
+`normalizeAnuvadiniLanguage` maps thirteen Indian languages and rejects anything unknown rather than blindly appending `-IN`, but only English has been run end to end against the service.
+
+### Dropped words during recognizer restarts — largely addressed
 
 Android's `SpeechRecognizer` is single-utterance, so the hook restarts it after each pause. **The microphone is deaf for roughly 0.5–1.5 s during each restart**: `onEndOfSpeech` → backoff → `startListening()` → engine init → `onReadyForSpeech`. Speech in that window is lost.
 
-Google's own voice typing holds one continuous streaming session, which is why it feels seamless; this library's API cannot do that.
+Google's own voice typing holds one continuous streaming session, which is why it feels seamless; the vendor library's API cannot do that.
 
-This is why **device results trail fixture results**. Extraction passes its 238-assertion regression floor on clean text, but a field whose introducer phrase was never transcribed is unrecoverable — no amount of marker vocabulary helps. Mitigation is documented in §4.
+**The shared-microphone path removes this for API 31+ devices** — one continuous segmented session, no restarts, measured at 88% recall against the 75% restart-loop baseline. The limitation above still applies to the vendor fallback, which is what runs when `SharedMic` is unavailable.
+
+Device results still trail fixture results whenever the fallback is in use: extraction passes its 239-assertion regression floor on clean text, but a field whose introducer phrase was never transcribed is unrecoverable — no amount of marker vocabulary helps.
 
 ### Unpunctuated adjacent symptoms stay grouped
 
