@@ -8,6 +8,7 @@ import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.medscribe.audio.AudioCapturePackage
 import com.medscribe.audio.AudioCuePackage
+import com.medscribe.audio.SharedMicPackage
 import com.medscribe.pdf.PdfExporterPackage
 
 class MainApplication : Application(), ReactApplication {
@@ -22,6 +23,10 @@ class MainApplication : Application(), ReactApplication {
           // Plays the one dictation cue and mutes the system recognizer's
           // per-utterance tones. See android/app/src/main/java/com/medscribe/audio.
           add(AudioCuePackage())
+          // Owns the microphone for a consultation and feeds the recognizer
+          // through a pipe, so one dictation yields both a live transcript and
+          // the recording the second transcription needs.
+          add(SharedMicPackage())
           // Phase 1 spike: concurrent PCM capture probe. Debug only — a
           // microphone-capture module has no business in a build handed to a
           // doctor, and the screens that drive it are already __DEV__ gated.

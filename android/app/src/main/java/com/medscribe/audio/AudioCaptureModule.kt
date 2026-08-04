@@ -11,6 +11,7 @@ import android.media.MediaRecorder
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Base64
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Arguments
@@ -27,8 +28,13 @@ import kotlin.math.sqrt
 const val AUDIO_CAPTURE_NAME = "AudioCapture"
 
 /**
- * Phase 1 spike: PCM capture that runs while the system SpeechRecognizer holds
- * the microphone, so concurrent capture can be measured on a real device.
+ * PCM capture, in two scopes.
+ *
+ * The spike scope runs while the system SpeechRecognizer holds the microphone,
+ * so concurrent capture can be measured on a real device. The consultation
+ * scope produces the WAV a transcription service is given, and its audio is
+ * patient data: internal storage only, and deleted by the caller rather than
+ * left behind.
  *
  * Reports per-second RMS and read-gap statistics rather than a bare byte count:
  * Android returns buffers of zeros to a losing concurrent capturer, so "bytes
@@ -40,6 +46,13 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
   private companion object {
     const val TAG = "AudioCaptureModule"
     const val CAPTURE_DIR = "spike"
+
+    // Patient audio lives in internal storage, where a file manager or a USB
+    // connection cannot reach it. The spike directory is external and stays
+    // that way — it holds test recordings, never a consultation.
+    const val CONSULTATION_DIR = "consultations"
+    const val SCOPE_CONSULTATION = "consultation"
+    const val PAUSE_POLL_MS = 100L
     const val SILENCE_RMS = 120.0
     const val GAP_THRESHOLD_MS = 400L
     const val JOIN_TIMEOUT_MS = 2000L
@@ -59,6 +72,7 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
   private var recorder: AudioRecord? = null
   private var worker: Thread? = null
   @Volatile private var capturing = false
+  @Volatile private var paused = false
 
   private var outputFile: File? = null
   private var startedAtMs = 0L
@@ -93,7 +107,13 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
     promise.resolve(granted)
   }
 
-  override fun startCapture(sampleRateHz: Double, source: String, promise: Promise) {
+  override fun startCapture(
+    sampleRateHz: Double,
+    source: String,
+    scope: String,
+    name: String,
+    promise: Promise,
+  ) {
     synchronized(lock) {
       if (capturing) {
         promise.reject("E_ALREADY_CAPTURING", "Capture already running")
@@ -143,13 +163,23 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
         return
       }
 
-      val directory = File(appContext.getExternalFilesDir(null), CAPTURE_DIR)
+      val consultation = scope == SCOPE_CONSULTATION
+      val directory = if (consultation) {
+        File(appContext.filesDir, CONSULTATION_DIR)
+      } else {
+        File(appContext.getExternalFilesDir(null), CAPTURE_DIR)
+      }
       if (!directory.exists() && !directory.mkdirs()) {
         record.release()
         promise.reject("E_DIR", "Could not create capture folder")
         return
       }
-      val file = File(directory, "spike-${System.currentTimeMillis()}.wav")
+      val safeName = name.replace(Regex("[^A-Za-z0-9_-]"), "")
+      val file = if (consultation) {
+        File(directory, "${if (safeName.isEmpty()) "consultation" else safeName}.wav")
+      } else {
+        File(directory, "spike-${System.currentTimeMillis()}.wav")
+      }
 
       resetStats(rate, file)
 
@@ -170,6 +200,7 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
       audioSessionId = record.audioSessionId
       recorder = record
       capturing = true
+      paused = false
       startedAtMs = System.currentTimeMillis()
 
       worker = thread(name = "medscribe-capture") { captureLoop(record, file, rate, bufferBytes) }
@@ -186,6 +217,39 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  override fun pauseCapture(promise: Promise) {
+    synchronized(lock) {
+      if (!capturing) {
+        promise.resolve(false)
+        return
+      }
+      paused = true
+      try {
+        recorder?.stop()
+      } catch (error: Exception) {
+        Log.w(TAG, "pause stop failed", error)
+      }
+      promise.resolve(true)
+    }
+  }
+
+  override fun resumeCapture(promise: Promise) {
+    synchronized(lock) {
+      if (!capturing || !paused) {
+        promise.resolve(false)
+        return
+      }
+      try {
+        recorder?.startRecording()
+      } catch (error: Exception) {
+        promise.reject("E_RESUME", error.message, error)
+        return
+      }
+      paused = false
+      promise.resolve(true)
+    }
+  }
+
   override fun stopCapture(promise: Promise) {
     val record: AudioRecord?
     val thread: Thread?
@@ -195,6 +259,7 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
         return
       }
       capturing = false
+      paused = false
       record = recorder
       thread = worker
       recorder = null
@@ -227,6 +292,52 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
 
   override fun getStats(promise: Promise) {
     promise.resolve(buildStats())
+  }
+
+  /**
+   * Encoded on this side so the bytes are not copied through JS twice, and
+   * size-checked before the allocation rather than after it — a long dictation
+   * on an entry-level device is an out-of-memory, not a slow request.
+   */
+  override fun readCaptureBase64(path: String, maxBytes: Double, promise: Promise) {
+    val file = File(path)
+    if (!file.exists()) {
+      promise.reject("E_NO_FILE", "No capture at $path")
+      return
+    }
+
+    val limit = maxBytes.toLong()
+    if (limit > 0 && file.length() > limit) {
+      promise.reject("E_TOO_LARGE", "Capture is ${file.length()} bytes, limit is $limit")
+      return
+    }
+
+    try {
+      promise.resolve(Base64.encodeToString(file.readBytes(), Base64.NO_WRAP))
+    } catch (error: OutOfMemoryError) {
+      promise.reject("E_TOO_LARGE", "Not enough memory to encode the capture")
+    } catch (error: Exception) {
+      promise.reject("E_READ", error.message, error)
+    }
+  }
+
+  override fun deleteCapture(path: String, promise: Promise) {
+    val file = File(path)
+    promise.resolve(if (file.exists()) file.delete() else false)
+  }
+
+  override fun purgeCaptures(olderThanMs: Double, promise: Promise) {
+    val directory = File(appContext.filesDir, CONSULTATION_DIR)
+    val cutoff = System.currentTimeMillis() - olderThanMs.toLong()
+    var removed = 0
+
+    directory.listFiles()?.forEach { file ->
+      if (file.isFile && file.lastModified() < cutoff && file.delete()) {
+        removed += 1
+      }
+    }
+
+    promise.resolve(removed)
   }
 
   private fun resetStats(rate: Int, file: File) {
@@ -323,6 +434,15 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
         out.write(ByteArray(44))
 
         while (capturing) {
+          // A paused dictation must not keep recording the room. The file stays
+          // open so the consultation remains one continuous WAV with the pause
+          // removed rather than several fragments.
+          if (paused) {
+            Thread.sleep(PAUSE_POLL_MS)
+            lastReadAt = System.currentTimeMillis()
+            continue
+          }
+
           val read = record.read(buffer, 0, buffer.size)
           val now = System.currentTimeMillis()
 
