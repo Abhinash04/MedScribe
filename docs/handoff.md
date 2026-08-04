@@ -82,6 +82,10 @@ The extraction and report layers are pure and deterministic, so they are measure
 | `npm run test:extraction:cleanup` | **54 / 54** | Conversational scaffolding removed from all eleven fields, and the clinical modifiers that must survive it |
 | `npm run test:report` | **71 / 71** | Draft bookkeeping, the list-typed prescription round-trip and the PDF payload |
 | `npm run test:completeness` | **61 / 61** | The ten mandatory fields, optional remarks, explicit-none history and prescription, and the Add-More-Speech merge |
+| `npm run test:transcripts` | **35 / 35** | Native vs Anuvadini transcript state, offer rules, and manual edits surviving a source switch |
+| `npm run test:anuvadini` | **66 / 66** | Proxy request assembly, language normalization, every failure path, no auto-retry, and no audio in error payloads |
+| `npm run test:audio` | **31 / 31** | Capture upload budget: WAV sizing, Base64 growth, the 120 s ceiling and its boundaries |
+| `npm run test:proxy` | **77 / 77** | Proxy field translation, Bearer containment, guards before any upstream call, and every error mapping |
 | `npm run lint` | **0 errors** | — |
 
 Those are **clean-text** numbers. Real dictation adds transcription loss on top — see the dropped-words limitation in §9.

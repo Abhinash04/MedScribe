@@ -16,6 +16,11 @@
     "test:extraction:synonyms": "node scripts/test-extraction-synonyms.mjs",
     "test:report": "node scripts/test-report.mjs",
     "test:completeness": "node scripts/test-completeness.mjs",
+    "test:transcripts": "node scripts/test-transcript-state.mjs",
+    "test:anuvadini": "node scripts/test-anuvadini-client.mjs",
+    "test:audio": "node scripts/test-audio-budget.mjs",
+    "test:proxy": "node scripts/test-proxy.mjs",
+    "proxy": "node --env-file=server/.env server/index.mjs",
     "start": "react-native start",
     "test": "jest"
   },
