@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.speech.RecognitionListener
+import android.util.Base64
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
@@ -297,6 +298,74 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
 
   override fun getState(promise: Promise) {
     promise.resolve(buildState())
+  }
+
+  // ── Recording files ──────────────────────────────────────────────────────
+  //
+  // These live here rather than in AudioCaptureModule because that module is
+  // registered in debug builds only. A release APK could therefore record a
+  // consultation and then neither read nor delete it.
+
+  /**
+   * Refuses anything outside the consultation directory.
+   *
+   * The path comes from JavaScript, and these methods only ever need one
+   * folder, so the canonical path is checked rather than trusted — which also
+   * covers `..` traversal and symlinks.
+   */
+  private fun consultationFile(path: String): File? {
+    val directory = File(appContext.filesDir, CONSULTATION_DIR).canonicalFile
+    val file = File(path).canonicalFile
+    return if (file.parentFile == directory) file else null
+  }
+
+  override fun readCaptureBase64(path: String, maxBytes: Double, promise: Promise) {
+    val file = consultationFile(path)
+    if (file == null) {
+      promise.reject("E_PATH", "Not a consultation recording")
+      return
+    }
+    if (!file.exists()) {
+      promise.reject("E_NO_FILE", "No recording for this consultation")
+      return
+    }
+
+    val limit = maxBytes.toLong()
+    if (limit > 0 && file.length() > limit) {
+      promise.reject("E_TOO_LARGE", "Recording is ${file.length()} bytes, limit is $limit")
+      return
+    }
+
+    try {
+      promise.resolve(Base64.encodeToString(file.readBytes(), Base64.NO_WRAP))
+    } catch (error: OutOfMemoryError) {
+      promise.reject("E_TOO_LARGE", "Not enough memory to encode the recording")
+    } catch (error: Exception) {
+      promise.reject("E_READ", error.message, error)
+    }
+  }
+
+  override fun deleteCapture(path: String, promise: Promise) {
+    val file = consultationFile(path)
+    if (file == null) {
+      promise.reject("E_PATH", "Not a consultation recording")
+      return
+    }
+    promise.resolve(if (file.exists()) file.delete() else false)
+  }
+
+  override fun purgeCaptures(olderThanMs: Double, promise: Promise) {
+    val directory = File(appContext.filesDir, CONSULTATION_DIR)
+    val cutoff = System.currentTimeMillis() - olderThanMs.toLong()
+    var removed = 0
+
+    directory.listFiles()?.forEach { file ->
+      if (file.isFile && file.lastModified() < cutoff && file.delete()) {
+        removed += 1
+      }
+    }
+
+    promise.resolve(removed)
   }
 
   private fun resetState(rate: Int, file: File) {

@@ -32,4 +32,6 @@ export interface Spec extends TurboModule {
   +purgeCaptures: (olderThanMs: number) => Promise<number>;
 }
 
-export default (TurboModuleRegistry.getEnforcing<Spec>('AudioCapture'): Spec);
+// Registered in debug builds only — this is the contention spike, not the
+// production path — so its absence must be a null rather than a throw.
+export default (TurboModuleRegistry.get<Spec>('AudioCapture'): ?Spec);

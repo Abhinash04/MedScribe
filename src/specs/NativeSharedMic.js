@@ -30,6 +30,14 @@ export interface Spec extends TurboModule {
   +stop: () => Promise<Object>;
   /** Transcript, counters and capture statistics, for polling. */
   +getState: () => Promise<Object>;
+  /**
+   * Recording files. These live here rather than on the capture spike module,
+   * which is registered in debug builds only — a release APK must be able to
+   * read and delete the consultation it just recorded.
+   */
+  +readCaptureBase64: (path: string, maxBytes: number) => Promise<string>;
+  +deleteCapture: (path: string) => Promise<boolean>;
+  +purgeCaptures: (olderThanMs: number) => Promise<number>;
 }
 
 export default (TurboModuleRegistry.get<Spec>('SharedMic'): ?Spec);
