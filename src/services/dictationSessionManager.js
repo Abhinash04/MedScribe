@@ -10,7 +10,11 @@ import {
 import * as consultationAudio from './consultationAudio';
 import * as sharedMic from './sharedMicService';
 import { isCaptureEnabled, isTranscriptionAvailable } from '../config/features';
-import { refineTranscript } from './transcriptRefinement';
+import {
+  beginContinuation,
+  clearContinuation,
+  refineTranscript,
+} from './transcriptRefinement';
 import useRecordingStore, {
   selectFullTranscript,
 } from '../store/useRecordingStore';
@@ -40,7 +44,6 @@ class DictationSessionManager {
     this.timerId = null;
     this.extractDebounceId = null;
     this.lastExtractedTranscript = '';
-    this.appendRefinement = false;
     this.sharedMicActive = false;
     this.sharedMicPollId = null;
     this.lastSharedText = '';
@@ -73,8 +76,12 @@ class DictationSessionManager {
     // to start capture is silent — the consultation continues on native alone.
     if (isCaptureEnabled() && (await sharedMic.isSupported())) {
       // A later pass captures only the new speech, so its transcript extends
-      // the earlier one rather than replacing it.
-      this.appendRefinement = !!store.anuvadini?.text;
+      // the earlier one rather than replacing it. The snapshot is taken here,
+      // as the continuation is recorded, so it holds the draft exactly as the
+      // doctor left it — corrections included.
+      if (store.anuvadini?.text) {
+        beginContinuation();
+      }
       await this.startSharedMic(store.sessionId);
     }
   }
@@ -238,7 +245,7 @@ class DictationSessionManager {
     captured = captured ?? (await consultationAudio.finish());
     // No endpoint means the recording has no purpose, so it is not kept.
     if (captured?.path && captured.withinBudget && isTranscriptionAvailable()) {
-      refineTranscript({ append: this.appendRefinement }).catch(() => {});
+      refineTranscript().catch(() => {});
     } else if (captured?.path) {
       await consultationAudio.discard();
     }
@@ -351,6 +358,9 @@ class DictationSessionManager {
   async clearSession() {
     const store = useRecordingStore.getState();
     await clearActiveSession(store.sessionId);
+    // The audio a continuation would have retried with is going away, so the
+    // snapshot that belonged to it must not outlive the consultation.
+    clearContinuation();
     await consultationAudio.discard();
   }
 }

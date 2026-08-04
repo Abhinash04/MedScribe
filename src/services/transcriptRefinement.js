@@ -2,6 +2,7 @@ import { transcribe } from './anuvadini/transcriptionClient';
 import { ERROR_KIND } from './anuvadini/proxyContract';
 import { DEFAULT_LANGUAGE } from './anuvadini/language';
 import * as consultationAudio from './consultationAudio';
+import { continuationBaseFrom } from './consultationTranscripts';
 import { getAnuvadiniToken } from './appConfigService';
 import useRecordingStore from '../store/useRecordingStore';
 
@@ -15,15 +16,39 @@ import useRecordingStore from '../store/useRecordingStore';
  */
 
 let inFlight = null;
+
 /**
- * "Add More Speech" captures only the new audio, while the native transcript
- * keeps growing across passes. Appending is what keeps the two transcripts
- * describing the same consultation; a Retry of the same pass must not.
+ * The snapshot an in-progress continuation appends to, and the fact that one is
+ * in progress at all.
+ *
+ * Owned by the continuation RECORDING, not by an individual request: a failed
+ * attempt keeps it so Retry replays against the same starting point, and only
+ * success or teardown clears it. That is what stops a retry from appending the
+ * same speech twice.
  */
-let appendNext = false;
+let continuationBase = null;
 
 export function isRefining() {
   return inFlight !== null;
+}
+
+/** True while a continuation is waiting for a result it has not yet applied. */
+export function hasPendingContinuation() {
+  return continuationBase !== null;
+}
+
+/**
+ * Called when "Add More Speech" begins recording, so the snapshot reflects the
+ * draft as the doctor left it — including any manual corrections.
+ */
+export function beginContinuation() {
+  const { anuvadini } = useRecordingStore.getState();
+  continuationBase = continuationBaseFrom(anuvadini);
+  return continuationBase;
+}
+
+export function clearContinuation() {
+  continuationBase = null;
 }
 
 export function cancelRefinement() {
@@ -35,11 +60,12 @@ export async function refineTranscript({
   audioBase64 = null,
   language = DEFAULT_LANGUAGE,
   keepAudio = false,
-  append = appendNext,
 } = {}) {
-  appendNext = append;
   const store = useRecordingStore.getState();
-  const existing = append ? store.anuvadini?.text ?? '' : '';
+  // The base is the only thing that decides whether this is a continuation, so
+  // an append can never happen without a snapshot to append to.
+  const base = continuationBase;
+  const append = base !== null;
   const payload = audioBase64 ?? (await consultationAudio.readForUpload());
 
   if (!payload) {
@@ -69,21 +95,20 @@ export async function refineTranscript({
   inFlight = null;
 
   // A cancelled request means the doctor moved on; leaving the card in its
-  // previous state is less noisy than reporting a failure they caused.
+  // previous state is less noisy than reporting a failure they caused. The base
+  // survives, because the same audio is still there to retry.
   if (result.errorKind === ERROR_KIND.CANCELLED) {
     return result;
   }
 
-  useRecordingStore.getState().setAnuvadiniResult(
-    result.ok && existing
-      ? { ...result, text: `${existing} ${result.text}`.trim() }
-      : result,
-  );
+  useRecordingStore.getState().setAnuvadiniResult(result, { append, base });
 
-  // The audio has done its job once a transcript exists. A failure keeps it so
-  // Retry has something to send.
-  if (result.ok && !keepAudio) {
-    await consultationAudio.discard();
+  if (result.ok) {
+    // Applied exactly once; a later "Add More Speech" takes a fresh snapshot.
+    clearContinuation();
+    if (!keepAudio) {
+      await consultationAudio.discard();
+    }
   }
 
   return result;

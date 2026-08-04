@@ -50,19 +50,36 @@ export function markPending(anuvadini) {
   };
 }
 
+/** Continuation passes read as separate lines rather than one running block. */
+const JOIN = '\n';
+
+const joined = (before, addition) =>
+  before?.trim() ? `${before.trim()}${JOIN}${addition}` : addition;
+
 /**
  * Folds a transcription result into the Anuvadini slot.
  *
  * A failure keeps whatever text was already there — a doctor who retries after
  * accepting a result must not lose it — and never touches the native side.
+ *
+ * A continuation appends to `base`, a snapshot taken when that continuation was
+ * recorded, rather than to live state:
+ *
+ *   raw  = base.raw  + new    only what the service actually produced
+ *   text = base.text + new    the doctor's corrections survive
+ *
+ * Appending to the snapshot is what makes Retry idempotent — replaying the same
+ * continuation any number of times yields exactly one appended chunk.
  */
-export function applyResult(anuvadini, result, now = Date.now()) {
+export function applyResult(anuvadini, result, options = {}) {
+  const { append = false, base = null, now = Date.now() } = options;
   const current = { ...emptyAnuvadini(), ...anuvadini };
 
   if (result?.ok && result.text) {
+    const from = append ? base ?? current : null;
     return {
-      text: result.text,
-      raw: result.text,
+      text: from ? joined(from.text, result.text) : result.text,
+      raw: from ? joined(from.raw, result.text) : result.text,
       status: ANUVADINI_STATUS.READY,
       error: null,
       updatedAt: now,
@@ -75,6 +92,12 @@ export function applyResult(anuvadini, result, now = Date.now()) {
     error: result?.errorKind || 'unknown',
     updatedAt: now,
   };
+}
+
+/** The snapshot a continuation appends to. Taken when its recording starts. */
+export function continuationBaseFrom(anuvadini) {
+  const current = { ...emptyAnuvadini(), ...anuvadini };
+  return { text: current.text, raw: current.raw };
 }
 
 /**

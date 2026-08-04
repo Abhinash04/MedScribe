@@ -168,8 +168,8 @@ const useRecordingStore = create((set, get) => ({
   setAnuvadiniPending: () =>
     set(state => ({ anuvadini: markPending(state.anuvadini) })),
 
-  setAnuvadiniResult: result =>
-    set(state => ({ anuvadini: applyResult(state.anuvadini, result) })),
+  setAnuvadiniResult: (result, options) =>
+    set(state => ({ anuvadini: applyResult(state.anuvadini, result, options) })),
 
   /** Edits made while the alternative transcript is the active one. */
   setAnuvadiniText: text =>
