@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -12,10 +13,11 @@ import AppHeader from '../components/AppHeader';
 import MissingFieldsModal from '../components/MissingFieldsModal';
 import ScreenContainer from '../components/ScreenContainer';
 import SectionTitle from '../components/SectionTitle';
-import RefinedTranscriptCard from '../components/RefinedTranscriptCard';
+import TranscriptDiffView from '../components/TranscriptDiffView';
+import { isTranscriptionAvailable } from '../config/features';
 import { refineTranscript } from '../services/transcriptRefinement';
 import {
-  canOffer,
+  ANUVADINI_STATUS,
   TRANSCRIPT_SOURCE,
 } from '../services/consultationTranscripts';
 import useRecordingStore, {
@@ -29,99 +31,87 @@ import { extractPatientFields } from '../services/extractionService';
 import { validateReportCompleteness } from '../services/reportCompleteness';
 import { mergeExtraction, toDraft } from '../services/reportDraft';
 
-/**
- * Format elapsed duration as MM:SS.
- */
 function formatDuration(totalSeconds = 0) {
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
+const LABEL = {
+  [TRANSCRIPT_SOURCE.NATIVE]: 'Original',
+  [TRANSCRIPT_SOURCE.ANUVADINI]: 'AI Transcription',
+};
+
 const TranscriptReviewScreen = ({ navigation }) => {
   const fullTranscript = useRecordingStore(selectFullTranscript);
-  const segments = useRecordingStore(state => state.segments);
   const durationSeconds = useRecordingStore(state => state.durationSeconds);
-  const updateSegment = useRecordingStore(state => state.updateSegment);
-  const deleteSegment = useRecordingStore(state => state.deleteSegment);
   const setFullTranscript = useRecordingStore(state => state.setFullTranscript);
   const reportDraft = useRecordingStore(state => state.reportDraft);
   const setReportDraft = useRecordingStore(state => state.setReportDraft);
   const setStage = useRecordingStore(state => state.setStage);
-  const activeTranscript = useRecordingStore(selectActiveTranscript);
   const anuvadini = useRecordingStore(state => state.anuvadini);
-  const transcriptSource = useRecordingStore(state => state.transcriptSource);
+  const nativeRaw = useRecordingStore(state => state.nativeRaw);
+  const selectedSource = useRecordingStore(state => state.transcriptSource);
   const setTranscriptSource = useRecordingStore(state => state.setTranscriptSource);
   const setAnuvadiniText = useRecordingStore(state => state.setAnuvadiniText);
 
-  const usingAnuvadini = transcriptSource === TRANSCRIPT_SOURCE.ANUVADINI;
-  const alternativeAvailable = canOffer({ nativeText: fullTranscript, anuvadini });
-
+  /**
+   * Which transcript is on screen. Deliberately separate from which one the
+   * report is built from: looking at the alternative must never quietly
+   * re-extract the report behind the doctor.
+   */
+  const [viewedSource, setViewedSource] = useState(selectedSource);
   const [blocked, setBlocked] = useState(null);
-  const [editableText, setEditableText] = useState(activeTranscript);
-  const [editingSegmentId, setEditingSegmentId] = useState(null);
-  const [segmentEditText, setSegmentEditText] = useState('');
-  const [viewMode, setViewMode] = useState('full'); // 'full' or 'segments'
 
-  // Segment edits and deletes change `fullTranscript` while the full editor
-  // holds its own copy. Without this the editor would still show the pre-edit
-  // text, and Resume or Generate would write that stale copy back over the
-  // correction the doctor just made.
+  const viewingAi = viewedSource === TRANSCRIPT_SOURCE.ANUVADINI;
+  const aiReady = anuvadini.status === ANUVADINI_STATUS.READY && !!anuvadini.text.trim();
+  const viewedText = viewingAi ? anuvadini.text : fullTranscript;
+
+  const [editableText, setEditableText] = useState(viewedText);
+
   useEffect(() => {
-    setEditableText(activeTranscript);
-  }, [activeTranscript]);
-
-  // The editor writes back to whichever transcript is active, so switching
-  // source never destroys the edits made to the other one.
-  const commitEditor = useCallback(
-    text => {
-      if (text === activeTranscript) {
-        return activeTranscript;
-      }
-      if (usingAnuvadini) {
-        setAnuvadiniText(text);
-      } else {
-        setFullTranscript(text);
-      }
-      return text;
-    },
-    [activeTranscript, usingAnuvadini, setAnuvadiniText, setFullTranscript],
-  );
+    setEditableText(viewedText);
+  }, [viewedText]);
 
   useEffect(() => {
     setStage(CONSULTATION_STAGE.REVIEW);
     dictationSessionManager.persistCurrentSession();
   }, [setStage]);
 
-  const goBack = useCallback(() => {
-    navigation.goBack();
-  }, [navigation]);
+  // The editor writes back to whichever transcript is being viewed, so the
+  // other one is never disturbed by an edit made here.
+  const commitEditor = useCallback(
+    text => {
+      if (text === viewedText) {
+        return viewedText;
+      }
+      if (viewingAi) {
+        setAnuvadiniText(text);
+      } else {
+        setFullTranscript(text);
+      }
+      return text;
+    },
+    [viewedText, viewingAi, setAnuvadiniText, setFullTranscript],
+  );
+
+  const goBack = useCallback(() => navigation.goBack(), [navigation]);
 
   const handleResumeRecording = useCallback(() => {
-    // Any edit made in the full-text editor has to be committed before going
-    // back, otherwise the newly dictated utterances would append to the
-    // pre-edit transcript and the correction would silently vanish.
-    if (viewMode === 'full') {
-      commitEditor(editableText);
-    }
+    commitEditor(editableText);
     setStage(CONSULTATION_STAGE.RECORDING);
     dictationSessionManager.persistCurrentSession();
-    // `resume` tells the recording screen to keep what is already transcribed
-    // rather than starting a new consultation.
     navigation.navigate('Recording', { resume: true });
-  }, [navigation, viewMode, editableText, commitEditor, setStage]);
+  }, [navigation, editableText, commitEditor, setStage]);
 
   const handleGenerateReport = useCallback(async () => {
-    const text =
-      viewMode === 'full' ? commitEditor(editableText) : activeTranscript;
+    commitEditor(editableText);
+    // Extraction always runs against the SELECTED transcript, which is not
+    // necessarily the one being viewed.
+    const text = selectActiveTranscript(useRecordingStore.getState());
 
-    // Extraction is deterministic, so validating here and again on the report
-    // screen cannot disagree. The draft is kept so a manual edit survives an
-    // "Add More Speech" round trip.
     const record = extractPatientFields(text);
-    const draft = reportDraft
-      ? mergeExtraction(reportDraft, record)
-      : toDraft(record);
+    const draft = reportDraft ? mergeExtraction(reportDraft, record) : toDraft(record);
     setReportDraft(draft);
 
     const result = validateReportCompleteness(draft);
@@ -130,45 +120,38 @@ const TranscriptReviewScreen = ({ navigation }) => {
       return;
     }
 
-    // The session is NOT cleared here. It is cleared once the report is
-    // actually persisted — until then an interruption on the report screen has
-    // to be recoverable.
     setStage(CONSULTATION_STAGE.REPORT);
     await dictationSessionManager.persistNow();
     navigation.navigate('Report');
-  }, [
-    editableText,
-    activeTranscript,
-    commitEditor,
-    viewMode,
-    navigation,
-    reportDraft,
-    setReportDraft,
-    setStage,
-  ]);
+  }, [editableText, commitEditor, navigation, reportDraft, setReportDraft, setStage]);
 
-  // Switching source re-extracts, and mergeExtraction is what keeps the
-  // doctor's manual field corrections through it.
-  const applySource = useCallback(
+  /**
+   * The only thing that changes which transcript the report is built from.
+   * Re-extracts, and mergeExtraction is what keeps manually corrected fields.
+   */
+  const selectForReport = useCallback(
     source => {
+      commitEditor(editableText);
       setTranscriptSource(source);
+
       const next = useRecordingStore.getState();
-      const text = selectActiveTranscript(next);
-      const record = extractPatientFields(text);
+      const record = extractPatientFields(selectActiveTranscript(next));
       const previous = next.reportDraft;
       const kept = previous
         ? Object.keys(previous).filter(key => previous[key]?.edited).length
         : 0;
       setReportDraft(previous ? mergeExtraction(previous, record) : toDraft(record));
       dictationSessionManager.persistCurrentSession();
-      if (kept) {
-        Alert.alert(
-          'Transcript switched',
-          `${kept} ${kept === 1 ? 'field you edited was' : 'fields you edited were'} kept.`,
-        );
-      }
+
+      Alert.alert(
+        'Report source changed',
+        `The report will be built from the ${LABEL[source]} transcript.` +
+          (kept
+            ? `\n\n${kept} ${kept === 1 ? 'field you edited was' : 'fields you edited were'} kept.`
+            : ''),
+      );
     },
-    [setTranscriptSource, setReportDraft],
+    [commitEditor, editableText, setTranscriptSource, setReportDraft],
   );
 
   const handleRetryRefinement = useCallback(() => {
@@ -187,36 +170,24 @@ const TranscriptReviewScreen = ({ navigation }) => {
     navigation.navigate('Report');
   }, [navigation, setStage]);
 
-  const handleDeleteSegment = useCallback(
-    segment => {
-      Alert.alert(
-        'Delete this sentence?',
-        'It will be removed from the transcript used to generate the report.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => deleteSegment(segment.id),
-          },
-        ],
-      );
-    },
-    [deleteSegment],
-  );
+  const aiStatusLine = () => {
+    if (!isTranscriptionAvailable()) {
+      return 'Not configured in this build';
+    }
+    switch (anuvadini.status) {
+      case ANUVADINI_STATUS.PENDING:
+        return 'Generating…';
+      case ANUVADINI_STATUS.READY:
+        return aiReady ? 'Ready' : 'Same as original';
+      case ANUVADINI_STATUS.FAILED:
+        return 'Unable to generate';
+      default:
+        return 'Not available for this dictation';
+    }
+  };
 
-  const handleSaveSegmentEdit = useCallback(
-    id => {
-      if (segmentEditText.trim()) {
-        updateSegment(id, segmentEditText);
-      } else {
-        deleteSegment(id);
-      }
-      setEditingSegmentId(null);
-      setSegmentEditText('');
-    },
-    [segmentEditText, updateSegment, deleteSegment],
-  );
+  const canSelectViewed = viewingAi ? aiReady : true;
+  const viewedIsSelected = viewedSource === selectedSource;
 
   return (
     <ScreenContainer style={styles.container}>
@@ -228,71 +199,67 @@ const TranscriptReviewScreen = ({ navigation }) => {
       >
         <SectionTitle
           title="Review & Edit Transcript"
-          subtitle="Ensure dictation accuracy before generating structured patient report."
+          subtitle="Compare both transcriptions, then choose which one the report is built from."
         />
 
-        {/* Stats bar */}
         <View style={styles.metaRow}>
           <View style={styles.metaBadge}>
             <Text style={styles.metaBadgeLabel}>Recording Time</Text>
-            <Text style={styles.metaBadgeValue}>
-              {formatDuration(durationSeconds)}
-            </Text>
+            <Text style={styles.metaBadgeValue}>{formatDuration(durationSeconds)}</Text>
           </View>
           <View style={styles.metaBadge}>
-            <Text style={styles.metaBadgeLabel}>Utterances</Text>
-            <Text style={styles.metaBadgeValue}>{segments.length}</Text>
+            <Text style={styles.metaBadgeLabel}>Report Uses</Text>
+            <Text style={styles.metaBadgeValue}>{LABEL[selectedSource]}</Text>
           </View>
         </View>
 
-        <RefinedTranscriptCard
-          status={anuvadini.status}
-          source={transcriptSource}
-          available={alternativeAvailable}
-          onUse={() => applySource(TRANSCRIPT_SOURCE.ANUVADINI)}
-          onKeepOriginal={() => applySource(TRANSCRIPT_SOURCE.NATIVE)}
-          onRetry={handleRetryRefinement}
-        />
-
-        {/* Toggle mode: Full editor vs Segments */}
         <View style={styles.toggleRow}>
-          <Pressable
-            style={[styles.toggleBtn, viewMode === 'full' && styles.toggleBtnActive]}
-            onPress={() => setViewMode('full')}
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                viewMode === 'full' && styles.toggleTextActive,
-              ]}
-            >
-              Full Editor
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.toggleBtn,
-              viewMode === 'segments' && styles.toggleBtnActive,
-            ]}
-            onPress={() => setViewMode('segments')}
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                viewMode === 'segments' && styles.toggleTextActive,
-              ]}
-            >
-              Sentence Breakdown ({segments.length})
-            </Text>
-          </Pressable>
+          {[TRANSCRIPT_SOURCE.NATIVE, TRANSCRIPT_SOURCE.ANUVADINI].map(source => {
+            const active = viewedSource === source;
+            return (
+              <Pressable
+                key={source}
+                style={[styles.toggleBtn, active && styles.toggleBtnActive]}
+                onPress={() => setViewedSource(source)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                <Text style={[styles.toggleText, active && styles.toggleTextActive]}>
+                  {LABEL[source]}
+                </Text>
+                {source === selectedSource ? (
+                  <Text style={[styles.inUse, active && styles.inUseActive]}>IN USE</Text>
+                ) : null}
+              </Pressable>
+            );
+          })}
         </View>
 
-        {viewMode === 'full' ? (
-          <View style={styles.editorCard}>
-            <Text style={styles.cardLabel}>
-              {usingAnuvadini ? 'AI TRANSCRIPTION' : 'ORIGINAL TRANSCRIPTION'}
+        {viewingAi ? (
+          <View style={styles.statusRow}>
+            {anuvadini.status === ANUVADINI_STATUS.PENDING ? (
+              <ActivityIndicator size="small" color={colors.secondaryAccent} />
+            ) : null}
+            <Text style={styles.statusText}>{aiStatusLine()}</Text>
+            {anuvadini.status === ANUVADINI_STATUS.FAILED ? (
+              <Pressable onPress={handleRetryRefinement} accessibilityRole="button">
+                <Text style={styles.retry}>Retry</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        <View style={styles.editorCard}>
+          <Text style={styles.cardLabel}>
+            {viewingAi ? 'AI TRANSCRIPTION' : 'ORIGINAL TRANSCRIPTION'}
+          </Text>
+          {viewingAi && !aiReady ? (
+            <Text style={styles.placeholder}>
+              {anuvadini.status === ANUVADINI_STATUS.PENDING
+                ? 'The AI transcription is still being generated. The original transcript is ready to use in the meantime.'
+                : 'No AI transcription for this dictation. The original transcript is unaffected and can still generate the report.'}
             </Text>
+          ) : (
             <TextInput
               style={styles.fullTextInput}
               multiline
@@ -301,92 +268,34 @@ const TranscriptReviewScreen = ({ navigation }) => {
               placeholder="Dictated text will appear here..."
               placeholderTextColor={colors.textMuted}
             />
-          </View>
-        ) : (
-          <View style={styles.segmentsList}>
-            {segments.map((segment, index) => (
-              <View key={segment.id || index} style={styles.segmentCard}>
-                <View style={styles.segmentHeader}>
-                  <Text style={styles.segmentIndex}>Sentence #{index + 1}</Text>
-                  {segment.edited ? (
-                    <Text style={styles.editedBadge}>Edited</Text>
-                  ) : null}
-                </View>
+          )}
+        </View>
 
-                {editingSegmentId === segment.id ? (
-                  <View style={styles.editSegmentBox}>
-                    <TextInput
-                      style={styles.segmentInput}
-                      multiline
-                      value={segmentEditText}
-                      onChangeText={setSegmentEditText}
-                      autoFocus
-                    />
-                    <View style={styles.segmentEditActions}>
-                      <Pressable
-                        style={styles.saveSegBtn}
-                        onPress={() => handleSaveSegmentEdit(segment.id)}
-                      >
-                        <Text style={styles.saveSegText}>Save</Text>
-                      </Pressable>
-                      <Pressable
-                        style={styles.cancelSegBtn}
-                        onPress={() => setEditingSegmentId(null)}
-                      >
-                        <Text style={styles.cancelSegText}>Cancel</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={styles.segmentText}>{segment.text}</Text>
-                )}
+        {canSelectViewed && !viewedIsSelected ? (
+          <Pressable
+            style={({ pressed }) => [styles.useBtn, pressed && styles.pressed]}
+            onPress={() => selectForReport(viewedSource)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.useBtnText}>
+              {viewingAi ? 'Use AI Transcription' : 'Use Original Transcription'}
+            </Text>
+          </Pressable>
+        ) : null}
 
-                {editingSegmentId !== segment.id ? (
-                  <View style={styles.segmentActionsRow}>
-                    <Pressable
-                      style={styles.actionLink}
-                      onPress={() => {
-                        setEditingSegmentId(segment.id);
-                        setSegmentEditText(segment.text);
-                      }}
-                    >
-                      <Text style={styles.actionLinkText}>Edit</Text>
-                    </Pressable>
-
-                    <Pressable
-                      style={styles.actionLink}
-                      onPress={() => handleDeleteSegment(segment)}
-                    >
-                      <Text style={[styles.actionLinkText, styles.deleteText]}>
-                        Delete
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-              </View>
-            ))}
-          </View>
-        )}
+        <TranscriptDiffView original={nativeRaw} revised={anuvadini.raw} />
       </ScrollView>
 
       <View style={styles.footer}>
         <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            styles.resumeBtn,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.button, styles.resumeBtn, pressed && styles.pressed]}
           onPress={handleResumeRecording}
         >
           <Text style={styles.resumeBtnText}>+ Add More Speech</Text>
         </Pressable>
 
         <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            styles.generateBtn,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.button, styles.generateBtn, pressed && styles.pressed]}
           onPress={handleGenerateReport}
         >
           <Text style={styles.generateBtnText}>Generate Report ➔</Text>
@@ -434,7 +343,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   metaBadgeValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.primaryAccent,
     marginTop: 4,
@@ -452,6 +361,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     alignItems: 'center',
     borderRadius: 8,
+    gap: 2,
   },
   toggleBtnActive: {
     backgroundColor: colors.primaryAccent,
@@ -463,6 +373,32 @@ const styles = StyleSheet.create({
   },
   toggleTextActive: {
     color: colors.onPrimary,
+  },
+  inUse: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    color: colors.textMuted,
+  },
+  inUseActive: {
+    color: colors.onPrimary,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  retry: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primaryAccent,
   },
   editorCard: {
     backgroundColor: colors.surface,
@@ -479,6 +415,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: spacing.xs,
   },
+  placeholder: {
+    ...typography.body,
+    color: colors.textMuted,
+    fontSize: 15,
+    lineHeight: 22,
+  },
   fullTextInput: {
     ...typography.body,
     color: colors.textPrimary,
@@ -487,94 +429,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
   },
-  segmentsList: {
-    gap: spacing.sm,
-  },
-  segmentCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  segmentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  useBtn: {
+    backgroundColor: colors.secondaryAccent,
+    paddingVertical: spacing.md,
+    borderRadius: 999,
     alignItems: 'center',
   },
-  segmentIndex: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-  editedBadge: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.secondaryAccent,
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  segmentText: {
-    ...typography.body,
-    color: colors.textPrimary,
+  useBtnText: {
     fontSize: 15,
-    lineHeight: 22,
-  },
-  segmentActionsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.xs,
-  },
-  actionLink: {
-    paddingVertical: 4,
-  },
-  actionLinkText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primaryAccent,
-  },
-  deleteText: {
-    color: colors.secondaryAccent,
-  },
-  editSegmentBox: {
-    gap: spacing.sm,
-  },
-  segmentInput: {
-    ...typography.body,
-    color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.primaryAccent,
-    borderRadius: 8,
-    padding: spacing.sm,
-    backgroundColor: colors.primaryBackground,
-  },
-  segmentEditActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'flex-end',
-  },
-  saveSegBtn: {
-    backgroundColor: colors.primaryAccent,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 6,
-  },
-  saveSegText: {
+    fontWeight: '700',
     color: colors.onPrimary,
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  cancelSegBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 6,
-  },
-  cancelSegText: {
-    color: colors.textMuted,
-    fontSize: 13,
   },
   footer: {
     paddingVertical: spacing.md,
