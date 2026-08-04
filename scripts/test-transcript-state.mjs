@@ -14,10 +14,12 @@ import {
   activeText,
   applyResult,
   canOffer,
+  continuationBaseFrom,
   emptyAnuvadini,
   markPending,
   switchSource,
 } from '../src/services/consultationTranscripts.js';
+import { summarizeChanges } from '../src/services/transcriptDiff.js';
 import { extractPatientFields } from '../src/services/extractionService.js';
 import { applyEdit, mergeExtraction, toDraft } from '../src/services/reportDraft.js';
 import { ERROR_KIND } from '../src/services/anuvadini/proxyContract.js';
@@ -33,7 +35,9 @@ const REFINED =
 check('T1.1 starts idle', emptyAnuvadini().status, ANUVADINI_STATUS.IDLE);
 check('T1.2 pending', markPending(emptyAnuvadini()).status, ANUVADINI_STATUS.PENDING);
 
-const ready = applyResult(markPending(emptyAnuvadini()), { ok: true, text: REFINED }, 111);
+const ready = applyResult(markPending(emptyAnuvadini()), { ok: true, text: REFINED }, {
+  now: 111,
+});
 check('T1.3 ready on success', ready.status, ANUVADINI_STATUS.READY);
 check('T1.4 text stored', ready.text, REFINED);
 check('T1.5 error cleared', ready.error, null);
@@ -191,6 +195,136 @@ check(
     source: persisted.transcriptSource,
   }),
   REFINED,
+);
+
+// ── 8. Editing the draft never touches the raw baseline ─────────────────────
+const SOAR = 'Patient has soar throat.';
+const CORRECTED = 'Patient has sore throat.';
+
+const pass1 = applyResult(emptyAnuvadini(), { ok: true, text: SOAR });
+const editedAi = { ...pass1, text: CORRECTED };
+
+check('T8.1 the draft holds the correction', editedAi.text, CORRECTED);
+check('T8.2 the raw baseline is untouched', editedAi.raw, SOAR);
+check(
+  'T8.3 the comparison is unchanged by the edit',
+  summarizeChanges('Patient has soar throat.', editedAi.raw),
+  summarizeChanges('Patient has soar throat.', pass1.raw),
+);
+check(
+  'T8.4 the report uses the edited draft',
+  activeText({
+    nativeText: 'native',
+    anuvadini: editedAi,
+    source: TRANSCRIPT_SOURCE.ANUVADINI,
+  }),
+  CORRECTED,
+);
+
+// ── 9. A continuation appends to a snapshot, not to live state ──────────────
+const FEVER = 'He also has fever.';
+const base = continuationBaseFrom(editedAi);
+
+check('T9.1 the snapshot carries the edited draft', base.text, CORRECTED);
+check('T9.2 and the raw baseline separately', base.raw, SOAR);
+
+const pass2 = applyResult(markPending(editedAi), { ok: true, text: FEVER }, {
+  append: true,
+  base,
+});
+
+check('T9.3 the draft keeps the correction and gains the new speech', pass2.text, `${CORRECTED}\n${FEVER}`);
+check('T9.4 raw accumulates only what the service produced', pass2.raw, `${SOAR}\n${FEVER}`);
+check('T9.5 the doctor’s wording never reaches raw', pass2.raw.includes('sore'), false);
+check('T9.6 status is ready', pass2.status, ANUVADINI_STATUS.READY);
+
+// Replaying the same continuation must not append it twice.
+const replayed = applyResult(pass2, { ok: true, text: FEVER }, { append: true, base });
+check('T9.7 retry from the same base is idempotent', replayed.text, `${CORRECTED}\n${FEVER}`);
+check('T9.8 idempotent for raw too', replayed.raw, `${SOAR}\n${FEVER}`);
+
+// ── 10. A failed continuation destroys nothing ──────────────────────────────
+const failedContinuation = applyResult(markPending(pass2), {
+  ok: false,
+  errorKind: ERROR_KIND.TIMEOUT,
+}, { append: true, base: continuationBaseFrom(pass2) });
+
+check('T10.1 the draft survives', failedContinuation.text, pass2.text);
+check('T10.2 the raw baseline survives', failedContinuation.raw, pass2.raw);
+check('T10.3 status reports the failure', failedContinuation.status, ANUVADINI_STATUS.FAILED);
+check('T10.4 the error kind is kept for Retry', failedContinuation.error, ERROR_KIND.TIMEOUT);
+
+// ── 11. The full multi-pass sequence ────────────────────────────────────────
+// pass 1 success → manual edit → pass 2 failure → retry success → pass 3 success
+const RAW_1 = 'Patient has soar throat.';
+const EDIT_1 = 'Patient has sore throat.';
+const RAW_2 = 'He also has fever.';
+const RAW_3 = 'History of asthma.';
+
+let sequence = applyResult(emptyAnuvadini(), { ok: true, text: RAW_1 });
+sequence = { ...sequence, text: EDIT_1 };
+
+// Add More Speech: one snapshot for this recording, reused by the retry.
+const baseTwo = continuationBaseFrom(sequence);
+sequence = applyResult(markPending(sequence), { ok: false, errorKind: ERROR_KIND.NETWORK }, {
+  append: true,
+  base: baseTwo,
+});
+check('T11.1 the failure left the edit alone', sequence.text, EDIT_1);
+
+sequence = applyResult(markPending(sequence), { ok: true, text: RAW_2 }, {
+  append: true,
+  base: baseTwo,
+});
+
+// A second Add More Speech takes a FRESH snapshot.
+const baseThree = continuationBaseFrom(sequence);
+sequence = applyResult(markPending(sequence), { ok: true, text: RAW_3 }, {
+  append: true,
+  base: baseThree,
+});
+
+check('T11.2 final draft', sequence.text, `${EDIT_1}\n${RAW_2}\n${RAW_3}`);
+check('T11.3 final raw', sequence.raw, `${RAW_1}\n${RAW_2}\n${RAW_3}`);
+check('T11.4 the manual correction survived every pass', sequence.text.includes('sore throat'), true);
+check('T11.5 raw still shows what the service actually heard', sequence.raw.includes('soar throat'), true);
+
+for (const [label, chunk] of [
+  ['pass 2', RAW_2],
+  ['pass 3', RAW_3],
+]) {
+  check(
+    `T11.6 ${label} appears exactly once in the draft`,
+    sequence.text.split(chunk).length - 1,
+    1,
+  );
+  check(
+    `T11.7 ${label} appears exactly once in raw`,
+    sequence.raw.split(chunk).length - 1,
+    1,
+  );
+}
+
+// ── 12. Continuation while Original is selected ─────────────────────────────
+const whileNative = {
+  nativeText: 'native transcript',
+  anuvadini: sequence,
+  source: TRANSCRIPT_SOURCE.NATIVE,
+};
+check(
+  'T12.1 the AI draft still accumulated',
+  whileNative.anuvadini.text.includes(RAW_3),
+  true,
+);
+check(
+  'T12.2 the selected source is unchanged',
+  switchSource(whileNative, TRANSCRIPT_SOURCE.NATIVE),
+  TRANSCRIPT_SOURCE.NATIVE,
+);
+check(
+  'T12.3 the report still reads the native transcript',
+  activeText(whileNative),
+  'native transcript',
 );
 
 report();
