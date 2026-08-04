@@ -23,6 +23,10 @@ export const ANUVADINI_STATUS = {
 export function emptyAnuvadini() {
   return {
     text: '',
+    // What the service returned, frozen. `text` is the editable draft; this is
+    // the comparison baseline, so a doctor's edit can never rewrite what the
+    // diff says the AI changed.
+    raw: '',
     status: ANUVADINI_STATUS.IDLE,
     error: null,
     updatedAt: 0,
@@ -58,6 +62,7 @@ export function applyResult(anuvadini, result, now = Date.now()) {
   if (result?.ok && result.text) {
     return {
       text: result.text,
+      raw: result.text,
       status: ANUVADINI_STATUS.READY,
       error: null,
       updatedAt: now,

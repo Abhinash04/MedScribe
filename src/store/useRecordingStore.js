@@ -75,6 +75,10 @@ const initialState = {
   // that text here would give the same transcript two owners.
   anuvadini: emptyAnuvadini(),
   transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
+  // The recognizer's own words, frozen when dictation ends. Segments stay
+  // editable; this is the baseline the "what AI changed" comparison uses, so a
+  // doctor's edit cannot rewrite history.
+  nativeRaw: '',
 };
 
 const useRecordingStore = create((set, get) => ({
@@ -159,6 +163,8 @@ const useRecordingStore = create((set, get) => ({
 
   setStage: stage => set({ stage }),
 
+  setNativeRaw: nativeRaw => set({ nativeRaw }),
+
   setAnuvadiniPending: () =>
     set(state => ({ anuvadini: markPending(state.anuvadini) })),
 
@@ -205,6 +211,7 @@ const useRecordingStore = create((set, get) => ({
       createdAt: sessionData.createdAt || Date.now(),
       anuvadini: sessionData.anuvadiniTranscript || emptyAnuvadini(),
       transcriptSource: sessionData.transcriptSource || TRANSCRIPT_SOURCE.NATIVE,
+      nativeRaw: sessionData.nativeRaw || '',
       status: RECORDING_STATE.IDLE,
     });
   },
@@ -222,6 +229,7 @@ const useRecordingStore = create((set, get) => ({
       createdAt: Date.now(),
       anuvadini: emptyAnuvadini(),
       transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
+      nativeRaw: '',
     }),
 }));
 

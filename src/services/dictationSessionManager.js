@@ -9,7 +9,7 @@ import {
 } from './sessionPersistenceService';
 import * as consultationAudio from './consultationAudio';
 import * as sharedMic from './sharedMicService';
-import { isCaptureEnabled } from '../config/features';
+import { isCaptureEnabled, isTranscriptionAvailable } from '../config/features';
 import { refineTranscript } from './transcriptRefinement';
 import useRecordingStore, {
   selectFullTranscript,
@@ -226,13 +226,18 @@ class DictationSessionManager {
       clearTimeout(this.extractDebounceId);
       this.extractDebounceId = null;
     }
+    // Frozen before the review screen can offer an editor, so the comparison
+    // baseline is always the recognizer's own words.
+    useRecordingStore.getState().setNativeRaw(selectFullTranscript(useRecordingStore.getState()));
+
     this.runLiveExtraction();
     this.persistCurrentSession();
 
     // The doctor moves on to the transcript review immediately; the alternative
     // transcription runs behind them and reports into the store when it lands.
     captured = captured ?? (await consultationAudio.finish());
-    if (captured?.path && captured.withinBudget) {
+    // No endpoint means the recording has no purpose, so it is not kept.
+    if (captured?.path && captured.withinBudget && isTranscriptionAvailable()) {
       refineTranscript({ append: this.appendRefinement }).catch(() => {});
     } else if (captured?.path) {
       await consultationAudio.discard();
@@ -330,6 +335,7 @@ class DictationSessionManager {
       createdAt: store.createdAt,
       anuvadiniTranscript: store.anuvadini,
       transcriptSource: store.transcriptSource,
+      nativeRaw: store.nativeRaw,
     });
   }
 

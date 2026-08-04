@@ -2,6 +2,7 @@ import { transcribe } from './anuvadini/transcriptionClient';
 import { ERROR_KIND } from './anuvadini/proxyContract';
 import { DEFAULT_LANGUAGE } from './anuvadini/language';
 import * as consultationAudio from './consultationAudio';
+import { getAnuvadiniToken } from './appConfigService';
 import useRecordingStore from '../store/useRecordingStore';
 
 /**
@@ -58,6 +59,7 @@ export async function refineTranscript({
   const result = await transcribe({
     audioBase64: payload,
     language,
+    token: getAnuvadiniToken(),
     signal: controller.signal,
   });
 
