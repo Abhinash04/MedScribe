@@ -1,5 +1,19 @@
 import { create } from 'zustand';
 import { RECORDING_STATE } from '../constants/recordingStates';
+import {
+  activeText,
+  applyResult,
+  emptyAnuvadini,
+  markPending,
+  switchSource,
+  TRANSCRIPT_SOURCE,
+} from '../services/consultationTranscripts';
+
+export const CONSULTATION_STAGE = {
+  RECORDING: 'recording',
+  REVIEW: 'review',
+  REPORT: 'report',
+};
 
 /**
  * Recording Session Store.
@@ -53,6 +67,14 @@ const initialState = {
   // round trip through the recording screen. Manual edits would otherwise be
   // lost when the report screen remounts and re-extracts.
   reportDraft: null,
+  // Where the consultation had got to, so an interrupted one reopens on the
+  // screen the doctor was actually on.
+  stage: CONSULTATION_STAGE.RECORDING,
+  createdAt: Date.now(),
+  // The alternative transcript. `segments` remain the native one — duplicating
+  // that text here would give the same transcript two owners.
+  anuvadini: emptyAnuvadini(),
+  transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
 };
 
 const useRecordingStore = create((set, get) => ({
@@ -135,6 +157,30 @@ const useRecordingStore = create((set, get) => ({
 
   setReportDraft: reportDraft => set({ reportDraft }),
 
+  setStage: stage => set({ stage }),
+
+  setAnuvadiniPending: () =>
+    set(state => ({ anuvadini: markPending(state.anuvadini) })),
+
+  setAnuvadiniResult: result =>
+    set(state => ({ anuvadini: applyResult(state.anuvadini, result) })),
+
+  /** Edits made while the alternative transcript is the active one. */
+  setAnuvadiniText: text =>
+    set(state => ({ anuvadini: { ...state.anuvadini, text: text ?? '' } })),
+
+  setTranscriptSource: source =>
+    set(state => ({
+      transcriptSource: switchSource(
+        {
+          nativeText: chunksFrom(state.segments).join(' ').trim(),
+          anuvadini: state.anuvadini,
+          source: state.transcriptSource,
+        },
+        source,
+      ),
+    })),
+
   setPartial: partialText => set({ partialText: partialText ?? '' }),
 
   setError: (errorMessage, errorCode = null) =>
@@ -154,6 +200,11 @@ const useRecordingStore = create((set, get) => ({
       chunks: chunksFrom(restored),
       liveExtractedFields: sessionData.liveExtractedFields || {},
       durationSeconds: sessionData.durationSeconds || 0,
+      reportDraft: sessionData.draft || null,
+      stage: sessionData.stage || CONSULTATION_STAGE.RECORDING,
+      createdAt: sessionData.createdAt || Date.now(),
+      anuvadini: sessionData.anuvadiniTranscript || emptyAnuvadini(),
+      transcriptSource: sessionData.transcriptSource || TRANSCRIPT_SOURCE.NATIVE,
       status: RECORDING_STATE.IDLE,
     });
   },
@@ -167,13 +218,28 @@ const useRecordingStore = create((set, get) => ({
       durationSeconds: 0,
       liveExtractedFields: {},
       reportDraft: null,
+      stage: CONSULTATION_STAGE.RECORDING,
+      createdAt: Date.now(),
+      anuvadini: emptyAnuvadini(),
+      transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
     }),
 }));
 
 /**
- * Joined transcript selector for display and report extraction.
+ * Joined native transcript — what the recognizer produced.
  */
 export const selectFullTranscript = state =>
   chunksFrom(state.segments).join(' ').trim() || state.chunks.join(' ').trim();
+
+/**
+ * The transcript the doctor has chosen. Extraction and the report read this;
+ * the native one stays intact underneath either way.
+ */
+export const selectActiveTranscript = state =>
+  activeText({
+    nativeText: selectFullTranscript(state),
+    anuvadini: state.anuvadini,
+    source: state.transcriptSource,
+  });
 
 export default useRecordingStore;

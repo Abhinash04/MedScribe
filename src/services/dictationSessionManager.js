@@ -1,7 +1,16 @@
+import { AppState } from 'react-native';
 import { RECORDING_STATE } from '../constants/recordingStates';
 import * as speech from './speechService';
 import audioFeedbackService from './audioFeedbackService';
-import { saveSessionDebounced, clearActiveSession } from './sessionPersistenceService';
+import {
+  clearActiveSession,
+  flushPendingSave,
+  saveSessionDebounced,
+} from './sessionPersistenceService';
+import * as consultationAudio from './consultationAudio';
+import * as sharedMic from './sharedMicService';
+import { isCaptureEnabled } from '../config/features';
+import { refineTranscript } from './transcriptRefinement';
 import useRecordingStore, {
   selectFullTranscript,
 } from '../store/useRecordingStore';
@@ -15,11 +24,35 @@ import { extractPatientFields } from './extractionService';
  * with this orchestrator.
  */
 
+const SAMPLE_RATE_HZ = 16000;
+const RECOGNITION_LANGUAGE = 'en-IN';
+const SHARED_MIC_POLL_MS = 400;
+
+/**
+ * The vendor recognizer reports roughly -2..10 for silence..loud speech, and
+ * the visualizer is tuned to that. PCM RMS is 0..32767, so it is mapped onto
+ * the same range rather than giving the waveform a scale it cannot draw.
+ */
+const rmsToLevel = rms => Math.max(0, Math.min(10, ((rms ?? 0) / 3000) * 10));
+
 class DictationSessionManager {
   constructor() {
     this.timerId = null;
     this.extractDebounceId = null;
     this.lastExtractedTranscript = '';
+    this.appendRefinement = false;
+    this.sharedMicActive = false;
+    this.sharedMicPollId = null;
+    this.lastSharedText = '';
+    // The two-second debounce is exactly long enough to lose the last edit to
+    // a process the OS kills while the app sits in the background.
+    this.appStateSubscription = AppState.addEventListener('change', state => {
+      if (state === 'background' || state === 'inactive') {
+        flushPendingSave().catch(() => {});
+      }
+    });
+    // Patient audio an interrupted app left behind must not accumulate.
+    consultationAudio.purgeAbandoned().catch(() => {});
   }
 
   /**
@@ -33,6 +66,86 @@ class DictationSessionManager {
     audioFeedbackService.playStartCue();
     this.startTimer();
     store.setStatus(RECORDING_STATE.LISTENING);
+
+    // One dictation, two outputs: the recognizer produces live text while the
+    // same speech is written to a WAV for the alternative transcription. Whether
+    // the two can share the microphone is a per-device question, so a failure
+    // to start capture is silent — the consultation continues on native alone.
+    if (isCaptureEnabled() && (await sharedMic.isSupported())) {
+      // A later pass captures only the new speech, so its transcript extends
+      // the earlier one rather than replacing it.
+      this.appendRefinement = !!store.anuvadini?.text;
+      await this.startSharedMic(store.sessionId);
+    }
+  }
+
+  /**
+   * One microphone feeding both the recognizer and the recording.
+   *
+   * Returns whether it took over. When it does, the vendor recognizer must stay
+   * out of the way — a second client would starve this one, which is the
+   * contention the device measurements established.
+   */
+  async startSharedMic(sessionId) {
+    try {
+      await sharedMic.start(SAMPLE_RATE_HZ, sessionId, RECOGNITION_LANGUAGE, true);
+      this.sharedMicActive = true;
+      this.lastSharedText = '';
+      this.startSharedMicPolling();
+      return true;
+    } catch (error) {
+      console.warn('[dictationSessionManager] shared mic unavailable:', error?.message);
+      this.sharedMicActive = false;
+      return false;
+    }
+  }
+
+  usesSharedMic() {
+    return this.sharedMicActive;
+  }
+
+  /**
+   * The module reports state rather than emitting events, so the live
+   * transcript is polled. Partials arrive continuously; a segmented session
+   * delivers its final text only when the audio closes.
+   */
+  startSharedMicPolling() {
+    this.stopSharedMicPolling();
+    this.sharedMicPollId = setInterval(async () => {
+      const state = await sharedMic.getState();
+      if (!state) {
+        return;
+      }
+      const store = useRecordingStore.getState();
+      store.setPartial(state.partial ?? '');
+      this.absorbSharedText(state.text);
+      // The visualizer reads the same shared value the vendor recognizer feeds,
+      // so it keeps animating on whichever engine holds the microphone.
+      speech.amplitudeShared.value = rmsToLevel(state.lastRms);
+    }, SHARED_MIC_POLL_MS);
+  }
+
+  stopSharedMicPolling() {
+    if (this.sharedMicPollId) {
+      clearInterval(this.sharedMicPollId);
+      this.sharedMicPollId = null;
+    }
+  }
+
+  /** Appends only what is new, so a poll cannot duplicate an utterance. */
+  absorbSharedText(text) {
+    const full = (text ?? '').trim();
+    if (!full || full === this.lastSharedText) {
+      return;
+    }
+    const addition = full.startsWith(this.lastSharedText)
+      ? full.slice(this.lastSharedText.length).trim()
+      : full;
+    this.lastSharedText = full;
+    if (addition) {
+      useRecordingStore.getState().appendSegment({ text: addition });
+      this.scheduleLiveExtraction();
+    }
   }
 
   /**
@@ -46,10 +159,15 @@ class DictationSessionManager {
     store.setPartial('');
     speech.amplitudeShared.value = 0;
 
-    try {
-      await speech.stop();
-    } catch (error) {
-      console.warn('[dictationSessionManager] Pause stop warning:', error);
+    if (this.sharedMicActive) {
+      await sharedMic.pause();
+    } else {
+      try {
+        await speech.stop();
+      } catch (error) {
+        console.warn('[dictationSessionManager] Pause stop warning:', error);
+      }
+      await consultationAudio.pause();
     }
 
     this.persistCurrentSession();
@@ -63,6 +181,11 @@ class DictationSessionManager {
     audioFeedbackService.playResumeCue();
     this.startTimer();
     store.setStatus(RECORDING_STATE.LISTENING);
+    if (this.sharedMicActive) {
+      await sharedMic.resume();
+    } else {
+      await consultationAudio.resume();
+    }
   }
 
   /**
@@ -76,10 +199,24 @@ class DictationSessionManager {
     speech.amplitudeShared.value = 0;
     store.setStatus(RECORDING_STATE.PROCESSING);
 
-    try {
-      await speech.stop();
-    } catch (error) {
-      console.warn('[dictationSessionManager] Stop warning:', error);
+    let captured = null;
+
+    if (this.sharedMicActive) {
+      this.stopSharedMicPolling();
+      // A segmented session delivers its transcript when the audio closes, so
+      // the authoritative text is whatever stop() comes back with.
+      const final = await sharedMic.stop();
+      this.sharedMicActive = false;
+      if (final) {
+        this.absorbSharedText(final.text);
+        captured = consultationAudio.adopt(final.path, final.bytes);
+      }
+    } else {
+      try {
+        await speech.stop();
+      } catch (error) {
+        console.warn('[dictationSessionManager] Stop warning:', error);
+      }
     }
 
     // Cancel the queued run first: a debounced extraction landing after
@@ -91,6 +228,15 @@ class DictationSessionManager {
     }
     this.runLiveExtraction();
     this.persistCurrentSession();
+
+    // The doctor moves on to the transcript review immediately; the alternative
+    // transcription runs behind them and reports into the store when it lands.
+    captured = captured ?? (await consultationAudio.finish());
+    if (captured?.path && captured.withinBudget) {
+      refineTranscript({ append: this.appendRefinement }).catch(() => {});
+    } else if (captured?.path) {
+      await consultationAudio.discard();
+    }
   }
 
   /**
@@ -169,7 +315,8 @@ class DictationSessionManager {
   }
 
   /**
-   * Persists session to database asynchronously.
+   * Persists the whole consultation — transcript, draft, manual edits and the
+   * stage the doctor reached — so recovery can reopen where they left off.
    */
   persistCurrentSession() {
     const store = useRecordingStore.getState();
@@ -178,7 +325,18 @@ class DictationSessionManager {
       segments: store.segments,
       liveExtractedFields: store.liveExtractedFields,
       durationSeconds: store.durationSeconds,
+      draft: store.reportDraft,
+      stage: store.stage,
+      createdAt: store.createdAt,
+      anuvadiniTranscript: store.anuvadini,
+      transcriptSource: store.transcriptSource,
     });
+  }
+
+  /** Writes now rather than in two seconds — used at stage boundaries. */
+  async persistNow() {
+    this.persistCurrentSession();
+    await flushPendingSave();
   }
 
   /**
@@ -187,6 +345,7 @@ class DictationSessionManager {
   async clearSession() {
     const store = useRecordingStore.getState();
     await clearActiveSession(store.sessionId);
+    await consultationAudio.discard();
   }
 }
 

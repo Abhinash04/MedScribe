@@ -121,6 +121,11 @@ export default function useSpeechRecognition({
   }, [clearTimers, isSettled, setPartial, resetAmplitude, setStatus]);
 
   const safeStart = useCallback(async () => {
+    // Every restart path funnels through here, so one guard keeps the vendor
+    // recognizer off a microphone the shared-mic module already owns.
+    if (dictationSessionManager.usesSharedMic()) {
+      return;
+    }
     if (!mountedRef.current || !shouldContinueRef.current) {
       return;
     }
@@ -383,7 +388,12 @@ export default function useSpeechRecognition({
     // rather than in a wrapper covers the mount path, which is how every real
     // session begins.
     await dictationSessionManager.startSession();
-    await safeStart();
+    // When the shared-microphone module took the mic, it drives recognition
+    // itself. Starting the vendor recognizer as well would put two clients on
+    // one microphone, which is the contention the device measurements ruled out.
+    if (!dictationSessionManager.usesSharedMic()) {
+      await safeStart();
+    }
   }, [clearTimers, reset, setStatus, setError, safeStart]);
 
   const stop = useCallback(async () => {
