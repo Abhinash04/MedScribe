@@ -9,7 +9,14 @@
  * failure path may ever echo the audio back into an error.
  */
 import {
+  ANUVADINI_STT_URL,
+  TRANSCRIPTION_TRANSPORT,
+  TRANSPORT,
+  resolveTransport,
+} from '../src/config/endpoints.js';
+import {
   ERROR_KIND,
+  buildDirectRequestBody,
   buildRequestBody,
   readTranscription,
 } from '../src/services/anuvadini/proxyContract.js';
@@ -26,6 +33,7 @@ import { check, report } from './lib/fixture-harness.mjs';
 
 const URL = 'https://proxy.test/voice-to-text';
 const AUDIO = 'QUJDREVGRw==';
+const TOKEN = 'test-token-must-not-leak';
 
 const transportReturning = (status, body) => {
   const calls = [];
@@ -47,8 +55,17 @@ const transportThrowing = error => {
   return transport;
 };
 
+// The shipped transport is `direct`, so every shared case carries a token —
+// without one the client correctly refuses before sending anything.
 const run = (transport, overrides = {}) =>
-  transcribe({ audioBase64: AUDIO, language: 'en', url: URL, transport, ...overrides });
+  transcribe({
+    audioBase64: AUDIO,
+    language: 'en',
+    url: URL,
+    token: TOKEN,
+    transport,
+    ...overrides,
+  });
 
 // ── 1. Language normalization ───────────────────────────────────────────────
 check('A1.1 en → en-IN', normalizeAnuvadiniLanguage('en'), 'en-IN');
@@ -62,7 +79,8 @@ check('A1.7 supported check', isSupportedLanguage('ta'), true);
 check('A1.8 unsupported check', isSupportedLanguage('xx'), false);
 
 // ── 2. Request assembly ─────────────────────────────────────────────────────
-check('A2.1 exact request fields', Object.keys(buildRequestBody('abc', 'en-IN')).sort(), [
+// Our proxy contract.
+check('A2.1 exact proxy fields', Object.keys(buildRequestBody('abc', 'en-IN')).sort(), [
   'audio_buffer',
   'audio_language',
 ]);
@@ -73,15 +91,48 @@ check(
   'en-IN',
 );
 
-const sent = transportReturning(200, { success: true, transcription: 'Hello' });
+// Anuvadini's own contract, used when the app calls it directly.
+check(
+  'A2.4 exact direct fields',
+  Object.keys(buildDirectRequestBody('abc', 'en-IN')).sort(),
+  ['audioBuffer', 'audioLanguage'],
+);
+check(
+  'A2.5 direct audio field',
+  buildDirectRequestBody('abc', 'en-IN').audioBuffer,
+  'abc',
+);
+check(
+  'A2.6 direct language field',
+  buildDirectRequestBody('abc', 'en-IN').audioLanguage,
+  'en-IN',
+);
+
+const sent = transportReturning(200, { transcription: 'Hello' });
 await run(sent);
-check('A2.4 posts to the configured proxy url', sent.calls[0].url, URL);
-check('A2.5 body carries the normalized language', sent.calls[0].body.audio_language, 'en-IN');
-check('A2.6 body carries the audio verbatim', sent.calls[0].body.audio_buffer, AUDIO);
-check('A2.7 no extra fields on the wire', Object.keys(sent.calls[0].body).sort(), [
-  'audio_buffer',
-  'audio_language',
+check('A2.7 posts to the configured url', sent.calls[0].url, URL);
+check('A2.8 body carries the normalized language', sent.calls[0].body.audioLanguage, 'en-IN');
+check('A2.9 body carries the audio verbatim', sent.calls[0].body.audioBuffer, AUDIO);
+check('A2.10 no extra fields on the wire', Object.keys(sent.calls[0].body).sort(), [
+  'audioBuffer',
+  'audioLanguage',
 ]);
+check(
+  'A2.11 direct mode attaches the bearer header',
+  sent.calls[0].headers?.Authorization,
+  `Bearer ${TOKEN}`,
+);
+
+// The declared transport decides; a populated proxy URL cannot pull a direct
+// build off the upstream, which is what made the last device test confusing.
+check('A2.12 shipped transport is direct', TRANSCRIPTION_TRANSPORT, TRANSPORT.DIRECT);
+check('A2.13 direct resolves with a token', resolveTransport(TOKEN), TRANSPORT.DIRECT);
+check('A2.14 direct without a token is unusable', resolveTransport(''), TRANSPORT.NONE);
+check(
+  'A2.15 the upstream url is Anuvadini',
+  ANUVADINI_STT_URL,
+  'https://anuvadini-services.aicte-india.org/api/voice-to-text',
+);
 
 // ── 3. Success ──────────────────────────────────────────────────────────────
 const ok = await run(transportReturning(200, { success: true, transcription: '  Hello  ' }));
@@ -176,6 +227,18 @@ check(
   Object.keys(leaked).sort(),
   ['errorKind', 'ok', 'text'],
 );
+
+// The credential must not ride back to the caller on ANY path — an error
+// envelope is the easiest place for a secret to escape unnoticed.
+for (const [label, impl] of [
+  ['success', transportReturning(200, { transcription: 'ok' })],
+  ['server error', transportReturning(500, { detail: 'boom' })],
+  ['unauthorized', transportReturning(401, { detail: 'no' })],
+  ['thrown', transportThrowing(new Error(`bad request with ${TOKEN}`))],
+]) {
+  const result = await run(impl);
+  check(`A7.5 token absent from the ${label} result`, JSON.stringify(result).includes(TOKEN), false);
+}
 
 // ── 8. Reader in isolation ──────────────────────────────────────────────────
 check('A8.1 reads transcription', readTranscription({ transcription: 'A' }), { ok: true, text: 'A' });

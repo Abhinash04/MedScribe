@@ -19,6 +19,7 @@
     "test:transcripts": "node scripts/test-transcript-state.mjs",
     "test:anuvadini": "node scripts/test-anuvadini-client.mjs",
     "test:audio": "node scripts/test-audio-budget.mjs",
+    "test:diff": "node scripts/test-transcript-diff.mjs",
     "test:proxy": "node scripts/test-proxy.mjs",
     "proxy": "node --env-file=server/.env server/index.mjs",
     "start": "react-native start",
