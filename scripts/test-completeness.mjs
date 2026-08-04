@@ -15,6 +15,7 @@ import {
 } from '../src/services/reportCompleteness.js';
 import {
   applyEdit,
+  countRequiredFilled,
   mergeExtraction,
   toDraft,
 } from '../src/services/reportDraft.js';
@@ -244,6 +245,9 @@ const FIRST_PASS =
 const firstDraft = toDraft(extractPatientFields(FIRST_PASS));
 const firstResult = validateReportCompleteness(firstDraft);
 check('V7.1 first pass is blocked', firstResult.isComplete, false);
+// Seven of the ten: name, age, gender, symptoms, history, diagnosis and
+// prescription are dictated; the three demographics are not.
+check('V7.1b seven required fields captured', countRequiredFilled(firstDraft), 7);
 check('V7.2 it names the three demographics', keysOf(firstResult.missingFields), [
   'address',
   'pinCode',
@@ -257,6 +261,7 @@ const SECOND_PASS =
 const secondDraft = mergeExtraction(firstDraft, extractPatientFields(SECOND_PASS));
 const secondResult = validateReportCompleteness(secondDraft);
 check('V7.3 additional speech completes the report', secondResult.isComplete, true);
+check('V7.3b all ten required fields captured', countRequiredFilled(secondDraft), 10);
 check('V7.4 nothing missing', secondResult.missingFields, []);
 check(
   'V7.5 remarks stayed empty and did not block',
