@@ -65,6 +65,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const viewingAi = viewedSource === TRANSCRIPT_SOURCE.ANUVADINI;
   const aiReady = anuvadini.status === ANUVADINI_STATUS.READY && !!anuvadini.text.trim();
+  /**
+   * Editing stays available while a continuation is being transcribed — the
+   * existing draft is still the doctor's to correct, and blanking it behind a
+   * "generating" placeholder would look like the transcript had been lost.
+   */
+  const hasAiText = !!anuvadini.text.trim();
   const viewedText = viewingAi ? anuvadini.text : fullTranscript;
 
   const [editableText, setEditableText] = useState(viewedText);
@@ -93,6 +99,22 @@ const TranscriptReviewScreen = ({ navigation }) => {
       return text;
     },
     [viewedText, viewingAi, setAnuvadiniText, setFullTranscript],
+  );
+
+  /**
+   * Switching tabs commits first. Without this the effect that follows
+   * `viewedText` resets the editor and the doctor's uncommitted correction
+   * disappears the moment they look at the other transcript.
+   */
+  const showSource = useCallback(
+    source => {
+      if (source === viewedSource) {
+        return;
+      }
+      commitEditor(editableText);
+      setViewedSource(source);
+    },
+    [viewedSource, commitEditor, editableText],
   );
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
@@ -220,7 +242,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
               <Pressable
                 key={source}
                 style={[styles.toggleBtn, active && styles.toggleBtnActive]}
-                onPress={() => setViewedSource(source)}
+                onPress={() => showSource(source)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
               >
@@ -253,7 +275,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
           <Text style={styles.cardLabel}>
             {viewingAi ? 'AI TRANSCRIPTION' : 'ORIGINAL TRANSCRIPTION'}
           </Text>
-          {viewingAi && !aiReady ? (
+          {viewingAi && !hasAiText ? (
             <Text style={styles.placeholder}>
               {anuvadini.status === ANUVADINI_STATUS.PENDING
                 ? 'The AI transcription is still being generated. The original transcript is ready to use in the meantime.'
