@@ -5,7 +5,11 @@ import {
   TRAILING_LEAD_IN_PATTERN,
   TRAILING_TRIM_PATTERN,
 } from '../../constants/fieldMarkers.js';
-import { SYMPTOM_MODIFIERS, SYMPTOM_TERMS } from '../../constants/clinicalCues.js';
+import {
+  NON_FINDINGS,
+  SYMPTOM_MODIFIERS,
+  SYMPTOM_TERMS,
+} from '../../constants/clinicalCues.js';
 import { splitFindings } from './detectNegation.js';
 import {
   digitGroups,
@@ -333,7 +337,8 @@ const processors = {
       splitFindings(trimTrailing(trimLeading(afterLastCorrection(raw))))
         .positive.flatMap(item => splitKnownFindings(item.replace(/\bhai\b/gi, '').trim()))
         .map(item => sentenceCase(item))
-        .filter(item => item.length > 1),
+        // "fever, cough, etc." closes the list without naming a finding.
+        .filter(item => item.length > 1 && !NON_FINDINGS.has(item.toLowerCase())),
     ),
 
   /** One entry per drug, wording untouched. */

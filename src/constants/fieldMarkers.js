@@ -20,7 +20,7 @@
  * ("patient name is") always beats a looser one ("name is").
  */
 
-import { MEDICATION_UNITS } from './clinicalCues.js';
+import { ADVERB_GAP, MEDICATION_UNITS } from './clinicalCues.js';
 
 export const CONFIDENCE = {
   EXPLICIT: 0.95,
@@ -153,19 +153,38 @@ export const FIELD_MARKERS = {
     postProcessor: 'symptomList',
     validator: 'nonEmptyList',
     markers: [
-      m(/\bcomplain(?:s|ing|ed)?\s+of\s+/i, CONFIDENCE.EXPLICIT, 'complains of'),
+      // The verb and its preposition need not be adjacent — "complains today
+      // of", "presented yesterday with". ADVERB_GAP is shared so the whole
+      // family tolerates it from one definition.
+      m(
+        new RegExp(`\\bcomplain(?:s|ing|ed)?${ADVERB_GAP}\\s+of\\s+`, 'i'),
+        CONFIDENCE.EXPLICIT,
+        'complains of',
+      ),
       m(/\bc\/o\s+/i, CONFIDENCE.EXPLICIT, 'c/o'),
       // "symptoms" must be followed by a copula. A bare match fires inside
       // "if symptoms persist" (a remark) and pollutes the field with "Persist".
       m(/\bsymptoms?\s+(?:are|is|include[s]?)\s+/i, CONFIDENCE.EXPLICIT, 'symptoms are'),
       m(/\bpresenting\s+complaints?\s+(?:are|include[s]?)?\s*/i, CONFIDENCE.EXPLICIT, 'presenting complaints'),
-      m(/\bsuffering\s+from\s+/i, CONFIDENCE.STRONG, 'suffering from'),
-      m(/\bpresent(?:s|ing|ed)?\s+with\s+/i, CONFIDENCE.STRONG, 'presents with'),
+      m(
+        new RegExp(`\\bsuffering${ADVERB_GAP}\\s+from\\s+`, 'i'),
+        CONFIDENCE.STRONG,
+        'suffering from',
+      ),
+      m(
+        new RegExp(`\\bpresent(?:s|ing|ed)?${ADVERB_GAP}\\s+with\\s+`, 'i'),
+        CONFIDENCE.STRONG,
+        'presents with',
+      ),
       m(/\breport(?:s|ing|ed)?\s+/i, CONFIDENCE.MODERATE, 'reports'),
       // Contraction-aware: "she's been having" as well as "has been having".
       m(/\b(?:has|have|'s|s)\s*been\s+having\s+/i, CONFIDENCE.MODERATE, 'been having'),
       m(/\bcomplaints?\s+(?:are|of)?\s*/i, CONFIDENCE.EXPLICIT, 'complaints of'),
-      m(/\bcame\s+(?:in\s+)?with\s+/i, CONFIDENCE.MODERATE, 'came with'),
+      m(
+        new RegExp(`\\bcame${ADVERB_GAP}\\s+(?:in${ADVERB_GAP}\\s+)?with\\s+`, 'i'),
+        CONFIDENCE.MODERATE,
+        'came with',
+      ),
       m(/\bexperienc(?:es|ing|ed)\s+/i, CONFIDENCE.STRONG, 'experiencing'),
       m(/\bpresenting\s+complaint\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'presenting complaint'),
       m(/\b(?:has|have|had)\s+had\s+/i, CONFIDENCE.MODERATE, 'has had'),

@@ -358,5 +358,109 @@ expectFields('11.2 no diagnosis invented from symptoms', 'Patient has fever and 
   diagnosis: null,
 });
 
+// ── 12. Gender survives another field's segment span ────────────────────────
+// A segment spans from its marker to the next one, which is far wider than the
+// text it keeps: the age segment covered "38 years male patient" while its
+// value was "38 Years", and the only gender evidence in the dictation was
+// discarded with it.
+expectFields(
+  '12.1 gender after an age marker',
+  'age 38 years male patient address flat 21',
+  { age: '38 Years', gender: 'Male' },
+);
+expectFields(
+  '12.2 the reported transcript',
+  'Patient name Arjun Patel age 38 years male patient address flat 21 Satellite road, Ahmedabad, Gujarat Pin code 380015 mobile number 9823456710.',
+  {
+    patientName: 'Arjun Patel',
+    age: '38 Years',
+    gender: 'Male',
+    pinCode: '380015',
+    contactNumber: '9823456710',
+  },
+);
+expectFields('12.3 female equivalent', 'age 32 years female patient address Delhi', {
+  gender: 'Female',
+});
+expectFields('12.4 explicit marker still wins', 'Gender male.', { gender: 'Male' });
+
+// The exclusion exists so a field that genuinely KEEPS the word is not read as
+// a gender. That still holds — only fields which discarded it are freed.
+expectFields('12.5 an address keeping the word sets no gender', 'Address is Male Street, Delhi.', {
+  gender: null,
+});
+expectFields(
+  '12.6 conflicting patient nouns yield nothing',
+  'Male patient. The lady is waiting.',
+  { gender: null },
+);
+expectFields(
+  '12.7 a companion noun does not decide the patient',
+  'Her mother is female. Patient has fever.',
+  { gender: null },
+);
+
+// ── 13. "Non" is a negation ─────────────────────────────────────────────────
+// This recorded a POSITIVE history of diabetes for a patient the doctor said
+// was not diabetic — the worst kind of extraction error.
+const nonDiabetic = valueOf(extractPatientFields('Non diabetic.').medicalHistory);
+check('13.1 "Non diabetic" is not a positive history', nonDiabetic === 'Diabetic', false);
+check('13.2 and the statement is kept', /non/i.test(nonDiabetic ?? ''), true);
+
+const hyphenated = valueOf(extractPatientFields('Non-diabetic patient.').medicalHistory);
+check('13.3 the hyphenated form too', hyphenated === 'Diabetic', false);
+
+expectFields('13.4 a positive history is untouched', 'Known diabetic.', {
+  medicalHistory: 'Known diabetic',
+});
+expectFields('13.5 existing negation unchanged', 'No diabetes.', { medicalHistory: null });
+
+// ── 14. An adverb between a verb and its preposition ────────────────────────
+// Every verb + preposition marker required the two to be adjacent, so a single
+// adverb stopped the marker firing and the whole sentence went unclaimed.
+expectFields(
+  '14.1 the reported sentence',
+  'He presented today with fever, cold, cough, etc.',
+  { symptoms: ['Fever', 'Cold', 'Cough'] },
+);
+expectFields('14.2 presents now with', 'She presents now with fever and cough.', {
+  symptoms: ['Fever', 'Cough'],
+});
+expectFields('14.3 complains today of', 'He complains today of fever and cough.', {
+  symptoms: ['Fever', 'Cough'],
+});
+expectFields('14.4 presented yesterday with', 'Patient presented yesterday with fever.', {
+  symptoms: ['Fever'],
+});
+expectFields('14.5 came in today with', 'He came in today with chest pain.', {
+  symptoms: ['Chest pain'],
+});
+expectFields('14.6 suffering recently from', 'Suffering recently from back pain.', {
+  symptoms: ['Back pain'],
+});
+
+// The adjacent form must be undisturbed by making the gap optional.
+expectFields('14.7 adjacent form unchanged', 'He presented with fever, cold, cough.', {
+  symptoms: ['Fever', 'Cold', 'Cough'],
+});
+
+// Multi-word findings still survive the list split.
+expectFields(
+  '14.8 multi-word findings stay intact',
+  'He presented today with sore throat, chest pain and fever.',
+  { symptoms: ['Sore throat', 'Chest pain', 'Fever'] },
+);
+
+// "etc" closes a list without naming a finding.
+const withEtc = valueOf(
+  extractPatientFields('He presented today with fever, cough, etc.').symptoms,
+);
+check('14.9 "etc" is not a finding', (withEtc ?? []).join('|').toLowerCase().includes('etc'), false);
+
+// The guard that keeps "if symptoms persist" out of the field still holds.
+expectFields('14.10 a remark does not open a symptoms segment', 'If symptoms persist return.', {
+  symptoms: null,
+});
+
 // ── Report ──────────────────────────────────────────────────────────────────
 report();

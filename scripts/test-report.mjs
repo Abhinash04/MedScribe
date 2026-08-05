@@ -22,6 +22,7 @@ import {
   draftValues,
   fromStored,
   hasEdits,
+  hasValue,
   isDirty,
   removeListItem,
   summaryFrom,
@@ -227,6 +228,53 @@ check('10 last minute of yesterday', formatRelativeDateTime(new Date(2026, 2, 11
 check('10 older falls back to a date', formatRelativeDateTime(new Date(2026, 2, 9, 8, 5).getTime(), CLOCK), '9 Mar 2026, 08:05');
 check('10 missing timestamp', formatRelativeDateTime(0, CLOCK), '');
 check('10 invalid timestamp', formatRelativeDateTime(Number.NaN, CLOCK), '');
+
+// ── Editing a list keeps blank rows; ingest still drops them ────────────────
+// "+ Add item" appends an empty row for the doctor to type into. The ingest
+// normalizer stripped it before render, so the button appeared to do nothing,
+// and clearing a row to retype it deleted the row mid-edit.
+{
+  const draft = toDraft(extractPatientFields('Complains of fever and cough.'));
+  check('E1 extraction ingested two findings', draft.symptoms.value, ['Fever', 'Cough']);
+
+  const added = addListItem(draft, 'symptoms');
+  check('E2 + Add item leaves a row to type into', added.symptoms.value, [
+    'Fever',
+    'Cough',
+    '',
+  ]);
+  check('E3 the row is editable', added.symptoms.value.length, 3);
+
+  const typed = applyEdit(added, 'symptoms', ['Fever', 'Cough', 'Headache']);
+  check('E4 typing into the new row works', typed.symptoms.value, [
+    'Fever',
+    'Cough',
+    'Headache',
+  ]);
+
+  const cleared = applyEdit(draft, 'symptoms', ['', 'Cough']);
+  check('E5 clearing a row does not delete it', cleared.symptoms.value, ['', 'Cough']);
+
+  const removed = removeListItem(typed, 'symptoms', 2);
+  check('E6 remove still works', removed.symptoms.value, ['Fever', 'Cough']);
+
+  // A blank row must not look like a captured field.
+  const blankOnly = applyEdit(draft, 'symptoms', ['', '']);
+  check('E7 a blank-only list is not a value', hasValue(blankOnly.symptoms, 'symptoms'), false);
+  // The section still appears — FR-7 shows an unmentioned field rather than
+  // hiding it — but it must carry no bullets and read Not Available.
+  const blankSection = buildReportDocument(blankOnly, {
+    createdAt: Date.now(),
+  }).sections.find(section => section.label === 'Symptoms');
+  check('E8 blank rows produce no PDF bullets', blankSection.items, undefined);
+  check('E8b and the section reads Not Available', blankSection.value, NOT_AVAILABLE);
+
+  // Ingest is unchanged — a stored or extracted blank must not render.
+  const stored = fromStored({
+    symptoms: { value: ['Fever', '', 'Cough'], original: ['Fever', '', 'Cough'] },
+  });
+  check('E9 ingest still drops blanks', stored.symptoms.value, ['Fever', 'Cough']);
+}
 
 // ── Report ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed\n`);

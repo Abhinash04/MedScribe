@@ -10,8 +10,11 @@
  * scope-finding pattern and its cue-stripping pattern from this, so the two
  * cannot drift apart and leave a cue that scopes but never gets removed.
  */
+// `non` covers both "non diabetic" and "non-diabetic" — the hyphen is a word
+// boundary. Without it the bare-condition marker read "Non diabetic" as a
+// POSITIVE history of diabetes, which is the worst kind of extraction error.
 export const NEGATION_ALTERNATION =
-  'no|not|without|denies|denied|denying|negative\\s+for|ruled\\s+out|nil';
+  'no|non|not|without|denies|denied|denying|negative\\s+for|ruled\\s+out|nil';
 
 export const NEGATION_CUES = new RegExp(`\\b(?:${NEGATION_ALTERNATION})\\b`, 'gi');
 
@@ -34,6 +37,30 @@ export const NEGATION_TERMINATORS = new RegExp(
 /** Pushes a value into medical history regardless of the marker that opened it. */
 export const CHRONICITY_CUES =
   /\b(?:for\s+(?:the\s+)?(?:last\s+|past\s+)?\w+\s+(?:years?|months?|decades?)|since\s+(?:childhood|birth|years)|known|chronic|long[\s-]standing|past\s+(?:medical\s+)?history|old\s+case|k\/c\/o)\b/i;
+
+/**
+ * A time adverb may sit between a verb and its preposition.
+ *
+ * "presented today with", "complains now of", "came in yesterday with" — every
+ * marker built as verb + preposition previously required the two to be
+ * adjacent, so a single adverb stopped the marker firing at all and the whole
+ * sentence went unclaimed. Composed into those markers rather than pasted into
+ * each, so the family stays one rule.
+ */
+export const ADVERB_GAP =
+  '(?:\\s+(?:today|now|currently|yesterday|recently|lately|again|still|this\\s+morning|last\\s+night|since\\s+morning))?';
+
+/** Discourse fillers that close a list without naming a finding. */
+export const NON_FINDINGS = new Set([
+  'etc',
+  'etc.',
+  'etcetera',
+  'et cetera',
+  'so on',
+  'so forth',
+  'others',
+  'other',
+]);
 
 /** Keeps a value in symptoms even when a history-ish marker opened it. */
 export const PRESENTATION_CUES =
