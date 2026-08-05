@@ -144,6 +144,26 @@ export function mergeExtraction(draft, record) {
 }
 
 /**
+ * What the doctor typed, kept exactly as typed.
+ *
+ * Ingest drops blank list entries so a report never renders an empty bullet.
+ * Editing must not: "+ Add item" appends an empty row, and trimming it away
+ * before render made the button look broken, while clearing a row to retype it
+ * deleted the row mid-edit.
+ *
+ * Nothing downstream is affected — `hasValue` requires a non-blank entry, so a
+ * blank row cannot satisfy a required field, and `reportDocument` filters
+ * blanks out of the PDF.
+ */
+function normalizeEdit(key, value) {
+  if (isListField(key)) {
+    const entries = Array.isArray(value) ? value : [value];
+    return entries.map(entry => (typeof entry === 'string' ? entry : ''));
+  }
+  return typeof value === 'string' ? value : '';
+}
+
+/**
  * Rebuild a draft loaded from storage.
  *
  * Fields added to PATIENT_FIELDS after a report was saved come back empty
@@ -184,7 +204,7 @@ export function fromStored(stored) {
  */
 export function applyEdit(draft, key, value) {
   const entry = draft[key] ?? emptyEntry(key);
-  const next = normalizeValue(key, value);
+  const next = normalizeEdit(key, value);
 
   return {
     ...draft,

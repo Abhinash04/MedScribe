@@ -62,20 +62,42 @@ function countMatches(text, pattern, { skipCompanions = true } = {}) {
   return hits;
 }
 
-/** Ranges already claimed by a marker segment are not free-standing evidence. */
-function outsideSegments(hits, segments) {
+/**
+ * Drops hits that another field genuinely kept.
+ *
+ * A segment SPANS from its marker to the next one, which is far wider than the
+ * text it ends up keeping: "age 38 years male patient address…" gives the age
+ * segment the whole of "38 years male patient" while its value is "38 Years".
+ * Excluding on the span alone therefore threw away the only gender evidence in
+ * the dictation.
+ *
+ * The test is whether the field's own value contains the word. An address of
+ * "Male Street" keeps it and is still excluded; an age that discarded it is
+ * not, so the word is free-standing evidence again.
+ */
+function claimedByValue(hits, segments) {
+  const keeps = (segment, word) => {
+    const value = Array.isArray(segment.value)
+      ? segment.value.join(' ')
+      : String(segment.value ?? '');
+    return value.toLowerCase().includes(word.toLowerCase());
+  };
+
   return hits.filter(
     hit =>
       !segments.some(
-        segment => hit.index >= segment.start && hit.index < segment.end,
+        segment =>
+          hit.index >= segment.start &&
+          hit.index < segment.end &&
+          keeps(segment, hit.text),
       ),
   );
 }
 
 export function inferGender(text, claimed = []) {
   const segments = claimed;
-  const femaleNouns = outsideSegments(countMatches(text, FEMALE_NOUNS), segments);
-  const maleNouns = outsideSegments(countMatches(text, MALE_NOUNS), segments);
+  const femaleNouns = claimedByValue(countMatches(text, FEMALE_NOUNS), segments);
+  const maleNouns = claimedByValue(countMatches(text, MALE_NOUNS), segments);
 
   if (femaleNouns.length && !maleNouns.length) {
     return evidence('Female', femaleNouns[0], CONFIDENCE.FALLBACK, 'patient noun');

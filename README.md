@@ -47,11 +47,15 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 - **Prescription as a list** — one editable entry per drug, with strength, frequency, duration and timing preserved exactly as dictated.
 - **Structured report** — a preview with an N-of-10 required-field summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, and values inferred from a hedged phrase are flagged **UNCERTAIN**.
 - **Completeness gate** — ten of the eleven fields are mandatory and are checked against their own validators before a report is produced; a six-character PIN and a ten-digit contact number are not merely non-empty text. A blocked report names exactly what is still needed and offers **Add More Speech** or **Review Fields**. Additional Remarks is optional and never blocks anything. Medical History and Prescription Notes accept an explicitly dictated absence — "no significant medical history", "no medication prescribed" — which the app never fills in on the doctor's behalf.
-- **Transcript review step** — dictation lands on a review screen before any report is generated. Correct the whole transcript in one editor, or work sentence by sentence with per-utterance edit and delete, then resume dictating or generate the report.
+- **Transcript review step** — dictation lands on a review screen before any report is generated. Two tabs, **Original** and **AI Transcription**, each with a full editor; a **What AI changed** panel below them; then resume dictating or generate the report.
 - **Automatic consultation saving** — the transcript, the report draft and the doctor's manual field edits are written to the database as they change, debounced so a partial speech result never causes a write, and flushed immediately when the app goes to the background. The consultation also records which screen it reached, so after a force-stop, an OS kill or a flat battery the Dashboard offers to resume it at the recording, transcript-review or report stage. The row is cleared only once the report is actually saved or the doctor discards it — not when Generate Report is pressed. Best-effort by design: a failed write is logged and swallowed rather than interrupting the consultation.
 - **Transcript inspection** — the report can reveal the original dictation, which is the fastest way to tell a transcription gap from an extraction gap.
-- **Second transcription (Anuvadini)** — the recorded consultation audio is transcribed a second time by the Anuvadini service, and the doctor picks which transcript the report is built from. The credential never reaches the phone: the app posts Base64 audio to the MedScribe proxy, and the proxy attaches the Bearer token. A failure is non-blocking — the native transcript still completes the consultation, with a Retry offered.
-- **Diagnostic dump** — long-press the Patient Report title to share a six-stage trace: raw utterances, the text extraction received, the candidates it found, the eleven-field result with the phrase each value came from, the draft, and what the form rendered. It works in a release build, so a field that goes missing on a real device can be attributed to the recognizer, extraction, the merge or the UI without guesswork.
+- **One dictation, two transcripts** — On the tested Oppo A059 / Android 16 configuration, opening `AudioRecord` caused the system recognizer to return `NO_MATCH` on every utterance across all four audio sources; partials did not finalize until the audio pipe closed, requiring a segmented session architecture. The shared-microphone module inverts that by owning the single `AudioRecord` and feeding the recognizer via `EXTRA_AUDIO_SOURCE`, enabling simultaneous live text and WAV capture for second transcription. Measured on the target device: **88% word recall against a 75% recognizer-only baseline**, with partials from three seconds.
+- **Second transcription (Anuvadini)** — the recorded audio is transcribed again by the Anuvadini service, and the doctor picks which transcript the report is built from. A failure is non-blocking: the native transcript still completes the consultation, with a **Retry** offered. See [Environment Setup](#4-anuvadini-credential) for the credential, including what build-time injection does and does not protect.
+- **Editable AI transcript** — the AI text is a draft the doctor corrects like any other. The service's own response is kept separately, so **What AI changed** always compares raw against raw and a manual correction can never appear as something the AI did.
+- **Add More Speech continues either transcript** — a continuation appends to both: `raw = raw₁ + raw₂` keeps the comparison honest, while `text = edited₁ + raw₂` keeps the doctor's corrections. A failed continuation leaves the existing transcript untouched, and a retry cannot append the same speech twice.
+- **Viewing is not selecting** — the tabs change what is on screen; only **Use AI Transcription** / **Use Original Transcription** changes which transcript the report is built from, and only that re-runs extraction. The screen states which one is in use.
+- **Diagnostic dump** — in a development build, long-press the Patient Report title to share a six-stage trace: raw utterances, the text extraction received, the candidates it found, the eleven-field result with the phrase each value came from, the draft, and what the form rendered. It carries the whole consultation, so it is **development-only and asks for confirmation** before sharing; release builds have no such handler.
 - **Editable report fields** — the generated report is a draft, not a verdict. Every field is an input: tap it and type. Symptoms are a list with add and remove. Fields the doctor changed are flagged **EDITED**, and empty fields can be filled in from scratch.
 - **Save Report** — persists the original dictation, the extraction, the doctor's edits, the status and the timestamps together.
 - **Doctor Dashboard** — the launch screen. A start-recording card and a round microphone button open a new consultation; overview tiles count total, today, draft and finalized reports; saved reports list newest-first with initials, relative timestamp, diagnosis and a Draft/Final pill. Quick actions search by patient or diagnosis and filter to pending drafts. Tap a report to reopen it for editing; long-press to delete.
@@ -61,22 +65,28 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 
 ### Planned
 
-Continuous recognition without restart gaps, and improved accuracy on `en-IN` devices. See [Roadmap](#roadmap).
+Continuous recognition without restart gaps on vendor fallback, and improved accuracy on `en-IN` devices. See [Roadmap](#roadmap).
 
 ---
 
 ## How a Consultation Flows
 
 ```text
-Dashboard → New Dictation → Record → Transcript Review → Report → Edit → Save → Dashboard
-                               ↑            │                                      └──→ Download PDF
-                               └────────────┘
-                             Resume dictation
+                        ┌─→ Native recognizer ──→ live transcript ─┐
+Dashboard → New Dictation                                          ├─→ Transcript Review
+                        └─→ captured audio ──→ Anuvadini ──────────┘         │
+                               ↑                                             ▼
+                               │                              Original  vs  AI Transcription
+                               │                                             │
+                               │                                    doctor selects one
+                               │                                             ▼
+                               └───── Add More Speech ──────  Report → Edit → Save → Dashboard
+                                                                                └──→ Download PDF
 ```
 
 1. **Open the app.** The Dashboard lists every previously saved report.
-2. **New Dictation** → dictate the consultation, pausing and resuming as needed → **Stop**, and confirm.
-3. **Review the transcript.** Fix anything the recognizer misheard, in the full editor or sentence by sentence. **Resume Dictation** goes back for more and appends to what is already there — it never starts a fresh transcript.
+2. **New Dictation** → dictate the consultation, pausing and resuming as needed → **Stop**, and confirm. Text appears as you speak; the same audio is recorded once and sent for a second transcription in the background.
+3. **Review the transcript.** Two tabs: **Original** from the device recognizer, **AI Transcription** from Anuvadini, both editable, with **What AI changed** showing every substitution between them. Pick one with **Use AI Transcription** / **Use Original Transcription** — until you do, the report keeps using whichever is already selected. **Add More Speech** goes back for more and appends to *both* transcripts, keeping any corrections you have already typed.
 4. **Generate Report.** The structured report is extracted from the reviewed transcript. If any of the ten mandatory fields is missing or invalid, generation is held back and the missing details are named — dictate them with **Add More Speech**, which appends to the same consultation and keeps everything already captured, or type them in with **Review Fields**.
 5. **Review and correct** any field — the extraction is a starting point, not the record.
 6. **Save Report.** It appears on the Dashboard immediately.
@@ -100,7 +110,8 @@ Single doctor, no login. Multi-doctor and authentication are Roadmap items, not 
 | Navigation | React Navigation 7 (native stack) |
 | State | Zustand 5 |
 | Animation | Reanimated 4 + Worklets |
-| Speech | `@appcitor/react-native-voice-to-text` (Android `SpeechRecognizer`) |
+| Speech | Android `SpeechRecognizer`, driven by an in-app Kotlin TurboModule that owns the microphone and feeds it through a pipe (`EXTRA_AUDIO_SOURCE`); `@appcitor/react-native-voice-to-text` remains the fallback path |
+| Second transcription | Anuvadini STT over HTTPS, called directly with a build-time Bearer token; `server/` holds a dependency-free Node proxy for local development and future production |
 | Permissions | `react-native-permissions` 5 |
 | Database | SQLite via `@op-engineering/op-sqlite` 17 (JSI) |
 | PDF | In-app Kotlin TurboModule over `android.graphics.pdf.PdfDocument` — no third-party generator |
@@ -172,6 +183,22 @@ node --version      # ≥ v22.11.0
 java -version       # 17.x
 adb --version
 ```
+
+### 4. Anuvadini credential
+
+The second transcription calls the Anuvadini service directly and needs a Bearer token. It is injected at build time from **`android/local.properties`**, which is gitignored:
+
+```properties
+ANUVADINI_STT_TOKEN=your-token-here
+```
+
+Ask the backend team for the value. `android/app/build.gradle` reads it into `BuildConfig`, and a small `AppConfig` TurboModule hands it to JavaScript — so it is never a literal in a committed source file.
+
+**A clone without it still builds and runs.** Everything except the second transcription works, and the review screen reports *"Not configured in this build"* rather than failing silently.
+
+> **What this does and does not protect.** Build-time injection keeps the token out of Git. It does **not** make it secret inside a compiled APK, where it can be extracted. That trade is accepted deliberately for internal testing. The permanent fix is deploying `server/` — see [`server/README.md`](server/README.md) — after which the app talks to that proxy and the token leaves the device entirely, with no change to any feature code.
+
+For local proxy development instead of the direct call, run `npm run proxy` and set `TRANSCRIPTION_TRANSPORT` to `'proxy'` in [`src/config/endpoints.js`](src/config/endpoints.js).
 
 ---
 
@@ -323,11 +350,17 @@ MedScribe/
 │   │   ├── SessionRecoveryModal.jsx #   Restore or discard an interrupted dictation
 │   │   ├── StopConfirmationModal.jsx#   Confirm before ending a session
 │   │   └── TranscriptView.jsx       #   Live transcript (final + interim)
+│   ├── config/
+│   │   ├── endpoints.js             # Transport selection, Anuvadini URL, proxy URL
+│   │   └── features.js              # Capture enablement, transcription availability
 │   ├── constants/
 │   │   ├── recordingStates.js       # State machine, error maps, timings
-│   │   ├── patientFields.js         # The 11 report fields and their order
+│   │   ├── patientFields.js         # The 11 report fields, order, required flags
 │   │   ├── fieldMarkers.js          # Marker vocabulary — add new phrasing here
 │   │   └── clinicalCues.js          # Negation, chronicity, pronoun, medication cues
+│   ├── dev/
+│   │   ├── diagnostics.js           # Six-stage trace — development builds only
+│   │   └── spikeReport.js           # Mic-contention matrix as shareable text
 │   ├── db/
 │   │   ├── database.js              # SQLite connection + migrations (reports, active_sessions)
 │   │   └── reportsRepository.js     # Report CRUD SQL queries
@@ -342,14 +375,27 @@ MedScribe/
 │   │   └── ReportScreen.jsx         # Editable draft, Save, Finalize, Download PDF
 │   ├── services/
 │   │   ├── permissionService.js     # Microphone permission handling
-│   │   ├── speechService.js         # Speech engine isolation layer
+│   │   ├── speechService.js         # Vendor speech engine isolation layer
+│   │   ├── sharedMicService.js      # Shared-microphone module: live text + WAV, one owner
+│   │   ├── appConfigService.js      # Build-time config (the Anuvadini token)
 │   │   ├── dictationSessionManager.js  # Session orchestrator: timer, cues, autosave, live fields
 │   │   ├── audioFeedbackService.js  # Audio cue + system-tone suppression isolation layer
+│   │   ├── audioCaptureService.js   # Capture spike module isolation layer (debug only)
+│   │   ├── consultationAudio.js     # Recording lifecycle: budget, read, delete, purge
+│   │   ├── audioBudget.js           # WAV/Base64 sizing and the upload ceiling (pure)
+│   │   ├── consultationTranscripts.js  # Native vs AI state, raw baselines, continuation (pure)
+│   │   ├── transcriptRefinement.js  # Runs the second transcription; owns the continuation base
+│   │   ├── transcriptDiff.js        # Word-level LCS diff for "What AI changed" (pure)
 │   │   ├── sessionPersistenceService.js  # Debounced autosave and recovery of a live session
 │   │   ├── extractionService.js     # Field extraction orchestrator
 │   │   ├── reportDraft.js           # Extraction → editable draft (pure)
+│   │   ├── reportCompleteness.js    # Mandatory-field gate (pure)
 │   │   ├── reportDocument.js        # Draft → PDF payload (pure)
 │   │   ├── pdfService.js            # Native PDF exporter isolation layer
+│   │   ├── anuvadini/               # Transcription client
+│   │   │   ├── proxyContract.js     #   Request shapes and error kinds
+│   │   │   ├── transcriptionClient.js #  Transport switch: direct or proxy
+│   │   │   └── language.js          #   Language normalization (en → en-IN)
 │   │   └── extraction/              # One module per pipeline stage
 │   │       ├── normalizeTranscript.js
 │   │       ├── detectNegation.js
@@ -362,9 +408,12 @@ MedScribe/
 │   │       ├── parseMedication.js
 │   │       ├── validators.js
 │   │       └── resolveConflicts.js
-│   ├── specs/
-│   │   ├── NativePdfExporter.js     # TurboModule spec (React Native codegen input)
-│   │   └── NativeAudioCue.js        # TurboModule spec: cues + system-tone suppression
+│   ├── specs/                       # TurboModule specs (React Native codegen input)
+│   │   ├── NativePdfExporter.js     #   PDF rendering
+│   │   ├── NativeAudioCue.js        #   Cues + system-tone suppression
+│   │   ├── NativeSharedMic.js       #   Shared microphone + consultation recording files
+│   │   ├── NativeAudioCapture.js    #   Contention spike probe (debug builds only)
+│   │   └── NativeAppConfig.js       #   Build-time configuration
 │   ├── store/
 │   │   ├── useRecordingStore.js     # Zustand recording state
 │   │   └── useReportsStore.js       # Zustand saved-report state
@@ -375,17 +424,27 @@ MedScribe/
 │       ├── spacing.js
 │       ├── typography.js
 │       └── index.js
-├── scripts/
-│   ├── test-extraction.mjs          # Regression floor (no test framework)
-│   ├── test-extraction-natural.mjs  # Natural phrasing: synonyms, negation, pronouns
-│   ├── test-extraction-adversarial.mjs # Conflicts, corrections, cancellations
-│   ├── test-extraction-samples.mjs  # Twenty real dictation samples
-│   └── test-report.mjs              # Draft + PDF-payload fixture suite
+├── scripts/                         # Framework-free fixture suites, run under plain Node
+│   ├── lib/fixture-harness.mjs      #   Shared check/report harness
+│   ├── test-extraction*.mjs         #   Floor, natural, adversarial, samples, numeric,
+│   │                                #   cleanup, synonyms
+│   ├── test-report.mjs              #   Draft + PDF payload
+│   ├── test-completeness.mjs        #   Mandatory-field gate
+│   ├── test-transcript-state.mjs    #   Dual transcripts, raw baselines, continuation
+│   ├── test-transcript-diff.mjs     #   "What AI changed" diff
+│   ├── test-anuvadini-client.mjs    #   Transcription client, both transports
+│   ├── test-audio-budget.mjs        #   Upload sizing and the duration ceiling
+│   └── test-proxy.mjs               #   Proxy translation and credential containment
+├── server/                          # Dependency-free Node proxy — local dev / future prod
+│   ├── index.mjs                    #   Routing, body cap, field translation, error mapping
+│   ├── anuvadini.mjs                #   The upstream call; the only place the token lives
+│   └── .env.example                 #   Property names only, never a real token
 ├── android/
 │   └── app/src/main/
-│       ├── java/com/medscribe/pdf/  # Kotlin PDF exporter TurboModule
-│       ├── java/com/medscribe/audio/ # Kotlin audio cue + stream muting TurboModule
-│       └── res/xml/file_paths.xml   # FileProvider paths for sharing exported PDFs
+│       ├── java/com/medscribe/pdf/    # Kotlin PDF exporter TurboModule
+│       ├── java/com/medscribe/audio/  # Audio cue, shared microphone, capture spike
+│       ├── java/com/medscribe/config/ # Build-time config (Anuvadini token)
+│       └── res/xml/file_paths.xml     # FileProvider paths for sharing exported PDFs
 ├── DESIGN.md                        # Design system: colour, type, spacing, components
 ├── docs/
 │   ├── MedSrcibe_SRS.md             # Requirements specification
@@ -436,9 +495,10 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run test:extraction:numeric` | 49 assertions over PIN and phone grouping, country codes and spoken digits. |
 | `npm run test:extraction:cleanup` | 54 assertions over conversational cleanup across all eleven fields. |
 | `npm run test:report` | 71 assertions over the editable draft, the PDF payload and the dashboard timestamps. Also plain Node. |
-| `npm run test:completeness` | 61 assertions over the mandatory-field gate, explicit-none statements and the Add-More-Speech merge. |
-| `npm run test:transcripts` | 35 assertions over the dual-transcript state and the manual-edit precedence when the source is switched. |
-| `npm run test:anuvadini` | 66 assertions over the transcription client: request assembly, language normalization and every failure path. |
+| `npm run test:completeness` | 63 assertions over the mandatory-field gate, explicit-none statements and the Add-More-Speech merge. |
+| `npm run test:transcripts` | 63 assertions over the dual-transcript state: raw baselines, editable drafts, the continuation base, and manual edits surviving a multi-pass sequence. |
+| `npm run test:diff` | 30 assertions over "What AI changed": word-level diff, punctuation and casing normalization, medical substitutions. |
+| `npm run test:anuvadini` | 78 assertions over the transcription client: both transports, request assembly, language normalization, every failure path, and that the token never reaches a result or an error. |
 | `npm run test:audio` | 31 assertions over the capture upload budget: WAV sizing, Base64 growth and the duration ceiling. |
 | `npm run test:proxy` | 77 assertions over the transcription proxy: field translation, credential containment and every error mapping. |
 | `npm run proxy` | Runs the local transcription proxy. Needs `server/.env` — see [server/README.md](server/README.md). |
@@ -562,6 +622,30 @@ If it ever does happen, that is a real bug — note the device model and the And
 ### It offers to restore an unfinished dictation
 
 Expected after a crash, a force-stop or the OS killing the app mid-consultation: the transcript is saved as it grows, so it survives. **Restore** continues that session with its transcript and elapsed time intact; **Discard** deletes it. The prompt is answered before the microphone starts, so neither choice can race the recogniser.
+
+### AI Transcription says "Not configured in this build"
+
+The Anuvadini token is missing. Add `ANUVADINI_STT_TOKEN` to `android/local.properties` and **rebuild natively** — it is compiled into `BuildConfig`, so Metro cannot supply it:
+
+```bash
+npm run android -- --device <your-device-id>
+```
+
+Everything else keeps working without it; only the second transcription is unavailable. See [Environment Setup](#4-anuvadini-credential).
+
+### AI Transcription says "Unable to generate"
+
+The request reached the client and failed. **Retry** is offered and re-sends the same recording, so retrying cannot duplicate anything. Common causes, in order:
+
+1. **No network.** The call goes to `anuvadini-services.aicte-india.org` over HTTPS.
+2. **Dictation longer than two minutes.** Audio above the upload ceiling is skipped rather than sent — see `MAX_UPLOAD_SECONDS` in [`src/services/audioBudget.js`](src/services/audioBudget.js).
+3. **Token rejected server-side.**
+
+The original transcript is unaffected in every case and still generates a report.
+
+### The diagnostic long-press does nothing
+
+Expected in a release build. The development diagnostic dump carries the full consultation trace and is restricted to development builds, whereas PDF export remains available for generated reports. In a development build, long-press the "Patient Report" title and confirm the prompt.
 
 ### The report is missing fields
 
@@ -696,20 +780,26 @@ npm start -- --reset-cache
 | **2** | Permissions, speech-to-text, live transcript | Complete |
 | **3** | Patient-field extraction, structured report, preview | Complete |
 | **4** | Editable fields, save, doctor dashboard, SQLite persistence, PDF export | Complete |
-| **5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete on host checks; the audio module still needs device verification |
-| **6** | Extraction v2 — natural phrasing, negation, retraction, pronoun gender, prescription list | Complete; 571 fixture assertions across five suites |
+| **5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete, verified on hardware |
+| **6** | Extraction v2 — natural phrasing, negation, retraction, pronoun gender, prescription list | Complete |
+| **7** | Auto-save and consultation recovery, mandatory-field completeness gate | Complete |
+| **8** | Shared microphone, Anuvadini second transcription, editable AI transcript, continuation, diff | Complete; verified on device in both Debug and Release |
 
 **Next up**, in priority order:
 
-1. **Close the recognizer restart gaps.** The microphone is deaf for ~0.5–1.5 s after each pause while the recognizer restarts, so words are dropped from real dictation. This is the largest gap between test results and real-world quality — extraction passes its 238-assertion regression floor on clean text, but cannot recover a field whose marker was never transcribed.
-2. **Promote the 15 realistic dictation samples to committed fixtures**, so a regression in any dictation style is caught automatically.
-3. **Improve `en-IN` recognition accuracy**, which is currently bounded by a library bug rather than by this codebase.
+1. **Deploy `server/` and switch `TRANSCRIPTION_TRANSPORT` to `proxy`.** The Bearer token is currently compiled into the APK, which is acceptable for internal testing and not for distribution. The proxy is written, tested (77 assertions) and dependency-free; deploying it behind HTTPS removes the credential from every device and changes no feature code.
+2. **Promote the realistic dictation samples to committed fixtures** for any dictation style not yet covered.
+3. **Improve `en-IN` recognition accuracy**, still bounded by the recognizer rather than by this codebase.
 
-Recently closed, so nobody re-files it: leaving the Recording screen and returning used to strand the app on a permanent "Speech recognition unavailable". Fixed and verified on device — details in [`docs/handoff.md`](docs/handoff.md).
+Recently closed, so nobody re-files them:
 
-Phase 5 ships without device confirmation of one thing: which audio stream carries the recogniser tone on the target hardware. Everything else in that phase is exercised by the host suites, but stream routing can only be checked on a real phone — see the troubleshooting entry above for how to read it out of logcat.
+- Leaving the Recording screen and returning used to strand the app on a permanent "Speech recognition unavailable".
+- **Recognizer restart gaps** were the largest known quality gap. The shared-microphone path addresses them directly — one continuous session instead of a restart per utterance — and measured **88% word recall against the 75% restart-loop baseline** on the target device.
+- **Which audio stream carries the recognizer tone** was Phase 5's one unverified item. Resolved during the contention measurements.
 
 Longer term (per the SRS): AI-assisted entity extraction, ICD-10 coding, EHR integration, multi-language recognition, cloud sync, offline recognition. **Multiple doctors and authentication** join that list — the schema carries no `doctor_id` yet, and the database is not encrypted at rest, both of which need addressing before real patient data.
+
+Anuvadini is multilingual, and `normalizeAnuvadiniLanguage` already maps thirteen Indian languages; only `en-IN` has been exercised end to end.
 
 PDF export, patient history and report editing before save were delivered in Phase 4.
 
@@ -722,3 +812,4 @@ PDF export, patient history and report editing before save were delivered in Pha
 | [`docs/handoff.md`](docs/handoff.md) | Architecture, design decisions, conventions, known issues. **Read before modifying the speech pipeline.** |
 | [`docs/MedSrcibe_SRS.md`](docs/MedSrcibe_SRS.md) | Requirements specification. |
 | [`DESIGN.md`](DESIGN.md) | Design system: colour tokens, typography, spacing, component patterns. |
+| [`server/README.md`](server/README.md) | The transcription proxy: contract, how to run it, and what it refuses to log. |
