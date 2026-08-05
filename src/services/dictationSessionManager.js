@@ -12,9 +12,10 @@ import * as sharedMic from './sharedMicService';
 import { isCaptureEnabled, isTranscriptionAvailable } from '../config/features';
 import {
   beginContinuation,
-  clearContinuation,
+  clearRefinementState,
   refineTranscript,
 } from './transcriptRefinement';
+import { ERROR_KIND } from './anuvadini/proxyContract';
 import useRecordingStore, {
   selectFullTranscript,
 } from '../store/useRecordingStore';
@@ -253,11 +254,21 @@ class DictationSessionManager {
     // The doctor moves on to the transcript review immediately; the alternative
     // transcription runs behind them and reports into the store when it lands.
     captured = captured ?? (await consultationAudio.finish());
-    // No endpoint means the recording has no purpose, so it is not kept.
-    if (captured?.path && captured.withinBudget && isTranscriptionAvailable()) {
-      refineTranscript().catch(() => {});
-    } else if (captured?.path) {
-      await consultationAudio.discard();
+    if (captured?.path) {
+      if (!isTranscriptionAvailable()) {
+        // No endpoint means the recording has no purpose, so it is not kept.
+        await consultationAudio.discard();
+      } else if (!captured.withinBudget) {
+        // Length no longer stops an upload — it is chunked — so reaching this
+        // means the recorder ran away. Say so rather than leaving the card on
+        // its idle "not available", which reads as though nothing was recorded.
+        useRecordingStore
+          .getState()
+          .setAnuvadiniResult({ ok: false, errorKind: ERROR_KIND.AUDIO_TOO_LARGE });
+        await consultationAudio.discard();
+      } else {
+        refineTranscript().catch(() => {});
+      }
     }
   }
 
@@ -368,9 +379,9 @@ class DictationSessionManager {
   async clearSession() {
     const store = useRecordingStore.getState();
     await clearActiveSession(store.sessionId);
-    // The audio a continuation would have retried with is going away, so the
-    // snapshot that belonged to it must not outlive the consultation.
-    clearContinuation();
+    // The audio a continuation or a part-finished upload would have retried
+    // with is going away, so neither may outlive the consultation.
+    clearRefinementState();
     this.passIndex = 0;
     await consultationAudio.discard();
   }
