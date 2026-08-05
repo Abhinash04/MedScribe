@@ -638,8 +638,11 @@ Everything else keeps working without it; only the second transcription is unava
 The request reached the client and failed. **Retry** is offered and re-sends the same recording, so retrying cannot duplicate anything. Common causes, in order:
 
 1. **No network.** The call goes to `anuvadini-services.aicte-india.org` over HTTPS.
-2. **Dictation longer than two minutes.** Audio above the upload ceiling is skipped rather than sent — see `MAX_UPLOAD_SECONDS` in [`src/services/audioBudget.js`](src/services/audioBudget.js).
-3. **Token rejected server-side.**
+2. **Token rejected server-side.**
+
+Length is no longer a cause. The service processes roughly the first 57 seconds of any submission and silently discards the rest — measured, with a 200 and no marker, so a truncated transcript is indistinguishable from a whole one. A dictation is therefore uploaded in chunks of `SAFE_CHUNK_SECONDS` (45 s), cut at silence so no word is split, and joined in order before anything downstream sees it. See [`src/services/audioBudget.js`](src/services/audioBudget.js) and [`src/services/anuvadini/chunkedUpload.js`](src/services/anuvadini/chunkedUpload.js).
+
+Retry re-sends only the chunks that have not yet succeeded, so retrying a three-chunk dictation that failed on the last one costs one request.
 
 The original transcript is unaffected in every case and still generates a report.
 

@@ -41,6 +41,7 @@ Upstream it sends `{ "audioBuffer", "audioLanguage" }` with
 - Return, log or echo the credential — including in an error.
 - Log the Base64 audio or the transcript. The log line is status, request size
   and timing; a consultation never reaches the console.
-- Buffer a body over 8 MB, which is the 120 s capture ceiling plus headroom.
+- Buffer a body over 8 MB. One request now carries at most a 50 s chunk — the
+  service truncates a longer submission silently — so that is ample headroom.
 - Retry. Transcription is expensive and not known to be idempotent, so a repeat
   is the doctor's explicit choice, made in the app.
