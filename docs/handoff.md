@@ -793,7 +793,7 @@ Deliberate. Metro resolves extensionless imports, Node does not. The explicit ex
 
 ### ⚠️ A segmented session must be closed before the recognizer is destroyed
 
-`stop()` in `SharedMicModule` closes the **write** end of the pipe, waits on a latch for `onEndOfSegmentedSession` (10 s ceiling), and only then destroys the recognizer. The reverse order — destroy, then close — produced a session that opened cleanly, detected speech and returned **nothing**, because the results were discarded microseconds before they arrived. The docs are explicit that a segmented session "will end when and only when the audio is closed"; closing the audio *is* the request to finalise.
+`stop()` in `SharedMicModule` closes the **write** end of the pipe, waits on a latch for `onEndOfSegmentedSession` (10 s ceiling), and only then destroys the recognizer. The reverse order — destroy, then close — produced a session that opened cleanly, detected speech and returned **nothing**, because the results were discarded microseconds before they arrived. On the tested Oppo A059 / Android 16 configuration, partial results do not finalize until the audio pipe is closed, so closing the write descriptor is what requests finalization.
 
 `EXTRA_AUDIO_SOURCE` also states that "the caller of the recognizer is responsible for closing the audio" — so the read descriptor is held for the life of the session, not closed after `startListening`. Closing it immediately raced the service and produced `ERROR_CLIENT` on every attempt.
 
@@ -819,7 +819,7 @@ Build-time injection keeps it out of Git. It does **not** make it secret inside 
 
 ### ⚠️ The diagnostic dump is development-only
 
-`DIAGNOSTICS_ENABLED = __DEV__`. `ReportScreen` passes `onLongPressTitle` only when it is true, so a release build has no handler at all rather than an inert one. The dump carries the entire patient record; there must be no path to exporting patient data from a shipped APK.
+`DIAGNOSTICS_ENABLED = __DEV__`. `ReportScreen` passes `onLongPressTitle` only when it is true, so a release build has no handler at all rather than an inert one. The diagnostic dump carries the full consultation trace and is restricted to development builds; PDF export remains available in release builds.
 
 ### Build & tooling gotchas
 - **Manifest changes require a full native rebuild.** Metro fast-refresh will not pick them up. If permission dialogs silently stop appearing after a manifest edit, this is why.
@@ -976,7 +976,7 @@ Related emulator notes, if one is used for UI:
 
 Fix: `npm i -D @react-native/jest-preset@0.86.0` (touches `package-lock.json`).
 
-There is currently **no automated test coverage**. The single smoke test in `__tests__/` has never been executed.
+There is currently **no Jest component or UI test coverage** (the single smoke test in `__tests__/` has never been executed). Automated coverage for core domain logic, extraction, reports, audio budgets, transcript state, and proxy features is provided by the Node test suites listed in §2.
 
 ### Build artifacts are tracked in git
 

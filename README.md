@@ -50,7 +50,7 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 - **Transcript review step** — dictation lands on a review screen before any report is generated. Two tabs, **Original** and **AI Transcription**, each with a full editor; a **What AI changed** panel below them; then resume dictating or generate the report.
 - **Automatic consultation saving** — the transcript, the report draft and the doctor's manual field edits are written to the database as they change, debounced so a partial speech result never causes a write, and flushed immediately when the app goes to the background. The consultation also records which screen it reached, so after a force-stop, an OS kill or a flat battery the Dashboard offers to resume it at the recording, transcript-review or report stage. The row is cleared only once the report is actually saved or the doctor discards it — not when Generate Report is pressed. Best-effort by design: a failed write is logged and swallowed rather than interrupting the consultation.
 - **Transcript inspection** — the report can reveal the original dictation, which is the fastest way to tell a transcription gap from an extraction gap.
-- **One dictation, two transcripts** — Android will not let two clients share a microphone: with an `AudioRecord` open, the system recognizer returns `NO_MATCH` on every utterance, measured across all four audio sources. The shared-microphone module inverts that. It owns the only `AudioRecord` and hands the recognizer a pipe through `EXTRA_AUDIO_SOURCE`, so one dictation produces live text *and* the WAV the second transcription needs. Measured on the target device: **88% word recall against a 75% recognizer-only baseline**, with partials from three seconds.
+- **One dictation, two transcripts** — On the tested Oppo A059 / Android 16 configuration, opening `AudioRecord` caused the system recognizer to return `NO_MATCH` on every utterance across all four audio sources; partials did not finalize until the audio pipe closed, requiring a segmented session architecture. The shared-microphone module inverts that by owning the single `AudioRecord` and feeding the recognizer via `EXTRA_AUDIO_SOURCE`, enabling simultaneous live text and WAV capture for second transcription. Measured on the target device: **88% word recall against a 75% recognizer-only baseline**, with partials from three seconds.
 - **Second transcription (Anuvadini)** — the recorded audio is transcribed again by the Anuvadini service, and the doctor picks which transcript the report is built from. A failure is non-blocking: the native transcript still completes the consultation, with a **Retry** offered. See [Environment Setup](#4-anuvadini-credential) for the credential, including what build-time injection does and does not protect.
 - **Editable AI transcript** — the AI text is a draft the doctor corrects like any other. The service's own response is kept separately, so **What AI changed** always compares raw against raw and a manual correction can never appear as something the AI did.
 - **Add More Speech continues either transcript** — a continuation appends to both: `raw = raw₁ + raw₂` keeps the comparison honest, while `text = edited₁ + raw₂` keeps the doctor's corrections. A failed continuation leaves the existing transcript untouched, and a retry cannot append the same speech twice.
@@ -65,7 +65,7 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 
 ### Planned
 
-Continuous recognition without restart gaps, and improved accuracy on `en-IN` devices. See [Roadmap](#roadmap).
+Continuous recognition without restart gaps on vendor fallback, and improved accuracy on `en-IN` devices. See [Roadmap](#roadmap).
 
 ---
 
@@ -645,7 +645,7 @@ The original transcript is unaffected in every case and still generates a report
 
 ### The diagnostic long-press does nothing
 
-Expected in a release build. The diagnostic dump carries the entire patient record, so it exists only in development builds — there is deliberately no way to export patient data from a shipped APK. In a development build, long-press the "Patient Report" title and confirm the prompt.
+Expected in a release build. The development diagnostic dump carries the full consultation trace and is restricted to development builds, whereas PDF export remains available for generated reports. In a development build, long-press the "Patient Report" title and confirm the prompt.
 
 ### The report is missing fields
 
@@ -780,7 +780,7 @@ npm start -- --reset-cache
 | **2** | Permissions, speech-to-text, live transcript | Complete |
 | **3** | Patient-field extraction, structured report, preview | Complete |
 | **4** | Editable fields, save, doctor dashboard, SQLite persistence, PDF export | Complete |
-| **5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete on host checks; the audio module still needs device verification |
+| **5** | Pause/resume, transcript review, session autosave + recovery, audio cues, dashboard redesign | Complete, verified on hardware |
 | **6** | Extraction v2 — natural phrasing, negation, retraction, pronoun gender, prescription list | Complete |
 | **7** | Auto-save and consultation recovery, mandatory-field completeness gate | Complete |
 | **8** | Shared microphone, Anuvadini second transcription, editable AI transcript, continuation, diff | Complete; verified on device in both Debug and Release |
