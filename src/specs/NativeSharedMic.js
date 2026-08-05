@@ -36,6 +36,24 @@ export interface Spec extends TurboModule {
    * read and delete the consultation it just recorded.
    */
   +readCaptureBase64: (path: string, maxBytes: number) => Promise<string>;
+  /**
+   * One byte range of a recording, wrapped as a WAV of its own.
+   *
+   * The transcription service reads only the first ~57 s of any submission, so
+   * a long dictation is uploaded as several ranges of the one file rather than
+   * as one request.
+   */
+  +readCaptureChunkBase64: (
+    path: string,
+    start: number,
+    end: number,
+  ) => Promise<string>;
+  /** Moves each interior cut point to the quietest offset near it. */
+  +snapChunkBoundaries: (
+    path: string,
+    boundaries: Array<number>,
+    windowBytes: number,
+  ) => Promise<Array<number>>;
   +deleteCapture: (path: string) => Promise<boolean>;
   +purgeCaptures: (olderThanMs: number) => Promise<number>;
 }
