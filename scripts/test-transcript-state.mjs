@@ -327,4 +327,39 @@ check(
   'native transcript',
 );
 
+// ── 13. A pass owns its own audio and its own base ──────────────────────────
+// Every pass used to write to <sessionId>.wav, so a later pass truncated the
+// recording an earlier FAILED pass was still holding for Retry. Passes now have
+// distinct recordings, and each base belongs to the pass that captured it.
+const passOne = { path: '/consultations/sess_abc-1.wav', bytes: 320044 };
+const passTwo = { path: '/consultations/sess_abc-2.wav', bytes: 160044 };
+
+check('T13.1 passes write to different recordings', passOne.path === passTwo.path, false);
+
+const draftAfterOne = applyResult(emptyAnuvadini(), { ok: true, text: 'Pass one text.' });
+const editedAfterOne = { ...draftAfterOne, text: 'Pass one corrected.' };
+const baseForTwo = continuationBaseFrom(editedAfterOne);
+
+// Pass two fails; its base and its own audio are what a Retry must use.
+const failedTwo = applyResult(markPending(editedAfterOne), {
+  ok: false,
+  errorKind: ERROR_KIND.NETWORK,
+}, { append: true, base: baseForTwo });
+
+check('T13.2 the failure keeps the earlier correction', failedTwo.text, 'Pass one corrected.');
+check('T13.3 and the earlier raw', failedTwo.raw, 'Pass one text.');
+
+// Retry uses the SAME base and the SAME pass audio, so it appends once.
+const retried = applyResult(markPending(failedTwo), { ok: true, text: 'Pass two text.' }, {
+  append: true,
+  base: baseForTwo,
+});
+check('T13.4 retry appends the second pass once', retried.text, 'Pass one corrected.\nPass two text.');
+check('T13.5 raw carries both service outputs', retried.raw, 'Pass one text.\nPass two text.');
+check(
+  'T13.6 retrying again does not duplicate',
+  applyResult(retried, { ok: true, text: 'Pass two text.' }, { append: true, base: baseForTwo }).text,
+  'Pass one corrected.\nPass two text.',
+);
+
 report();

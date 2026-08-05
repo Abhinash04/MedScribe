@@ -47,6 +47,7 @@ class DictationSessionManager {
     this.sharedMicActive = false;
     this.sharedMicPollId = null;
     this.lastSharedText = '';
+    this.passIndex = 0;
     // The two-second debounce is exactly long enough to lose the last edit to
     // a process the OS kills while the app sits in the background.
     this.appStateSubscription = AppState.addEventListener('change', state => {
@@ -95,7 +96,16 @@ class DictationSessionManager {
    */
   async startSharedMic(sessionId) {
     try {
-      await sharedMic.start(SAMPLE_RATE_HZ, sessionId, RECOGNITION_LANGUAGE, true);
+      // One recording per PASS, not per session. Add More Speech reuses the
+      // session id, so a shared name let a later pass truncate the audio an
+      // earlier failed pass was still holding for Retry.
+      this.passIndex += 1;
+      await sharedMic.start(
+        SAMPLE_RATE_HZ,
+        `${sessionId}-${this.passIndex}`,
+        RECOGNITION_LANGUAGE,
+        true,
+      );
       this.sharedMicActive = true;
       this.lastSharedText = '';
       this.startSharedMicPolling();
@@ -361,6 +371,7 @@ class DictationSessionManager {
     // The audio a continuation would have retried with is going away, so the
     // snapshot that belonged to it must not outlive the consultation.
     clearContinuation();
+    this.passIndex = 0;
     await consultationAudio.discard();
   }
 }

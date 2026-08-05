@@ -105,6 +105,17 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
   /** Released by the callback that finalises a session, awaited by stop(). */
   @Volatile private var sessionEnd: CountDownLatch? = null
 
+  /** Kept so a restart after a pause can rebuild the same intent. */
+  @Volatile private var recognitionLanguage = "en-IN"
+
+  /**
+   * Set when a session ends with no one waiting on it — the service finished
+   * during a pause, or between stop() clearing `running` and arming the latch.
+   * Without this, stop() waits the full timeout for a callback that has already
+   * fired, which is exactly the common "pause then stop" path.
+   */
+  @Volatile private var sessionFinished = false
+
   private var totalBytes = 0L
   private var peakAmplitude = 0
   private var sumRms = 0.0
@@ -197,6 +208,7 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
 
       resetState(rate, file)
       segmented = useSegmented
+      recognitionLanguage = language
       consecutiveErrors = 0
 
       try {
@@ -228,14 +240,59 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * Stops the microphone; the file stays open.
+   *
+   * Setting the flag alone was not enough: AudioRecord kept capturing into its
+   * ring buffer, so the pause leaked into the recording and the doctor was
+   * recorded while they believed they were not. Under `lock` because stop() may
+   * be releasing the recorder on another thread.
+   */
   override fun pause(promise: Promise) {
-    paused = true
-    promise.resolve(running)
+    synchronized(lock) {
+      if (!running || paused) {
+        promise.resolve(false)
+        return
+      }
+      paused = true
+      try {
+        recorder?.stop()
+      } catch (error: Exception) {
+        Log.w(TAG, "pause stop failed", error)
+      }
+      Log.i(TAG, "paused")
+      promise.resolve(true)
+    }
   }
 
   override fun resume(promise: Promise) {
-    paused = false
-    promise.resolve(running)
+    val language: String
+    synchronized(lock) {
+      if (!running || !paused) {
+        promise.resolve(false)
+        return
+      }
+      try {
+        recorder?.startRecording()
+      } catch (error: Exception) {
+        promise.reject("E_RESUME", error.message, error)
+        return
+      }
+      paused = false
+      language = recognitionLanguage
+      Log.i(TAG, "resumed")
+    }
+
+    // The recognition service ends its own session when a pause starves it of
+    // audio, and nothing restarts a segmented session, so everything said after
+    // the first pause was lost. Recovered here rather than left to the timeout.
+    main.post {
+      if (running && !paused && sessionEnd == null && !listening) {
+        Log.i(TAG, "restarting recognition after resume")
+        startRecognition(language)
+      }
+    }
+    promise.resolve(true)
   }
 
   override fun stop(promise: Promise) {
@@ -275,10 +332,16 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     sessionEnd = settled
     closeWriteEnd()
 
-    val finished = try {
-      settled.await(SESSION_END_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-    } catch (error: InterruptedException) {
-      false
+    val finished = if (sessionFinished) {
+      // The service already ended the session — during a pause, or in the
+      // window before the latch was armed. Nothing further is coming.
+      true
+    } else {
+      try {
+        settled.await(SESSION_END_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+      } catch (error: InterruptedException) {
+        false
+      }
     }
     sessionEnd = null
 
@@ -389,6 +452,7 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     readyCount = 0
     errorCounts.clear()
     frames.clear()
+    sessionFinished = false
   }
 
   private fun buildState(): WritableMap = synchronized(this) {
@@ -587,6 +651,9 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       }
     }
 
+    // A fresh session supersedes any earlier natural ending.
+    sessionFinished = false
+
     Log.i(TAG, "startListening segmented=$segmented rate=$sampleRate lang=$language")
 
     instance.setRecognitionListener(object : RecognitionListener {
@@ -643,12 +710,10 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       override fun onResults(results: Bundle?) {
         appendResult(results)
         listening = false
-        // A segmented session ends only when the audio closes, so a result is
-        // not a reason to restart it.
-        if (segmented) {
-          sessionEnd?.countDown()
-        } else {
+        if (!segmented) {
           scheduleRestart(language)
+        } else if (!finishSessionOrRestart(language)) {
+          Log.i(TAG, "results arrived early; recognition restarted")
         }
       }
 
@@ -660,7 +725,7 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       override fun onEndOfSegmentedSession() {
         Log.i(TAG, "segmented session ended")
         listening = false
-        sessionEnd?.countDown()
+        finishSessionOrRestart(language)
       }
 
       override fun onPartialResults(partialResults: Bundle?) {
@@ -693,6 +758,35 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * A segmented session that ends before we asked it to is not the end of the
+   * dictation — the recognition service does this when a pause starves it of
+   * audio. `sessionEnd` is non-null only while stop() is awaiting finalisation,
+   * so it is what separates "the doctor is still dictating" from "we asked it
+   * to finish".
+   *
+   * @return true when the session was genuinely finished
+   */
+  private fun finishSessionOrRestart(language: String): Boolean {
+    val latch = sessionEnd
+    if (latch != null) {
+      latch.countDown()
+      return true
+    }
+    if (!running || paused) {
+      // Nobody is waiting yet. Remember it, so stop() does not sit out the full
+      // timeout for a callback that has already been delivered.
+      sessionFinished = true
+      return true
+    }
+    main.postDelayed({
+      if (running && !paused && sessionEnd == null && !listening) {
+        startRecognition(language)
+      }
+    }, RESTART_DELAY_MS)
+    return false
+  }
+
   private fun appendResult(bundle: Bundle?) {
     val text = bundle
       ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -721,7 +815,13 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       return
     }
     synchronized(this) { restarts += 1 }
-    main.postDelayed({ startRecognition(language) }, RESTART_DELAY_MS)
+    // Re-checked inside the runnable, not only here: an abort, a pause or a
+    // stop can land in the delay window.
+    main.postDelayed({
+      if (running && !paused && sessionEnd == null) {
+        startRecognition(language)
+      }
+    }, RESTART_DELAY_MS)
   }
 
   private fun destroyRecognizer() {
