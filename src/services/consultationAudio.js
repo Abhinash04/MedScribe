@@ -1,8 +1,12 @@
 import {
-  MAX_UPLOAD_BYTES,
+  BYTES_PER_SECOND,
+  CHUNK_SNAP_WINDOW_SECONDS,
   WAV_HEADER_BYTES,
+  chunksFromBoundaries,
+  chunksWithinCap,
+  planChunkBoundaries,
   secondsFor,
-  withinUploadBudget,
+  withinRecordingBudget,
 } from './audioBudget';
 import * as capture from './audioCaptureService';
 // Reading and deleting go through the shared-mic module: it writes the file and
@@ -50,7 +54,7 @@ export function adopt(path, bytes) {
     finished: true,
     bytes: size,
     seconds: secondsFor(size),
-    withinBudget: withinUploadBudget(size),
+    withinBudget: withinRecordingBudget(size),
   };
   return { ...current };
 }
@@ -104,8 +108,9 @@ export async function resume() {
 /**
  * Stops the recorder and reports whether what it produced can be uploaded.
  *
- * `withinBudget` is false for a dictation longer than the ceiling: the audio
- * still exists and is still deleted normally, it simply is not sent.
+ * `withinBudget` is now about the whole recording rather than one request, and
+ * a recording only exceeds it if the recorder ran away — half an hour. Length
+ * alone no longer stops a dictation being sent, because it is sent in chunks.
  */
 export async function finish() {
   if (!current || current.finished) {
@@ -126,25 +131,54 @@ export async function finish() {
     finished: true,
     bytes,
     seconds: secondsFor(bytes),
-    withinBudget: withinUploadBudget(bytes),
+    withinBudget: withinRecordingBudget(bytes),
   };
   return { ...current };
 }
 
 /**
- * Base64 for the upload. Never logged and never held beyond the request — the
- * caller passes it straight to the client and lets it go.
+ * How this recording will be uploaded: one byte range per request.
+ *
+ * The cut points are planned arithmetically and then offered to the native
+ * silence search, which moves each interior one to the nearest quiet moment so
+ * a boundary does not fall mid-word. Snapping is optional — a plan that comes
+ * back unreadable, unsnapped or over the cap falls back to the arithmetic one,
+ * which is already inside the service's ceiling.
  */
-export async function readForUpload() {
+export async function planUpload() {
   if (!current?.path || !current.finished) {
     return null;
   }
-  if (current.bytes && !withinUploadBudget(current.bytes)) {
+  if (!withinRecordingBudget(current.bytes)) {
+    return null;
+  }
+
+  const planned = planChunkBoundaries(current.bytes);
+  if (planned.length < 2) {
+    return null;
+  }
+
+  const window = Math.round(CHUNK_SNAP_WINDOW_SECONDS * BYTES_PER_SECOND);
+  const snapped = await sharedMic.snapChunkBoundaries(current.path, planned, window);
+  const preferred = snapped ? chunksFromBoundaries(snapped) : [];
+
+  return {
+    path: current.path,
+    chunks: chunksWithinCap(preferred) ? preferred : chunksFromBoundaries(planned),
+  };
+}
+
+/**
+ * Base64 for one chunk. Never logged and never held beyond the request — the
+ * caller passes it straight to the client and lets it go.
+ */
+export async function readChunkForUpload(chunk) {
+  if (!current?.path || !current.finished || !chunk) {
     return null;
   }
 
   try {
-    return await sharedMic.readCaptureBase64(current.path, MAX_UPLOAD_BYTES);
+    return await sharedMic.readCaptureChunkBase64(current.path, chunk.start, chunk.end);
   } catch {
     return null;
   }

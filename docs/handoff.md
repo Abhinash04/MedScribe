@@ -77,18 +77,19 @@ The extraction and report layers are pure and deterministic, so they are measure
 | Suite | Assertions | What it guards |
 | :-- | --: | :-- |
 | `npm run test:extraction` | **239 / 239** | The regression floor — template, scrambled, conversational, shorthand, filler and Hinglish dictation |
-| `npm run test:extraction:natural` | **102 / 102** | Natural phrasing: synonyms, pronoun gender, negation, chronic-vs-acute, prescription vs advice |
+| `npm run test:extraction:natural` | **129 / 129** | Natural phrasing: synonyms, pronoun gender, negation, chronic-vs-acute, prescription vs advice |
 | `npm run test:extraction:adversarial` | **31 / 31** | Conflicting and cancelled dictation: explicit-vs-pronoun, corrections, retractions, numeric bleed, restart duplicates |
 | `npm run test:extraction:samples` | **195 / 195** | Twenty real dictation samples, every stated field asserted exactly, each proving its prescription, plus a punctuation-free variant |
 | `npm run test:extraction:synonyms` | **71 / 71** | One assertion per phrase family across all eleven fields, so a full-sample fixture cannot hide a broken marker |
 | `npm run test:extraction:numeric` | **49 / 49** | PIN and phone grouping, country codes, spoken digits, and the numbers that must never become either |
 | `npm run test:extraction:cleanup` | **54 / 54** | Conversational scaffolding removed from all eleven fields, and the clinical modifiers that must survive it |
-| `npm run test:report` | **71 / 71** | Draft bookkeeping, the list-typed prescription round-trip and the PDF payload |
+| `npm run test:report` | **81 / 81** | Draft bookkeeping, the list-typed prescription round-trip and the PDF payload |
 | `npm run test:completeness` | **63 / 63** | The ten mandatory fields, optional remarks, explicit-none history and prescription, and the Add-More-Speech merge |
-| `npm run test:transcripts` | **63 / 63** | Native vs Anuvadini state, raw baselines versus editable drafts, the continuation base, and a full pass-1 → edit → fail → retry → pass-3 sequence |
+| `npm run test:transcripts` | **69 / 69** | Native vs Anuvadini state, raw baselines versus editable drafts, the continuation base, and a full pass-1 → edit → fail → retry → pass-3 sequence |
 | `npm run test:diff` | **30 / 30** | "What AI changed": word-level LCS, punctuation and casing normalization, medical substitutions, insertion and deletion |
 | `npm run test:anuvadini` | **78 / 78** | Both transports, request assembly, language normalization, every failure path, no auto-retry, and no audio or token in any result or error |
-| `npm run test:audio` | **31 / 31** | Capture upload budget: WAV sizing, Base64 growth, the 120 s ceiling and its boundaries |
+| `npm run test:audio` | **89 / 89** | WAV sizing, Base64 growth, the per-request and per-recording ceilings, and chunk plans that are contiguous, disjoint and under the cut |
+| `npm run test:chunks` | **41 / 41** | Chunked upload: sequential order, the ordered join, a mid-pass failure keeping earlier chunks, retry re-sending only what is missing, and a superseded pass applying nothing |
 | `npm run test:proxy` | **77 / 77** | Proxy field translation, Bearer containment, guards before any upstream call, and every error mapping |
 | `npm run lint` | **0 errors** | — |
 
@@ -880,11 +881,17 @@ Accepted deliberately, for internal testing only. It must not go to a clinic in 
 
 `server/` is complete and covered by 77 assertions, but runs only on a developer machine. Until it is hosted, `TRANSCRIPTION_TRANSPORT` stays `direct`.
 
-### Second transcription is capped at two minutes of audio
+### Anuvadini silently truncates a submission at ~57 seconds — measured, and worked around
 
-Base64 inside JSON is a third larger than the bytes and lands in memory as UTF-16 on top of that. At 16 kHz mono 16-bit — 32 KB/s — a 120-second ceiling is ~3.8 MB of WAV and ~5.1 MB of Base64, which is already a meaningful allocation on an entry-level device. Longer dictations still produce a native transcript and a report; only the second transcription is skipped, and the recording is discarded rather than kept.
+The service has never published a limit, so it was measured against one 99.6 s recording retained by a failed request. Trimmed to 30/45/48/52/55/58/60/62/75/90/99 s and sent with the production payload, the returned transcript **stops growing at 58 s and is byte-identical from there upward** — 41 further seconds of audio produced zero further words. The control that word count alone cannot give: the final 20 s of each clip, sent alone, transcribes perfectly, yet only 7–32 % of it appears in the whole-clip transcript, against 100 % for clips under the cut. A word-rate cross-check agrees: 1.50 words/s sustained, 86 words returned, 86 ÷ 1.50 ≈ 57 s processed.
 
-The real limit is whatever the service accepts, which has not been published. `src/services/audioBudget.js` is the single place it is expressed.
+Every response was **HTTP 200 with no error, no flag and no truncation marker**, so a partial answer is indistinguishable from a whole one and nothing downstream can detect it. Staying under the cut is the only defence.
+
+A dictation is therefore uploaded as several requests of `SAFE_CHUNK_SECONDS` (45 s, 12 s of margin), divided evenly rather than into full chunks plus an offcut, with each interior cut moved to the quietest offset within 1.5 s so no word is split. Chunks are disjoint byte ranges of the one file — contiguous, covering it exactly — which is what makes losing or duplicating speech impossible at a join. They are sent sequentially and joined in index order *before* `applyResult`, so the raw/draft split, the diff, the continuation base, `mergeExtraction` and the report flow all still see exactly one transcription per pass.
+
+Verified end to end against the same recording: **140 words versus 86 from a single request**, both joins landing at sentence boundaries, and extraction recovering two more fields — `prescriptionNotes` and `additionalRemarks`, precisely the end-of-dictation fields the truncation was destroying.
+
+The per-request ceiling and the per-recording ceiling are now separate constants in `src/services/audioBudget.js`. The recording ceiling is 30 minutes and is a memory guard, not a service limit; the 120 s budget that used to **delete** a longer recording at Stop is gone.
 
 ### Confirmed AI text arrives at Stop, not while speaking
 

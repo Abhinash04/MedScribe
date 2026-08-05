@@ -14,7 +14,7 @@ import MicGlyph from '../components/MicGlyph';
 import ScreenContainer from '../components/ScreenContainer';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import { purgeAbandoned } from '../services/consultationAudio';
-import { clearContinuation } from '../services/transcriptRefinement';
+import { clearRefinementState } from '../services/transcriptRefinement';
 import {
   clearActiveSession,
   getActiveSession,
@@ -189,7 +189,7 @@ const DashboardScreen = ({ navigation }) => {
     // Explicit reset rather than relying on RecordingScreen clearing on mount.
     resetRecording();
     // A new consultation must never append onto the previous one's transcript.
-    clearContinuation();
+    clearRefinementState();
     navigation.navigate('Recording');
   }, [resetRecording, navigation]);
 
@@ -228,7 +228,7 @@ const DashboardScreen = ({ navigation }) => {
             // audio should survive it, and after a restart the path is no
             // longer known in memory.
             await purgeAbandoned(0);
-            clearContinuation();
+            clearRefinementState();
             setUnfinished(null);
           },
         },

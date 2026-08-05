@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.WritableMap
 import com.medscribe.specs.NativeSharedMicSpec
 import java.io.File
@@ -56,6 +57,16 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     const val CONSULTATION_DIR = "consultations"
     const val QUEUE_FRAMES = 32
     const val SILENCE_RMS = 120.0
+
+    /** Canonical PCM WAV header, and 16-bit mono's two-byte sample. */
+    const val WAV_HEADER_BYTES = 44
+    const val BLOCK_ALIGN = 2
+
+    /**
+     * The largest range one request may carry, mirroring CHUNK_HARD_CAP_SECONDS
+     * in `audioBudget.js`: 50 s at 32 KB/s, plus the header the chunk carries.
+     */
+    const val MAX_CHUNK_BYTES = 50L * 32000L + WAV_HEADER_BYTES
     const val JOIN_TIMEOUT_MS = 2000L
     const val RESTART_DELAY_MS = 250L
 
@@ -104,6 +115,17 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
 
   /** Released by the callback that finalises a session, awaited by stop(). */
   @Volatile private var sessionEnd: CountDownLatch? = null
+
+  /** Kept so a restart after a pause can rebuild the same intent. */
+  @Volatile private var recognitionLanguage = "en-IN"
+
+  /**
+   * Set when a session ends with no one waiting on it — the service finished
+   * during a pause, or between stop() clearing `running` and arming the latch.
+   * Without this, stop() waits the full timeout for a callback that has already
+   * fired, which is exactly the common "pause then stop" path.
+   */
+  @Volatile private var sessionFinished = false
 
   private var totalBytes = 0L
   private var peakAmplitude = 0
@@ -197,6 +219,7 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
 
       resetState(rate, file)
       segmented = useSegmented
+      recognitionLanguage = language
       consecutiveErrors = 0
 
       try {
@@ -228,14 +251,59 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * Stops the microphone; the file stays open.
+   *
+   * Setting the flag alone was not enough: AudioRecord kept capturing into its
+   * ring buffer, so the pause leaked into the recording and the doctor was
+   * recorded while they believed they were not. Under `lock` because stop() may
+   * be releasing the recorder on another thread.
+   */
   override fun pause(promise: Promise) {
-    paused = true
-    promise.resolve(running)
+    synchronized(lock) {
+      if (!running || paused) {
+        promise.resolve(false)
+        return
+      }
+      paused = true
+      try {
+        recorder?.stop()
+      } catch (error: Exception) {
+        Log.w(TAG, "pause stop failed", error)
+      }
+      Log.i(TAG, "paused")
+      promise.resolve(true)
+    }
   }
 
   override fun resume(promise: Promise) {
-    paused = false
-    promise.resolve(running)
+    val language: String
+    synchronized(lock) {
+      if (!running || !paused) {
+        promise.resolve(false)
+        return
+      }
+      try {
+        recorder?.startRecording()
+      } catch (error: Exception) {
+        promise.reject("E_RESUME", error.message, error)
+        return
+      }
+      paused = false
+      language = recognitionLanguage
+      Log.i(TAG, "resumed")
+    }
+
+    // The recognition service ends its own session when a pause starves it of
+    // audio, and nothing restarts a segmented session, so everything said after
+    // the first pause was lost. Recovered here rather than left to the timeout.
+    main.post {
+      if (running && !paused && sessionEnd == null && !listening) {
+        Log.i(TAG, "restarting recognition after resume")
+        startRecognition(language)
+      }
+    }
+    promise.resolve(true)
   }
 
   override fun stop(promise: Promise) {
@@ -275,10 +343,16 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     sessionEnd = settled
     closeWriteEnd()
 
-    val finished = try {
-      settled.await(SESSION_END_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-    } catch (error: InterruptedException) {
-      false
+    val finished = if (sessionFinished) {
+      // The service already ended the session — during a pause, or in the
+      // window before the latch was armed. Nothing further is coming.
+      true
+    } else {
+      try {
+        settled.await(SESSION_END_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+      } catch (error: InterruptedException) {
+        false
+      }
     }
     sessionEnd = null
 
@@ -345,6 +419,182 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * One byte range of a recording, wrapped as a WAV in its own right.
+   *
+   * The service reads roughly the first 57 seconds of whatever it is given and
+   * silently discards the rest, so a long dictation has to arrive as several
+   * shorter submissions. Each carries a fresh canonical header describing only
+   * its own range — the same header `writeWavHeader` produces, since the format
+   * is fixed at 16 kHz mono 16-bit.
+   *
+   * Encoding one range at a time also puts peak memory BELOW the whole-file
+   * encode this replaces, rather than above it.
+   */
+  override fun readCaptureChunkBase64(path: String, start: Double, end: Double, promise: Promise) {
+    val file = consultationFile(path)
+    if (file == null) {
+      promise.reject("E_PATH", "Not a consultation recording")
+      return
+    }
+    if (!file.exists()) {
+      promise.reject("E_NO_FILE", "No recording for this consultation")
+      return
+    }
+
+    val from = start.toLong()
+    val to = end.toLong()
+    val length = file.length()
+    if (from < WAV_HEADER_BYTES || to > length || to - from < BLOCK_ALIGN) {
+      promise.reject("E_RANGE", "Range $from..$to is not inside a ${length}-byte recording")
+      return
+    }
+    // The planner never asks for more than a chunk, but the range arrives from
+    // JavaScript, so the allocation is bounded here rather than trusted.
+    if (to - from > MAX_CHUNK_BYTES) {
+      promise.reject("E_TOO_LARGE", "Chunk of ${to - from} bytes exceeds $MAX_CHUNK_BYTES")
+      return
+    }
+
+    val dataBytes = (to - from).toInt()
+    try {
+      val chunk = ByteArray(WAV_HEADER_BYTES + dataBytes)
+      RandomAccessFile(file, "r").use { input ->
+        input.seek(from)
+        input.readFully(chunk, WAV_HEADER_BYTES, dataBytes)
+      }
+      wavHeaderInto(chunk, sampleRateOf(file), dataBytes)
+      promise.resolve(Base64.encodeToString(chunk, Base64.NO_WRAP))
+    } catch (error: OutOfMemoryError) {
+      promise.reject("E_TOO_LARGE", "Not enough memory to encode this chunk")
+    } catch (error: Exception) {
+      promise.reject("E_READ", error.message, error)
+    }
+  }
+
+  /**
+   * Moves each cut point to the quietest moment near it.
+   *
+   * A boundary that lands mid-word splits that word across two submissions and
+   * mangles it in both. Scanning a window either side and cutting where the RMS
+   * is lowest puts the join between words instead. Every boundary is snapped in
+   * one pass so that consecutive chunks keep sharing an offset exactly — cutting
+   * each chunk independently is what would lose or duplicate speech.
+   *
+   * The first and last points are the file's own edges and never move.
+   */
+  override fun snapChunkBoundaries(
+    path: String,
+    boundaries: ReadableArray,
+    windowBytes: Double,
+    promise: Promise,
+  ) {
+    val file = consultationFile(path)
+    if (file == null || !file.exists() || boundaries.size() < 2) {
+      promise.reject("E_PATH", "Not a readable consultation recording")
+      return
+    }
+
+    val length = file.length()
+    val window = windowBytes.toLong().coerceAtLeast(0L)
+    val snapped = Arguments.createArray()
+
+    try {
+      RandomAccessFile(file, "r").use { input ->
+        var previous = 0L
+        for (index in 0 until boundaries.size()) {
+          val target = boundaries.getDouble(index).toLong()
+          val fixed = index == 0 || index == boundaries.size() - 1
+          val at =
+            if (fixed || window == 0L) {
+              target
+            } else {
+              quietestOffset(input, target, window, previous, length)
+            }
+          // Monotonic even when a snap would otherwise cross its neighbour.
+          val safe = at.coerceIn(previous, length).let { it - (it % BLOCK_ALIGN) }
+          snapped.pushDouble(safe.toDouble())
+          previous = safe
+        }
+      }
+      promise.resolve(snapped)
+    } catch (error: Exception) {
+      promise.reject("E_READ", error.message, error)
+    }
+  }
+
+  /**
+   * The start of the lowest-energy step within the window, or the target if the
+   * window cannot be read. Steps are 20 ms, short enough to land in the pause
+   * between two words rather than only between sentences.
+   */
+  private fun quietestOffset(
+    input: RandomAccessFile,
+    target: Long,
+    window: Long,
+    floor: Long,
+    length: Long,
+  ): Long {
+    val step = (sampleRate * BLOCK_ALIGN) / 50
+    val from = (target - window).coerceAtLeast(floor.coerceAtLeast(WAV_HEADER_BYTES.toLong()))
+    val to = (target + window).coerceAtMost(length)
+    if (to - from < step * 2) {
+      return target
+    }
+
+    val buffer = ByteArray(step)
+    var best = target
+    var bestRms = Double.MAX_VALUE
+    var offset = from - (from % BLOCK_ALIGN)
+
+    while (offset + step <= to) {
+      input.seek(offset)
+      input.readFully(buffer)
+      val rms = rmsOf(buffer)
+      // Ties go to the offset nearest the target, keeping chunks even.
+      if (rms < bestRms || (rms == bestRms && abs(offset - target) < abs(best - target))) {
+        bestRms = rms
+        best = offset
+      }
+      if (rms < SILENCE_RMS) {
+        // Already silent; no quieter point is worth drifting further for.
+        return offset
+      }
+      offset += step
+    }
+
+    return best
+  }
+
+  private fun rmsOf(bytes: ByteArray): Double {
+    var sum = 0.0
+    var index = 0
+    while (index + 1 < bytes.size) {
+      val sample = ((bytes[index + 1].toInt() shl 8) or (bytes[index].toInt() and 0xFF)).toShort()
+      sum += sample.toDouble() * sample.toDouble()
+      index += 2
+    }
+    val samples = bytes.size / 2
+    return if (samples > 0) sqrt(sum / samples) else 0.0
+  }
+
+  /** The recording's own rate, so a chunk never claims a rate the audio is not. */
+  private fun sampleRateOf(file: File): Int {
+    return try {
+      RandomAccessFile(file, "r").use { input ->
+        val header = ByteArray(WAV_HEADER_BYTES)
+        input.readFully(header)
+        val rate = (header[24].toInt() and 0xFF) or
+          ((header[25].toInt() and 0xFF) shl 8) or
+          ((header[26].toInt() and 0xFF) shl 16) or
+          ((header[27].toInt() and 0xFF) shl 24)
+        if (rate > 0) rate else sampleRate
+      }
+    } catch (error: Exception) {
+      sampleRate
+    }
+  }
+
   override fun deleteCapture(path: String, promise: Promise) {
     val file = consultationFile(path)
     if (file == null) {
@@ -389,6 +639,7 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     readyCount = 0
     errorCounts.clear()
     frames.clear()
+    sessionFinished = false
   }
 
   private fun buildState(): WritableMap = synchronized(this) {
@@ -587,6 +838,9 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       }
     }
 
+    // A fresh session supersedes any earlier natural ending.
+    sessionFinished = false
+
     Log.i(TAG, "startListening segmented=$segmented rate=$sampleRate lang=$language")
 
     instance.setRecognitionListener(object : RecognitionListener {
@@ -643,12 +897,10 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       override fun onResults(results: Bundle?) {
         appendResult(results)
         listening = false
-        // A segmented session ends only when the audio closes, so a result is
-        // not a reason to restart it.
-        if (segmented) {
-          sessionEnd?.countDown()
-        } else {
+        if (!segmented) {
           scheduleRestart(language)
+        } else if (!finishSessionOrRestart(language)) {
+          Log.i(TAG, "results arrived early; recognition restarted")
         }
       }
 
@@ -660,7 +912,7 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       override fun onEndOfSegmentedSession() {
         Log.i(TAG, "segmented session ended")
         listening = false
-        sessionEnd?.countDown()
+        finishSessionOrRestart(language)
       }
 
       override fun onPartialResults(partialResults: Bundle?) {
@@ -693,6 +945,35 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * A segmented session that ends before we asked it to is not the end of the
+   * dictation — the recognition service does this when a pause starves it of
+   * audio. `sessionEnd` is non-null only while stop() is awaiting finalisation,
+   * so it is what separates "the doctor is still dictating" from "we asked it
+   * to finish".
+   *
+   * @return true when the session was genuinely finished
+   */
+  private fun finishSessionOrRestart(language: String): Boolean {
+    val latch = sessionEnd
+    if (latch != null) {
+      latch.countDown()
+      return true
+    }
+    if (!running || paused) {
+      // Nobody is waiting yet. Remember it, so stop() does not sit out the full
+      // timeout for a callback that has already been delivered.
+      sessionFinished = true
+      return true
+    }
+    main.postDelayed({
+      if (running && !paused && sessionEnd == null && !listening) {
+        startRecognition(language)
+      }
+    }, RESTART_DELAY_MS)
+    return false
+  }
+
   private fun appendResult(bundle: Bundle?) {
     val text = bundle
       ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -721,7 +1002,13 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       return
     }
     synchronized(this) { restarts += 1 }
-    main.postDelayed({ startRecognition(language) }, RESTART_DELAY_MS)
+    // Re-checked inside the runnable, not only here: an abort, a pause or a
+    // stop can land in the delay window.
+    main.postDelayed({
+      if (running && !paused && sessionEnd == null) {
+        startRecognition(language)
+      }
+    }, RESTART_DELAY_MS)
   }
 
   private fun destroyRecognizer() {
@@ -736,27 +1023,43 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
 
   private fun writeWavHeader(file: File, rate: Int, dataBytes: Long) {
     try {
+      val header = ByteArray(WAV_HEADER_BYTES)
+      wavHeaderInto(header, rate, dataBytes.toInt())
       RandomAccessFile(file, "rw").use { out ->
-        val byteRate = rate * 2
-        val riffSize = 36 + dataBytes
         out.seek(0)
-        out.writeBytes("RIFF")
-        out.write(intLe(riffSize.toInt()))
-        out.writeBytes("WAVE")
-        out.writeBytes("fmt ")
-        out.write(intLe(16))
-        out.write(shortLe(1))
-        out.write(shortLe(1))
-        out.write(intLe(rate))
-        out.write(intLe(byteRate))
-        out.write(shortLe(2))
-        out.write(shortLe(16))
-        out.writeBytes("data")
-        out.write(intLe(dataBytes.toInt()))
+        out.write(header)
       }
     } catch (error: Exception) {
       Log.w(TAG, "wav header failed", error)
     }
+  }
+
+  /**
+   * The canonical header, written into the first 44 bytes of an array.
+   *
+   * Shared by the recording and by every chunk read out of it, so a chunk can
+   * never describe itself differently from the file it came from.
+   */
+  private fun wavHeaderInto(target: ByteArray, rate: Int, dataBytes: Int) {
+    var at = 0
+    fun put(bytes: ByteArray) {
+      bytes.copyInto(target, at)
+      at += bytes.size
+    }
+
+    put("RIFF".toByteArray(Charsets.US_ASCII))
+    put(intLe(36 + dataBytes))
+    put("WAVE".toByteArray(Charsets.US_ASCII))
+    put("fmt ".toByteArray(Charsets.US_ASCII))
+    put(intLe(16))
+    put(shortLe(1))
+    put(shortLe(1))
+    put(intLe(rate))
+    put(intLe(rate * BLOCK_ALIGN))
+    put(shortLe(BLOCK_ALIGN))
+    put(shortLe(16))
+    put("data".toByteArray(Charsets.US_ASCII))
+    put(intLe(dataBytes))
   }
 
   private fun intLe(value: Int) = byteArrayOf(

@@ -1,4 +1,10 @@
 import { transcribe } from './anuvadini/transcriptionClient';
+import {
+  emptyProgress,
+  planSignature,
+  resumable,
+  uploadChunks,
+} from './anuvadini/chunkedUpload';
 import { ERROR_KIND } from './anuvadini/proxyContract';
 import { DEFAULT_LANGUAGE } from './anuvadini/language';
 import * as consultationAudio from './consultationAudio';
@@ -28,6 +34,19 @@ let inFlight = null;
  */
 let continuationBase = null;
 
+/**
+ * Chunks of the current recording that have already transcribed.
+ *
+ * A long dictation is several requests, and a failure on the third must not
+ * throw away the first two: Retry re-sends only what is still missing. Keyed by
+ * the recording's path so a new recording can never inherit another's text.
+ */
+let uploaded = emptyProgress();
+
+function resetUploaded(path = null, plan = '') {
+  uploaded = emptyProgress(path, plan);
+}
+
 export function isRefining() {
   return inFlight !== null;
 }
@@ -51,6 +70,12 @@ export function clearContinuation() {
   continuationBase = null;
 }
 
+/** Both pieces of per-recording state, dropped together when a pass is done. */
+export function clearRefinementState() {
+  clearContinuation();
+  resetUploaded();
+}
+
 export function cancelRefinement() {
   inFlight?.abort();
   inFlight = null;
@@ -66,14 +91,25 @@ export async function refineTranscript({
   // an append can never happen without a snapshot to append to.
   const base = continuationBase;
   const append = base !== null;
-  const payload = audioBase64 ?? (await consultationAudio.readForUpload());
 
-  if (!payload) {
+  // An explicitly supplied payload is one request by definition; a recording is
+  // however many the service's ceiling requires.
+  const plan = audioBase64
+    ? { path: null, chunks: [{ index: 0, start: 0, end: 0 }] }
+    : await consultationAudio.planUpload();
+
+  if (!plan?.chunks?.length) {
     const kind = consultationAudio.currentCapturePath()
       ? ERROR_KIND.AUDIO_TOO_LARGE
       : ERROR_KIND.NO_AUDIO;
     store.setAnuvadiniResult({ ok: false, errorKind: kind });
     return { ok: false, errorKind: kind };
+  }
+
+  // A supplied payload is always its own attempt; a recording resumes only
+  // while it is still being cut at the same points.
+  if (audioBase64 || !resumable(uploaded, plan.path, plan.chunks)) {
+    resetUploaded(plan.path, planSignature(plan.chunks));
   }
 
   cancelRefinement();
@@ -82,22 +118,30 @@ export async function refineTranscript({
 
   store.setAnuvadiniPending();
 
-  const result = await transcribe({
-    audioBase64: payload,
-    language,
-    token: getAnuvadiniToken(),
-    signal: controller.signal,
+  const token = getAnuvadiniToken();
+
+  const { superseded, result, progress } = await uploadChunks({
+    chunks: plan.chunks,
+    progress: uploaded,
+    readChunk: chunk => audioBase64 ?? consultationAudio.readChunkForUpload(chunk),
+    send: payload =>
+      transcribe({ audioBase64: payload, language, token, signal: controller.signal }),
+    stillCurrent: () => inFlight === controller,
   });
 
-  if (inFlight !== controller) {
+  // A newer pass took over while a request was in the air; it owns the store,
+  // and its own progress, so nothing from this attempt is carried over.
+  if (superseded) {
     return result;
   }
+
   inFlight = null;
+  uploaded = progress;
 
   // A cancelled request means the doctor moved on; leaving the card in its
   // previous state is less noisy than reporting a failure they caused. The base
-  // survives, because the same audio is still there to retry.
-  if (result.errorKind === ERROR_KIND.CANCELLED) {
+  // and the finished chunks survive, because the audio is still there to retry.
+  if (result?.errorKind === ERROR_KIND.CANCELLED) {
     return result;
   }
 
@@ -105,7 +149,7 @@ export async function refineTranscript({
 
   if (result.ok) {
     // Applied exactly once; a later "Add More Speech" takes a fresh snapshot.
-    clearContinuation();
+    clearRefinementState();
     if (!keepAudio) {
       await consultationAudio.discard();
     }
