@@ -16,6 +16,7 @@ import SectionTitle from '../components/SectionTitle';
 import TranscriptDiffView from '../components/TranscriptDiffView';
 import { isTranscriptionAvailable } from '../config/features';
 import { refineTranscript } from '../services/transcriptRefinement';
+import { ERROR_KIND } from '../services/anuvadini/proxyContract';
 import {
   ANUVADINI_STATUS,
   TRANSCRIPT_SOURCE,
@@ -265,7 +266,11 @@ const TranscriptReviewScreen = ({ navigation }) => {
       case ANUVADINI_STATUS.READY:
         return aiReady ? 'Ready' : 'Same as original';
       case ANUVADINI_STATUS.FAILED:
-        return 'Unable to generate';
+        // A dictation refused for its length must say so; reporting it as a
+        // generic failure sends the doctor to Retry, which cannot help.
+        return anuvadini.error === ERROR_KIND.AUDIO_TOO_LARGE
+          ? 'Recording too long to process'
+          : 'Unable to generate';
       default:
         return 'Not available for this dictation';
     }

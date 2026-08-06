@@ -96,6 +96,32 @@ export async function readCaptureBase64(path, maxBytes) {
   return module.readCaptureBase64(path, maxBytes);
 }
 
+export async function readCaptureChunkBase64(path, from, to) {
+  const module = sharedMic();
+  if (!module) {
+    throw new Error('SharedMic module is not in this build.');
+  }
+  return module.readCaptureChunkBase64(path, from, to);
+}
+
+/**
+ * Snapping is an improvement, not a requirement: a build without the module, or
+ * a file the search cannot read, falls back to the planned cut points, which are
+ * already inside the ceiling.
+ */
+export async function snapChunkBoundaries(path, boundaries, windowBytes) {
+  const module = sharedMic();
+  if (!module || !path || !Array.isArray(boundaries) || boundaries.length < 2) {
+    return null;
+  }
+  try {
+    const snapped = await module.snapChunkBoundaries(path, boundaries, windowBytes);
+    return Array.isArray(snapped) && snapped.length === boundaries.length ? snapped : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteCapture(path) {
   const module = sharedMic();
   if (!module || !path) {
