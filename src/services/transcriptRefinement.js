@@ -8,7 +8,7 @@ import {
 import { ERROR_KIND } from './anuvadini/proxyContract';
 import { DEFAULT_LANGUAGE } from './anuvadini/language';
 import * as consultationAudio from './consultationAudio';
-import { continuationBaseFrom } from './consultationTranscripts';
+import { nextPassIndex } from './consultationTranscripts';
 import { getAnuvadiniToken } from './appConfigService';
 import useRecordingStore from '../store/useRecordingStore';
 
@@ -24,15 +24,14 @@ import useRecordingStore from '../store/useRecordingStore';
 let inFlight = null;
 
 /**
- * The snapshot an in-progress continuation appends to, and the fact that one is
- * in progress at all.
+ * Which recording pass the in-flight result belongs to.
  *
- * Owned by the continuation RECORDING, not by an individual request: a failed
- * attempt keeps it so Retry replays against the same starting point, and only
- * success or teardown clears it. That is what stops a retry from appending the
- * same speech twice.
+ * Claimed when the pass starts recording and held until its result is applied,
+ * so a Retry lands under the same number and REPLACES its entry rather than
+ * appending a second copy. Null means "whatever comes next", which is the safe
+ * default: an unnumbered result extends the transcript instead of replacing it.
  */
-let continuationBase = null;
+let activePass = null;
 
 /**
  * Chunks of the current recording that have already transcribed.
@@ -51,23 +50,28 @@ export function isRefining() {
   return inFlight !== null;
 }
 
-/** True while a continuation is waiting for a result it has not yet applied. */
+/** True while a pass is waiting for a result it has not yet applied. */
 export function hasPendingContinuation() {
-  return continuationBase !== null;
+  return activePass !== null;
 }
 
 /**
- * Called when "Add More Speech" begins recording, so the snapshot reflects the
- * draft as the doctor left it — including any manual corrections.
+ * Claims the pass number a recording that is starting now will land under.
+ *
+ * Called for every pass, not only continuations: the number is what makes Retry
+ * replace rather than duplicate, and pass 1 can be retried too.
  */
-export function beginContinuation() {
-  const { anuvadini } = useRecordingStore.getState();
-  continuationBase = continuationBaseFrom(anuvadini);
-  return continuationBase;
+export function beginPass() {
+  activePass = nextPassIndex(useRecordingStore.getState().anuvadini);
+  return activePass;
+}
+
+export function activePassIndex() {
+  return activePass;
 }
 
 export function clearContinuation() {
-  continuationBase = null;
+  activePass = null;
 }
 
 /** Both pieces of per-recording state, dropped together when a pass is done. */
@@ -87,10 +91,10 @@ export async function refineTranscript({
   keepAudio = false,
 } = {}) {
   const store = useRecordingStore.getState();
-  // The base is the only thing that decides whether this is a continuation, so
-  // an append can never happen without a snapshot to append to.
-  const base = continuationBase;
-  const append = base !== null;
+  // Claimed at Stop if the pass never claimed one, so a result can never be
+  // applied without a number — an unnumbered one would silently replace the
+  // whole transcript instead of extending it.
+  const passIndex = activePass ?? beginPass();
 
   // An explicitly supplied payload is one request by definition; a recording is
   // however many the service's ceiling requires.
@@ -139,16 +143,17 @@ export async function refineTranscript({
   uploaded = progress;
 
   // A cancelled request means the doctor moved on; leaving the card in its
-  // previous state is less noisy than reporting a failure they caused. The base
-  // and the finished chunks survive, because the audio is still there to retry.
+  // previous state is less noisy than reporting a failure they caused. The pass
+  // number and the finished chunks survive, because the audio is still there to
+  // retry.
   if (result?.errorKind === ERROR_KIND.CANCELLED) {
     return result;
   }
 
-  useRecordingStore.getState().setAnuvadiniResult(result, { append, base });
+  useRecordingStore.getState().setAnuvadiniResult(result, { passIndex });
 
   if (result.ok) {
-    // Applied exactly once; a later "Add More Speech" takes a fresh snapshot.
+    // Applied exactly once; the next recording claims the next number.
     clearRefinementState();
     if (!keepAudio) {
       await consultationAudio.discard();

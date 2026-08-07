@@ -1,22 +1,7 @@
 import { NOT_AVAILABLE, PATIENT_FIELDS } from '../constants/patientFields.js';
-import { draftValues, isListField } from './reportDraft.js';
+import { draftValues, isListField, keptNotes } from './reportDraft.js';
 import { fileStamp, formatDateTime } from '../utils/datetime.js';
 
-/**
- * Turns an editable draft into the payload the native PDF exporter draws.
- *
- * The native side stays dumb on purpose: it lays out whatever blocks it is
- * given, in order, and knows nothing about patient fields. All decisions about
- * what a report contains live here — in pure JavaScript that runs under Node,
- * so `scripts/test-report.mjs` can assert the document without a device.
- *
- * @typedef {Object} DocumentBlock
- * @property {string} label
- * @property {string} [value]     paragraph text
- * @property {string[]} [items]   bullet list
- */
-
-/** Fields that make up the identity block at the top of the page. */
 const PATIENT_DETAIL_KEYS = [
   'patientName',
   'age',
@@ -39,7 +24,6 @@ function textOf(value) {
   return text || NOT_AVAILABLE;
 }
 
-/** Filename-safe patient name: "Rahul Sharma" -> "rahul-sharma". */
 export function slugify(name) {
   const slug = (name || '')
     .toLowerCase()
@@ -48,16 +32,6 @@ export function slugify(name) {
   return slug || 'patient-report';
 }
 
-/**
- * @param {Object} draft            editable draft (see reportDraft.js)
- * @param {Object} [meta]
- * @param {number} [meta.createdAt] epoch ms the report was first saved
- * @param {number} [meta.now]       epoch ms of the export itself
- * @param {string} [meta.status]    'draft' | 'final'
- * @returns {{fileName: string, title: string, generatedAt: string,
- *            status: string, patient: DocumentBlock[],
- *            sections: DocumentBlock[], disclaimer: string}}
- */
 export function buildReportDocument(draft, meta = {}) {
   const values = draftValues(draft);
   const now = meta.now ?? Date.now();
@@ -81,6 +55,11 @@ export function buildReportDocument(draft, meta = {}) {
 
     return { label: field.label, value: textOf(values[field.key]) };
   });
+
+  const notes = keptNotes(draft);
+  if (notes.length) {
+    sections.push({ label: 'Additional Clinical Notes', items: notes });
+  }
 
   return {
     fileName: `${slugify(values.patientName)}-${fileStamp(now)}.pdf`,

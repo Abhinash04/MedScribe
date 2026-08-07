@@ -4,21 +4,6 @@ import { LOW_CONFIDENCE_THRESHOLD } from '../constants/fieldMarkers';
 import { NOT_AVAILABLE } from '../constants/patientFields';
 import { colors, spacing, typography } from '../theme';
 
-/**
- * One labelled row of the structured report (SRS FR-6).
- *
- * Takes a draft entry ({ value, original, confidence, source, edited }).
- *
- * With `onChange` the row is editable: the value renders as a TextInput, so
- * tapping it enters edit mode with no separate toggle, and a field the
- * dictation never captured can be filled in by typing over the "Not Available"
- * placeholder (FR-7 still shows the doctor what is missing). Without
- * `onChange` the row is read-only.
- *
- * Values captured from a hedged phrase ("probably dengue") are flagged
- * UNCERTAIN, and anything the doctor changed is flagged EDITED, so the report
- * always shows what came from the machine and what came from the human.
- */
 const ReportField = ({
   label,
   entry,
@@ -32,6 +17,7 @@ const ReportField = ({
   const hasValue = isList ? value?.length > 0 : !!value;
   const isUncertain =
     hasValue && !entry?.edited && entry?.confidence < LOW_CONFIDENCE_THRESHOLD;
+  const isAuto = hasValue && !entry?.edited && !!entry?.auto;
 
   const items = isList && Array.isArray(value) ? value : [];
 
@@ -51,6 +37,14 @@ const ReportField = ({
             accessibilityLabel={`Low confidence, inferred from "${entry.source}"`}
           >
             UNCERTAIN
+          </Text>
+        ) : null}
+        {isAuto ? (
+          <Text
+            style={styles.uncertainBadge}
+            accessibilityLabel="Classified from the dictation, not explicitly stated"
+          >
+            AUTO
           </Text>
         ) : null}
         {entry?.edited ? (
@@ -161,8 +155,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
     color: colors.onPrimary,
-    // primaryAccent, not secondaryAccent: white on #0284C7 is ~4:1, which
-    // fails AA for 10pt text. #2563EB reaches ~5.2:1 with the same white.
     backgroundColor: colors.primaryAccent,
     paddingHorizontal: spacing.xs,
     paddingVertical: 1,
@@ -174,8 +166,6 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   input: {
-    // Keeps the row height stable between read and edit, so tapping a field
-    // does not shift the rest of the report under the doctor's finger.
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
     marginTop: 2,

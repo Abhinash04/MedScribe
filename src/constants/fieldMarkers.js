@@ -1,25 +1,3 @@
-/**
- * Field marker vocabulary (SRS FR-5).
- *
- * Each field is a metadata object rather than a bare pattern list, so
- * post-processing, validation and conflict rules attach per field without the
- * pipeline needing to special-case anything.
- *
- * ── Adding support for new phrasing ─────────────────────────────────────────
- * Add a marker row here. No pipeline code should need to change.
- *
- * ── What `confidence` means ─────────────────────────────────────────────────
- * It is MARKER SPECIFICITY, not probability. Nothing here is calibrated, and
- * reading 0.95 as "95% likely correct" would be wrong. Fixed bands:
- *
- *   0.90 - 0.95   Explicit, unambiguous marker   "diagnosis is", "contact number"
- *   0.60 - 0.75   Hedged or ambiguous marker     "looks like", "probably"
- *   0.40 - 0.55   Unmarked structural fallback   bare 6-digit -> PIN
- *
- * Markers are matched longest-first at each position, so a specific phrase
- * ("patient name is") always beats a looser one ("name is").
- */
-
 import { ADVERB_GAP, MEDICATION_UNITS } from './clinicalCues.js';
 
 export const CONFIDENCE = {
@@ -33,31 +11,23 @@ export const CONFIDENCE = {
   PRONOUN: 0.45,
 };
 
-/** Below this, the report flags the value as uncertain. */
 export const LOW_CONFIDENCE_THRESHOLD = 0.7;
 
-/**
- * Markers whose whole point is to record an absence.
- *
- * "No significant medical history" and "No medication prescribed" sit inside a
- * negation, so the generic negation suppression would delete them — yet they
- * are the doctor stating something, and the completeness gate accepts them as
- * a mandatory field being answered.
- */
 export const ABSENCE_MARKER_SOURCES = new Set([
   'no significant history',
   'nothing significant in the history',
+  'no known condition',
   'no medication',
   'advice only',
 ]);
 
+export const HISTORY_QUALIFIER = 'significant|known|previous|prior|past';
+
+export const CONDITION_NOUN =
+  'disease|disorder|illness|condition|ailment|surgery|surgeries|operation|procedure|complication';
+
 const m = (pattern, confidence, source) => ({ pattern, confidence, source });
 
-/**
- * Clinical conditions recognised without an explicit history marker, e.g.
- * "She is diabetic". Closed on purpose — a general rule would populate
- * medical history with any adjective following "is".
- */
 export const CLINICAL_CONDITIONS =
   'diabetic|hypertensive|asthmatic|epileptic|hypothyroid|hyperthyroid|anaemic|anemic|obese|immunocompromised|arthritic|tubercular';
 
@@ -79,7 +49,6 @@ export const FIELD_MARKERS = {
       m(/\bthis\s+is[\s,]+/i, CONFIDENCE.MODERATE, 'this is'),
       m(/\bpatient\s+identified\s+as[\s,]+/i, CONFIDENCE.EXPLICIT, 'patient identified as'),
       m(/\bidentified\s+as[\s,]+/i, CONFIDENCE.STRONG, 'identified as'),
-      // Hinglish: "patient ka naam Hema Sharma hai"
       m(/\b(?:patient\s+)?ka\s+naam[\s,]+/i, CONFIDENCE.EXPLICIT, 'ka naam'),
     ],
   },
@@ -90,14 +59,9 @@ export const FIELD_MARKERS = {
     validator: 'age',
     markers: [
       m(/\bage(?:d)?\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'age'),
-      // "22-year-old" and "22 years old" — hyphens and the singular "year"
-      // are both common and were previously unmatched.
       m(/\b(?=\d{1,3}[\s-]*(?:years?|yrs?)[\s-]*old\b)/i, CONFIDENCE.STRONG, 'N-year-old'),
       m(/\b(?=\d{1,3}[\s-]*(?:years?|yrs?)\s+of\s+age\b)/i, CONFIDENCE.STRONG, 'N years of age'),
       m(/\bis\s+(?=\d{1,3}[\s-]*(?:years?|yrs?)\b)/i, CONFIDENCE.STRONG, 'is N years'),
-      // Spoken age with no "years": "she's only twenty-two".
-      // Teens are deliberately excluded — "Sector Twelve" was being read as
-      // age 12. A wrong value in a patient record is worse than a blank one.
       m(/\b(?=(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[\s-](?:one|two|three|four|five|six|seven|eight|nine)\b)/i, CONFIDENCE.HEDGED, 'spoken age'),
     ],
   },
@@ -109,8 +73,6 @@ export const FIELD_MARKERS = {
     markers: [
       m(/\b(?:gender|sex)\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'gender'),
     ],
-    // Bare gender words and pronouns are handled by collectEvidence, which
-    // applies the companion-noun guard and refuses to pick a side on conflict.
   },
 
   address: {
@@ -153,17 +115,12 @@ export const FIELD_MARKERS = {
     postProcessor: 'symptomList',
     validator: 'nonEmptyList',
     markers: [
-      // The verb and its preposition need not be adjacent — "complains today
-      // of", "presented yesterday with". ADVERB_GAP is shared so the whole
-      // family tolerates it from one definition.
       m(
         new RegExp(`\\bcomplain(?:s|ing|ed)?${ADVERB_GAP}\\s+of\\s+`, 'i'),
         CONFIDENCE.EXPLICIT,
         'complains of',
       ),
       m(/\bc\/o\s+/i, CONFIDENCE.EXPLICIT, 'c/o'),
-      // "symptoms" must be followed by a copula. A bare match fires inside
-      // "if symptoms persist" (a remark) and pollutes the field with "Persist".
       m(/\bsymptoms?\s+(?:are|is|include[s]?)\s+/i, CONFIDENCE.EXPLICIT, 'symptoms are'),
       m(/\bpresenting\s+complaints?\s+(?:are|include[s]?)?\s*/i, CONFIDENCE.EXPLICIT, 'presenting complaints'),
       m(
@@ -177,7 +134,6 @@ export const FIELD_MARKERS = {
         'presents with',
       ),
       m(/\breport(?:s|ing|ed)?\s+/i, CONFIDENCE.MODERATE, 'reports'),
-      // Contraction-aware: "she's been having" as well as "has been having".
       m(/\b(?:has|have|'s|s)\s*been\s+having\s+/i, CONFIDENCE.MODERATE, 'been having'),
       m(/\bcomplaints?\s+(?:are|of)?\s*/i, CONFIDENCE.EXPLICIT, 'complaints of'),
       m(
@@ -192,6 +148,9 @@ export const FIELD_MARKERS = {
       m(/\b(?:is|are|was|were)\s+having\s+/i, CONFIDENCE.STRONG, 'is having'),
       m(/\bhaving\s+/i, CONFIDENCE.MODERATE, 'having'),
       m(/\bdealing\s+with\s+/i, CONFIDENCE.STRONG, 'dealing with'),
+      m(/\btroubled\s+(?:by|with)\s+/i, CONFIDENCE.STRONG, 'troubled by'),
+      m(/\bbothered\s+(?:by|with)\s+/i, CONFIDENCE.STRONG, 'bothered by'),
+      m(/\b(?:is|was)\s+down\s+with\s+/i, CONFIDENCE.STRONG, 'down with'),
       m(/\b(?=denies\s+)/i, CONFIDENCE.STRONG, 'denies'),
       m(/\bdevelop(?:s|ed|ing)\s+/i, CONFIDENCE.STRONG, 'developed'),
       m(/\bnow\s+has\s+/i, CONFIDENCE.STRONG, 'now has'),
@@ -203,10 +162,8 @@ export const FIELD_MARKERS = {
     priority: 5,
     postProcessor: 'text',
     validator: 'nonEmptyText',
+    combine: 'sentences',
     markers: [
-      // Negation first — "no significant medical history" is information the
-      // doctor stated, clinically different from never mentioning it. Matched
-      // ahead of the generic marker so the value keeps the "no".
       m(
         /\b(?=(?:has\s+)?no\s+(?:significant\s+|known\s+|previous\s+|prior\s+|past\s+|other\s+)*(?:(?:medical\s+|surgical\s+)?history|(?:medical\s+)?conditions?))/i,
         CONFIDENCE.EXPLICIT,
@@ -217,18 +174,27 @@ export const FIELD_MARKERS = {
         CONFIDENCE.EXPLICIT,
         'nothing significant in the history',
       ),
+      m(
+        new RegExp(
+          `\\b(?=(?:has\\s+)?no\\s+(?:${HISTORY_QUALIFIER})\\s+(?:\\w+\\s+){0,3}?(?:${CONDITION_NOUN})s?\\b)`,
+          'i',
+        ),
+        CONFIDENCE.EXPLICIT,
+        'no known condition',
+      ),
       m(/\bpast\s+medical\s+history\s+significant\s+for\s+/i, CONFIDENCE.EXPLICIT, 'past medical history significant for'),
       m(/\b(?:medical|past)\s+history\s+(?:of|is|includes?|significant\s+for)?\s*/i, CONFIDENCE.EXPLICIT, 'medical history of'),
       m(/\bh\/o\s+/i, CONFIDENCE.EXPLICIT, 'h/o'),
       m(/\bhistory\s+(?:of|is|includes?)?\s*/i, CONFIDENCE.STRONG, 'history of'),
       m(/\bknown\s+case\s+of\s+/i, CONFIDENCE.STRONG, 'known case of'),
+      m(/\bbackground\s+of\s+/i, CONFIDENCE.STRONG, 'background of'),
+      m(/\bpreviously\s+treated\s+for\s+/i, CONFIDENCE.STRONG, 'previously treated for'),
+      m(/\bknown\s+to\s+have\s+/i, CONFIDENCE.STRONG, 'known to have'),
+      m(/\bcarries\s+a\s+diagnosis\s+of\s+/i, CONFIDENCE.STRONG, 'carries a diagnosis of'),
       m(/\bpreviously\s+diagnosed\s+with\s+/i, CONFIDENCE.EXPLICIT, 'previously diagnosed with'),
       m(/\bsuffers\s+from\s+/i, CONFIDENCE.MODERATE, 'suffers from'),
       m(/\b(?=known\s+(?:diabetic|hypertensive|asthmatic|epileptic))/i, CONFIDENCE.MODERATE, 'known diabetic'),
       m(/\bcomorbid(?:ities)?\s+(?:are|include[s]?)?\s*/i, CONFIDENCE.MODERATE, 'comorbidities'),
-      // Bare clinical conditions: "She is diabetic", "known diabetic on
-      // regular medication". A CLOSED list, deliberately — a general
-      // "adjective after is" rule would fill this field with noise.
       m(
         new RegExp(
           `\\b(?:is|a)?\\s*(?=(?:known\\s+)?(?:${CLINICAL_CONDITIONS})\\b)`,
@@ -252,14 +218,12 @@ export const FIELD_MARKERS = {
       m(/\bseems\s+to\s+be\s+/i, CONFIDENCE.HEDGED, 'seems to be'),
       m(/\b(?:looks|seems|sounds)\s+like\s+/i, CONFIDENCE.HEDGED, 'looks like'),
       m(/\bi\s+think\s+this\s+is\s+/i, CONFIDENCE.HEDGED, 'I think this is'),
-      // Reversed phrasing: "Viral fever appears likely."
       m(/\b(?=[\w\s-]{3,40}?\s+appears\s+likely\b)/i, CONFIDENCE.HEDGED, 'appears likely'),
       m(/\b(?:probably|most\s+likely|likely)\s+/i, CONFIDENCE.WEAK, 'probably'),
       m(/\b(?:findings?\s+(?:are|is)\s+)?suggestive\s+of\s+/i, CONFIDENCE.STRONG, 'suggestive of'),
       m(/\b(?:presentation\s+(?:is\s+)?)?consistent\s+with\s+/i, CONFIDENCE.STRONG, 'consistent with'),
       m(/\bsuspected\s+/i, CONFIDENCE.HEDGED, 'suspected'),
       m(/\bworking\s+diagnosis\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'working diagnosis'),
-      // Hinglish: "diagnosis viral infection lag raha hai"
       m(/\bdiagnosis\s+(?=[\w\s]+lag\s+raha\s+hai)/i, CONFIDENCE.EXPLICIT, 'lag raha hai'),
     ],
   },
@@ -279,37 +243,23 @@ export const FIELD_MARKERS = {
       ),
     ],
     markers: [
-      // An explicitly empty prescription is information the doctor gave, not a
-      // gap. Matched ahead of the generic markers and at explicit confidence so
-      // the phrase survives whole and is never rerouted to remarks as advice.
       m(
         /\b(?=no\s+(?:medications?|medicines?|meds|drugs?|prescriptions?)\b)/i,
         CONFIDENCE.EXPLICIT,
         'no medication',
       ),
       m(/\b(?=advice\s+only\b)/i, CONFIDENCE.EXPLICIT, 'advice only'),
-      // Must precede the generic prescription marker AND span the word
-      // "notes", so resolveOverlaps drops the remarks `notes` marker that
-      // would otherwise open a segment one word later and steal the drug.
       m(/\bprescription\s+notes?\s*(?:include[s]?|are|is|:)?\s*/i, CONFIDENCE.EXPLICIT, 'prescription notes'),
       m(/\bprescri(?:bed|bing|be|ption)\s+(?:is|with)?\s*/i, CONFIDENCE.EXPLICIT, 'prescribed'),
       m(/\brx\s+/i, CONFIDENCE.EXPLICIT, 'Rx'),
       m(/\bmedication\s+prescribed\s+includes?\s+/i, CONFIDENCE.EXPLICIT, 'medication prescribed includes'),
       m(/\bmedications?\s+(?:are|is)?\s*/i, CONFIDENCE.STRONG, 'medication'),
       m(/\b(?:put|putting|start(?:ed|ing)?)\s+(?:her|him|them|the\s+patient)\s*on\s+/i, CONFIDENCE.STRONG, 'started on'),
-      // Bare imperative openings — "Start Cefixime 200 mg", "Give her
-      // Paracetamol". Require a capitalised or dosage-like token so this
-      // cannot swallow "start to feel better".
-      // Anchored on a dosage so it cannot swallow "start to feel better".
       m(/\b(?:start|give|administer|prescribe)\s+(?:her|him|them\s+)?(?=[\w-]+\s+\d+\s*(?:milligrams?|millilitres?|milliliters?|mg|ml|mcg|g)\b)/i, CONFIDENCE.STRONG, 'start <drug> <dose>'),
-      // "Give her Paracetamol twice daily" — no dosage, but the pronoun makes
       // the intent unambiguous.
       m(/\bgive\s+(?:her|him|them)\s+/i, CONFIDENCE.STRONG, 'give her'),
       m(/\btreatment\s+(?:is\s+)?/i, CONFIDENCE.MODERATE, 'treatment'),
       m(/\bi'?ll\s+prescribe\s+/i, CONFIDENCE.EXPLICIT, "I'll prescribe"),
-      // "advised" is genuinely ambiguous — "advised paracetamol" is a
-      // prescription, "advised blood tests" is a remark. Kept weak so
-      // suppressWeakInsideStrong keeps it out of a marked remarks value.
       m(/\badvis(?:ed|e|ing)\s+/i, CONFIDENCE.WEAK, 'advised'),
     ],
   },
@@ -337,47 +287,20 @@ export const FIELD_MARKERS = {
   },
 };
 
-/** Filler words removed before matching so they never pollute a value. */
 export const FILLER_PATTERN =
   /\b(?:um+|uh+|er+|ah+|hmm+|okay|ok|so|well|actually|basically|you\s+know|i\s+mean|like\s+i\s+said|let\s+me\s+see|right)\b/gi;
 
-/** Leading connectives trimmed from the front of a captured value. */
 export const LEADING_TRIM_PATTERN =
   /^(?:is|are|was|were|has|have|had|of|the|a|an|with|for|to|her|his|their|and|that|it|she|he)\b[\s,]*/i;
 
-/**
- * Diagnostic hedging, stripped ONLY by the diagnosis processor.
- *
- * These were once in the leading trim and therefore applied to every text
- * field, which cost an address its first word: "Likely Lane, Sector 10" became
- * "Lane, Sector 10". Diagnosis semantics belong to diagnosis alone.
- *
- * Uncertainty that qualifies the condition itself — "suspected dengue",
- * "probable dengue" — is clinical meaning and is deliberately absent here.
- */
 export const DIAGNOSIS_HEDGE_PATTERN =
-  /^(?:it\s+)?(?:looks\s+like|appears\s+to\s+be|appears|seems\s+to\s+be|seems\s+like|seems|sounds\s+like|suggestive\s+of|consistent\s+with|most\s+likely|probably|possibly|likely)\b[\s,]*/i;
+  /^(?:it\s+)?(?:looks\s+like|appears\s+to\s+be|appears|seems\s+to\s+be|seems\s+like|seems|sounds\s+like|suggestive\s+of|consistent\s+with|most\s+likely|probably|possibly|likely|examination\s+suggests?|findings?\s+suggests?|clinically(?:\s+this\s+is)?|assessment\s+is|impression\s+is|points?\s+to(?:wards?)?|provisionally|i\s+would\s+call\s+this|this\s+is|(?:a\s+)?case\s+of)\b[\s,]*/i;
 
-/** Dangling connectives left at the end of a segment cut at the next marker. */
 export const TRAILING_TRIM_PATTERN =
   /[\s,]*\b(?:to\s+me|and|but|with|for|to|then|also|plus|today|now|currently)\b[\s,]*$/i;
 
-/**
- * The opening words of the NEXT sentence, left behind when a marker starts
- * after its subject.
- *
- * Dictation without punctuation runs one field into the next: "…and tiredness
- * she is a known case of diabetes" ends the symptoms segment at "known", so the
- * symptom list keeps "she is a". Anchored on a pronoun or possessive so a value
- * that merely ends in "a" or "the" is untouched.
- */
 export const TRAILING_LEAD_IN_PATTERN =
   /[\s,]*\b(?:she|he|they|the\s+patient|patient|my|our|her|his|their)(?:\s+(?:is|was|are|were|has|have|had))?(?:\s+(?:a|an|the))?[\s,]*$/i;
 
-/**
- * Field labels a doctor repeats when restating a value after a correction.
- * Stripped from the front of the surviving tail, which would otherwise read
- * "Diagnosis is viral infection" inside the diagnosis field.
- */
 export const RESTATED_LABEL_PATTERN =
   /^(?:the\s+)?(?:provisional\s+|final\s+|clinical\s+)?(?:diagnosis|impression|age|gender|sex|patient\s+name|name|contact\s+number|phone\s+number|mobile\s+number|pin\s*code|postal\s*code|address|medical\s+history|prescription\s+notes?|symptoms?)\s*(?:is|are|:)?\s*/i;

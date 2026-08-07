@@ -1,12 +1,3 @@
-/**
- * The twenty supplied dictation samples.
- *
- *   node scripts/test-extraction-samples.mjs
- *
- * Real dictation shapes from the field. Every field a sample states is
- * asserted with its exact expected value; a field a sample never mentions is
- * asserted null, so a stray value cannot pass unnoticed.
- */
 import { extractPatientFields } from '../src/services/extractionService.js';
 
 import {
@@ -276,10 +267,6 @@ expectFields(
     diagnosis: 'Common cold',
   },
 );
-
-// Every one of the eleven fields is dictated here, so every one is asserted.
-// Asserting only the easy seven is how "Advice is to…" stayed broken while this
-// suite was green.
 const S18_EXPECTED = {
   patientName: 'Nisha Verma',
   age: '37 Years',
@@ -300,9 +287,6 @@ const S18_EXPECTED = {
 
 expectFields('S18 synonym heavy', S18_TRANSCRIPT, S18_EXPECTED);
 
-// The same dictation as a recognizer actually returns it: no punctuation and no
-// capitals. Every value must still stop at its own field — no lead-in words
-// from the next sentence.
 const S18_NO_PUNCTUATION =
   'the patient is Nisha Verma she is a 37 year old woman she resides at ' +
   'house 10 Shastri Nagar Meerut Uttar Pradesh postal code is 250004 and ' +
@@ -328,7 +312,7 @@ expectFields(
     gender: 'Male',
     pinCode: '834002',
     contactNumber: '9835124670',
-    medicalHistory: 'High blood pressure',
+    medicalHistory: 'Known diabetic. High blood pressure',
     symptoms: ['Fever', 'Cough', 'Headache', 'Weakness'],
     diagnosis: 'Viral fever',
   },
@@ -347,11 +331,6 @@ expectFields(
     diagnosis: 'Viral infection',
   },
 );
-
-// ── Every sample must produce a prescription ────────────────────────────────
-// Every sample must produce a prescription, checked against the FULL
-// transcript: the competing `notes` remarks marker only appears in context,
-// so an isolated fragment would not have caught it stealing the medication.
 const RX_SAMPLES = [
   ['S1', S1_TRANSCRIPT],
   ['S2', S2_TRANSCRIPT],
@@ -384,5 +363,4 @@ for (const [label, transcript] of RX_SAMPLES) {
   );
 }
 
-// ── Report ──────────────────────────────────────────────────────────────────
 report();

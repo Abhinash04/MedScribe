@@ -2,12 +2,6 @@ import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
-/**
- * Session Recovery Modal.
- *
- * Prompts doctor to restore an unfinished dictation session if the app crashed
- * or closed unexpectedly.
- */
 const SessionRecoveryModal = ({
   visible,
   onRestore,
@@ -83,7 +77,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   title: {
-    ...typography.h2,
+    ...typography.largeHeading,
     fontSize: 20,
     color: colors.textPrimary,
     textAlign: 'center',
