@@ -674,7 +674,7 @@ Tap **"Show original dictation"** on the report screen first. That single step t
 
 - **Symptoms look merged** — dictation with no commas ("fever cough weakness") groups adjacent symptoms into one list item. Deliberate: splitting on spaces would break "chest pain" and "sore throat". Nothing is lost — split the item on the transcript review screen.
 - **Words are missing from the transcript** — the recognizer dropped them during a restart gap. No extraction change can recover a field whose introducer phrase was never transcribed. Dictate with a brief pause between sentences, and see the recognizer-restart limitation in [`docs/handoff.md`](docs/handoff.md).
-- **The transcript is complete but the field is empty, and the sentence is in the notes card** — the phrasing scored too low to place confidently. Nothing was lost; tap the note to move it, or add a row to `src/constants/fieldMarkers.js` so the phrasing is recognised outright. No pipeline logic needs changing.
+- **The transcript is complete but the field is empty, and the sentence is in the notes card** — the phrasing scored too low to place confidently. Nothing was lost; tap **Keep** to publish it as an Additional Clinical Notes item in the report, or manually edit the suggested report field yourself. To make the phrasing recognised outright, add a row to `src/constants/fieldMarkers.js` — no pipeline logic needs changing.
 
 **Scroll to the notes card before assuming anything was dropped.** Any dictated sentence that reached no field is sitting there verbatim — that card exists precisely so a gap is visible rather than silent.
 

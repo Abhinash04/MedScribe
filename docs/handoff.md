@@ -431,7 +431,7 @@ The library forwards raw Android `SpeechRecognizer` error codes. They are split 
 
 **Amplitude never enters React state.** Android emits `onRmsChanged` 10–20×/second; routing that through the store re-rendered the whole screen subtree at that rate and pushed transcript updates 2–3 seconds behind speech. It is a Reanimated shared value (`amplitudeShared` in `speechService`) read inside worklets, so the waveform costs zero renders.
 
-### Extraction pipeline (FR-5) — v2
+### Extraction pipeline (FR-5) — v3
 
 Twelve stages under `src/services/extraction/`, with `extractionService.js` as a thin orchestrator and `clinicalCues.js` holding the contextual vocabulary:
 
