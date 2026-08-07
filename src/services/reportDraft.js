@@ -6,13 +6,28 @@ const LIST_FIELDS = new Set(
 
 export const NOTES_KEY = 'additionalNotes';
 
+/**
+ * A note's identity is the span it came from, never its text.
+ *
+ * Text is not unique — a dictation can repeat a sentence — and it is editable,
+ * so matching on it lost the doctor's decision twice over: keeping one of two
+ * identical notes applied to neither after re-extraction, and editing a kept
+ * note silently un-kept it. Offsets survive a continuation, which only appends.
+ */
+const noteId = (start, end, text) =>
+  Number.isFinite(start) && Number.isFinite(end) ? `${start}-${end}` : `t:${text}`;
+
 export function notesFrom(residue) {
   return (Array.isArray(residue) ? residue : [])
-    .map(item => ({
-      text: String(item?.text ?? '').trim(),
-      suggestedField: item?.suggestedField ?? null,
-      kept: false,
-    }))
+    .map(item => {
+      const text = String(item?.text ?? '').trim();
+      return {
+        id: noteId(item?.start, item?.end, text),
+        text,
+        suggestedField: item?.suggestedField ?? null,
+        kept: false,
+      };
+    })
     .filter(note => note.text);
 }
 
@@ -31,8 +46,15 @@ function withNotes(draft, notes) {
 }
 
 function mergeNotes(existing, incoming) {
-  const decided = new Map(existing.map(note => [note.text, note.kept]));
-  return incoming.map(note => ({ ...note, kept: decided.get(note.text) ?? note.kept }));
+  const decided = new Map(existing.map(note => [note.id, note.kept]));
+  const edited = new Map(existing.map(note => [note.id, note.text]));
+  return incoming.map(note => ({
+    ...note,
+    // An edited note keeps the doctor's wording; re-extraction re-reads the
+    // transcript, which still holds the original.
+    text: edited.get(note.id) ?? note.text,
+    kept: decided.get(note.id) ?? note.kept,
+  }));
 }
 
 export function setNoteKept(draft, index, kept) {
@@ -174,11 +196,17 @@ function normalizeEdit(key, value) {
 
 export function fromStored(stored) {
   const draft = {
-    [NOTES_KEY]: draftNotes(stored).map(note => ({
-      text: String(note?.text ?? ''),
-      suggestedField: note?.suggestedField ?? null,
-      kept: !!note?.kept,
-    })),
+    [NOTES_KEY]: draftNotes(stored).map(note => {
+      const text = String(note?.text ?? '');
+      return {
+        // Rows saved before notes carried an id fall back to text matching,
+        // which is what they were persisted under.
+        id: note?.id ?? noteId(note?.start, note?.end, text),
+        text,
+        suggestedField: note?.suggestedField ?? null,
+        kept: !!note?.kept,
+      };
+    }),
   };
 
   for (const field of PATIENT_FIELDS) {

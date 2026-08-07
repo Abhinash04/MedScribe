@@ -20,7 +20,7 @@ const AdditionalNotes = ({ notes = [], onKeep, onChangeText }) => {
         const suggestion = labelFor(note.suggestedField);
         return (
           <View
-            key={`${index}-${note.text.slice(0, 24)}`}
+            key={note.id ?? index}
             style={[styles.note, note.kept && styles.noteKept]}
           >
             <View style={styles.noteHeader}>

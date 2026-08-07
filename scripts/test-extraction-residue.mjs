@@ -6,9 +6,11 @@ import { collectResidue, splitSentences } from '../src/services/extraction/resid
 import { buildReportDocument } from '../src/services/reportDocument.js';
 import {
   draftNotes,
+  fromStored,
   keptNotes,
   mergeExtraction,
   setNoteKept,
+  setNoteText,
   toDraft,
 } from '../src/services/reportDraft.js';
 
@@ -171,6 +173,42 @@ check(
     'R6.2 omitting residue leaves the notes untouched',
     keptNotes(withoutResidue).length,
     1,
+  );
+}
+
+// ── 6b. A note is identified by its span, never by its text ─────────────────
+// Text is neither unique nor fixed: a dictation can repeat a sentence, and the
+// card lets the doctor edit one. Matching on it lost the decision both ways.
+{
+  const twice = [
+    { text: 'Same sentence.', start: 0, end: 14, suggestedField: null },
+    { text: 'Same sentence.', start: 40, end: 54, suggestedField: null },
+  ];
+  const kept = setNoteKept(toDraft({}, twice), 0, true);
+
+  check('R6.3 identical notes get distinct ids', draftNotes(kept).map(note => note.id), [
+    '0-14',
+    '40-54',
+  ]);
+  check(
+    'R6.4 keeping one of two identical notes survives re-extraction',
+    draftNotes(mergeExtraction(kept, {}, twice)).map(note => note.kept),
+    [true, false],
+  );
+
+  const one = [{ text: 'Original wording.', start: 0, end: 17, suggestedField: null }];
+  let edited = setNoteKept(toDraft({}, one), 0, true);
+  edited = setNoteText(edited, 0, 'Doctor edited wording.');
+
+  check(
+    'R6.5 an edited note keeps both its wording and its decision',
+    keptNotes(mergeExtraction(edited, {}, one)),
+    ['Doctor edited wording.'],
+  );
+  check(
+    'R6.6 a note stored before ids existed still matches on text',
+    fromStored({ additionalNotes: [{ text: 'Legacy.', kept: true }] }).additionalNotes[0].id,
+    't:Legacy.',
   );
 }
 
