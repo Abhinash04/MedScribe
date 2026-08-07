@@ -27,10 +27,46 @@ export function emptyAnuvadini() {
     // the comparison baseline, so a doctor's edit can never rewrite what the
     // diff says the AI changed.
     raw: '',
+    /**
+     * One entry per recording pass, in dictation order: `{ index, text }`.
+     *
+     * This is the stored truth, and `raw` is derived from it. The previous
+     * design rebuilt the combined transcript by arithmetic on a snapshot held
+     * in a module-level global, which meant a continuation whose snapshot was
+     * missing REPLACED the whole transcript instead of extending it, and a
+     * pass that never ran left no trace at all.
+     */
+    passes: [],
+    /**
+     * The editable draft as it stood before the newest pass contributed.
+     *
+     * Retrying that pass rebuilds `text` from here, so a replay appends its
+     * speech exactly once while every earlier correction the doctor made
+     * survives. It lives in state rather than in a global so it cannot go
+     * missing between the pass starting and its result landing.
+     */
+    textBase: '',
     status: ANUVADINI_STATUS.IDLE,
     error: null,
     updatedAt: 0,
   };
+}
+
+/**
+ * Fills in the pass list for state saved before it existed.
+ *
+ * An older consultation carries `raw` but no passes; it reads as a single
+ * completed pass, so a continuation on top of it appends rather than replacing.
+ */
+export function normalizeAnuvadini(anuvadini) {
+  const current = { ...emptyAnuvadini(), ...anuvadini };
+  if (Array.isArray(current.passes) && current.passes.length) {
+    return current;
+  }
+  if (!current.raw?.trim()) {
+    return { ...current, passes: [] };
+  }
+  return { ...current, passes: [{ index: 1, text: current.raw }], textBase: '' };
 }
 
 /** The text extraction and the report must read. */
@@ -71,33 +107,53 @@ const joined = (before, addition) =>
  * Appending to the snapshot is what makes Retry idempotent — replaying the same
  * continuation any number of times yields exactly one appended chunk.
  */
-export function applyResult(anuvadini, result, options = {}) {
-  const { append = false, base = null, now = Date.now() } = options;
-  const current = { ...emptyAnuvadini(), ...anuvadini };
+const upsertPass = (passes, index, text) =>
+  [...passes.filter(pass => pass.index !== index), { index, text }].sort(
+    (a, b) => a.index - b.index,
+  );
 
-  if (result?.ok && result.text) {
-    const from = append ? base ?? current : null;
+export function applyResult(anuvadini, result, options = {}) {
+  const { now = Date.now() } = options;
+  const current = normalizeAnuvadini(anuvadini);
+
+  if (!(result?.ok && result.text)) {
     return {
-      text: from ? joined(from.text, result.text) : result.text,
-      raw: from ? joined(from.raw, result.text) : result.text,
-      status: ANUVADINI_STATUS.READY,
-      error: null,
+      ...current,
+      status: ANUVADINI_STATUS.FAILED,
+      error: result?.errorKind || 'unknown',
       updatedAt: now,
     };
   }
 
+  const highest = current.passes.reduce((max, pass) => Math.max(max, pass.index), 0);
+  const requested = Number(options.passIndex);
+  const index = Number.isFinite(requested) && requested > 0 ? requested : highest + 1;
+
+  // Only a genuinely new pass moves the base. A replay of the newest one must
+  // rebuild from the same place or its speech would append a second time.
+  const textBase = index > highest ? current.text : current.textBase ?? '';
+  const passes = upsertPass(current.passes, index, result.text);
+  const newest = passes[passes.length - 1];
+
   return {
-    ...current,
-    status: ANUVADINI_STATUS.FAILED,
-    error: result?.errorKind || 'unknown',
+    text: joined(textBase, newest.text),
+    textBase,
+    raw: passes.map(pass => pass.text).join(JOIN),
+    passes,
+    status: ANUVADINI_STATUS.READY,
+    error: null,
     updatedAt: now,
   };
 }
 
-/** The snapshot a continuation appends to. Taken when its recording starts. */
-export function continuationBaseFrom(anuvadini) {
-  const current = { ...emptyAnuvadini(), ...anuvadini };
-  return { text: current.text, raw: current.raw };
+/** The pass number the next continuation recording will land under. */
+export function nextPassIndex(anuvadini) {
+  return (
+    normalizeAnuvadini(anuvadini).passes.reduce(
+      (max, pass) => Math.max(max, pass.index),
+      0,
+    ) + 1
+  );
 }
 
 /**

@@ -11,11 +11,12 @@ import * as consultationAudio from './consultationAudio';
 import * as sharedMic from './sharedMicService';
 import { isCaptureEnabled, isTranscriptionAvailable } from '../config/features';
 import {
-  beginContinuation,
+  beginPass,
   clearRefinementState,
   refineTranscript,
 } from './transcriptRefinement';
 import { ERROR_KIND } from './anuvadini/proxyContract';
+import { CAPTURE_OUTCOME, decideCaptureOutcome } from './captureOutcome';
 import useRecordingStore, {
   selectFullTranscript,
 } from '../store/useRecordingStore';
@@ -77,13 +78,11 @@ class DictationSessionManager {
     // the two can share the microphone is a per-device question, so a failure
     // to start capture is silent — the consultation continues on native alone.
     if (isCaptureEnabled() && (await sharedMic.isSupported())) {
-      // A later pass captures only the new speech, so its transcript extends
-      // the earlier one rather than replacing it. The snapshot is taken here,
-      // as the continuation is recorded, so it holds the draft exactly as the
-      // doctor left it — corrections included.
-      if (store.anuvadini?.text) {
-        beginContinuation();
-      }
+      // Every recording claims a pass number, not only continuations. A later
+      // pass captures only the new speech, so its transcript extends the
+      // earlier one rather than replacing it, and a Retry of any pass lands
+      // under the same number and replaces its entry instead of duplicating it.
+      beginPass();
       await this.startSharedMic(store.sessionId);
     }
   }
@@ -254,21 +253,36 @@ class DictationSessionManager {
     // The doctor moves on to the transcript review immediately; the alternative
     // transcription runs behind them and reports into the store when it lands.
     captured = captured ?? (await consultationAudio.finish());
+
+    const outcome = decideCaptureOutcome({
+      path: captured?.path,
+      withinBudget: captured?.withinBudget,
+      transcriptionAvailable: isTranscriptionAvailable(),
+    });
+
+    if (outcome === CAPTURE_OUTCOME.REFINE) {
+      refineTranscript().catch(() => {});
+      return;
+    }
+
+    // Every other outcome ends the pass explicitly. Returning in silence is what
+    // made a lost "Add More Speech" recording indistinguishable from a
+    // successful one.
+    if (outcome === CAPTURE_OUTCOME.NO_AUDIO) {
+      useRecordingStore
+        .getState()
+        .setAnuvadiniResult({ ok: false, errorKind: ERROR_KIND.NO_AUDIO });
+      return;
+    }
+
+    if (outcome === CAPTURE_OUTCOME.TOO_LARGE) {
+      useRecordingStore
+        .getState()
+        .setAnuvadiniResult({ ok: false, errorKind: ERROR_KIND.AUDIO_TOO_LARGE });
+    }
+
     if (captured?.path) {
-      if (!isTranscriptionAvailable()) {
-        // No endpoint means the recording has no purpose, so it is not kept.
-        await consultationAudio.discard();
-      } else if (!captured.withinBudget) {
-        // Length no longer stops an upload — it is chunked — so reaching this
-        // means the recorder ran away. Say so rather than leaving the card on
-        // its idle "not available", which reads as though nothing was recorded.
-        useRecordingStore
-          .getState()
-          .setAnuvadiniResult({ ok: false, errorKind: ERROR_KIND.AUDIO_TOO_LARGE });
-        await consultationAudio.discard();
-      } else {
-        refineTranscript().catch(() => {});
-      }
+      await consultationAudio.discard();
     }
   }
 

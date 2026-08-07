@@ -5,6 +5,7 @@ import {
   applyResult,
   emptyAnuvadini,
   markPending,
+  normalizeAnuvadini,
   switchSource,
   TRANSCRIPT_SOURCE,
 } from '../services/consultationTranscripts';
@@ -209,7 +210,7 @@ const useRecordingStore = create((set, get) => ({
       reportDraft: sessionData.draft || null,
       stage: sessionData.stage || CONSULTATION_STAGE.RECORDING,
       createdAt: sessionData.createdAt || Date.now(),
-      anuvadini: sessionData.anuvadiniTranscript || emptyAnuvadini(),
+      anuvadini: normalizeAnuvadini(sessionData.anuvadiniTranscript),
       transcriptSource: sessionData.transcriptSource || TRANSCRIPT_SOURCE.NATIVE,
       nativeRaw: sessionData.nativeRaw || '',
       status: RECORDING_STATE.IDLE,
