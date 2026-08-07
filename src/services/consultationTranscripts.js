@@ -135,8 +135,18 @@ export function applyResult(anuvadini, result, options = {}) {
   const passes = upsertPass(current.passes, index, result.text);
   const newest = passes[passes.length - 1];
 
+  // Only one base is stored — the text before the NEWEST pass — so an older
+  // pass being replaced has nothing to rebuild against. Appending it to that
+  // base would drop every later pass and repeat its own earlier text, and
+  // keeping the newest pass would leave `text` without the result that was just
+  // applied while `raw` carried it. Rebuilding from the passes is the only
+  // outcome that holds every pass exactly once; the doctor's edits are the
+  // unavoidable cost, and this cannot be reached from the app today — a pass
+  // number is claimed as highest + 1 and released only once it succeeds.
+  const rebuilt = index < newest.index;
+
   return {
-    text: joined(textBase, newest.text),
+    text: rebuilt ? passes.map(pass => pass.text).join(JOIN) : joined(textBase, newest.text),
     textBase,
     raw: passes.map(pass => pass.text).join(JOIN),
     passes,

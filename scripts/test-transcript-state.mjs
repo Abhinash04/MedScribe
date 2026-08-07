@@ -332,6 +332,20 @@ for (const text of ['One.', 'Two.', 'Three.', 'Four.']) {
   check(`T14.4 "${text}" appears exactly once`, many.raw.split(text).length - 1, 1);
 }
 
+// Replacing a pass that is not the newest. Only one base is stored — the text
+// before the newest pass — so there is nothing to append an older result to.
+// Appending to that base dropped every later pass; keeping the newest left the
+// applied result in `raw` but missing from `text`.
+{
+  const replaced = applyResult(many, { ok: true, text: 'TWO-FIXED.' }, { passIndex: 2 });
+  check('T14.5 the replaced pass reaches raw', replaced.raw, 'One.\nTWO-FIXED.\nThree.\nFour.');
+  check('T14.6 and the draft does not diverge from it', replaced.text, replaced.raw);
+  for (const text of ['One.', 'TWO-FIXED.', 'Three.', 'Four.']) {
+    check(`T14.7 "${text}" appears exactly once`, replaced.text.split(text).length - 1, 1);
+  }
+  check('T14.8 the superseded text is gone', replaced.text.includes('Two.'), false);
+}
+
 const legacy = normalizeAnuvadini({
   text: 'Edited pass one.',
   raw: 'Pass one text.',
