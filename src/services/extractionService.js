@@ -4,7 +4,7 @@ import { classifySegment } from './extraction/classifySegment.js';
 import { inferGender } from './extraction/collectEvidence.js';
 import { splitFindings } from './extraction/detectNegation.js';
 import { looksLikeMedication } from './extraction/parseMedication.js';
-import { suppressNegated } from './extraction/suppressNegated.js';
+import { markRetractions, suppressNegated } from './extraction/suppressNegated.js';
 import { detectMarkers } from './extraction/detectMarkers.js';
 import {
   normalizeTranscript,
@@ -15,6 +15,8 @@ import {
   retractionTail,
 } from './extraction/postProcessors.js';
 import { resolveConflicts } from './extraction/resolveConflicts.js';
+import { classifyText, reroute } from './extraction/scoreField.js';
+import { AUTOFILL, collectResidue } from './extraction/residue.js';
 import { emit } from './extraction/trace.js';
 import {
   segmentTranscript,
@@ -22,36 +24,6 @@ import {
 } from './extraction/segmentTranscript.js';
 import { isValid } from './extraction/validators.js';
 
-/**
- * Patient information extraction (SRS FR-5).
- *
- * Deterministic and rule-based — SRS §8 lists AI-assisted extraction under
- * Future Enhancements. This module is only an orchestrator; each pipeline
- * stage lives in ./extraction and can be replaced independently.
- *
- *   normalize -> detect markers -> segment -> post-process
- *             -> validate -> resolve conflicts
- *
- * Segmentation is what makes arbitrary dictation order work: a value ends
- * wherever the next marker begins, whatever field that marker belongs to.
- *
- * No React Native imports anywhere in the pipeline, so the whole thing is
- * runnable and testable under plain Node.
- */
-
-/**
- * @typedef {Object} ExtractedField
- * @property {string|string[]} value
- * @property {number} confidence  marker specificity, NOT probability
- * @property {string} source      which phrase matched, for debugging
- * @property {number} start       offset into the ORIGINAL transcript
- * @property {number} end
- */
-
-/**
- * @param {string} transcript
- * @returns {Object<string, ExtractedField|null>} null = not dictated (FR-7)
- */
 export function extractPatientFields(transcript) {
   const empty = emptyRecord();
 
@@ -77,16 +49,10 @@ export function extractPatientFields(transcript) {
     const config = FIELD_MARKERS[segment.field];
     const value = applyPostProcessor(config.postProcessor, segment.value);
 
-    // Read the post-retraction text, not the raw segment: a symptom the doctor
-    // took back must not resurface as a denial. Collected before validation on
-    // purpose — a segment that is nothing but a denial produces no positive
-    // symptom, and losing it would drop the denial entirely.
     if (segment.field === 'symptoms') {
       denied.push(...splitFindings(retractionTail(segment.value)).negative);
     }
 
-    // "Advised plenty of oral fluids" carries a prescription marker but no
-    // drug. Advice belongs in remarks, not in the medication list.
     if (
       segment.field === 'prescriptionNotes' &&
       Array.isArray(value) &&
@@ -105,15 +71,13 @@ export function extractPatientFields(transcript) {
       continue;
     }
 
-    if (!isValid(config.validator, value)) {
-      continue;
-    }
-
-    candidates.push({ ...segment, value });
+    // The marker chose the field; this is the first thing to ask whether the
+    // VALUE can be what it was filed as. Without it a condition landed in the
+    // prescription, a dosed drug in the remarks, and a connective fragment in
+    // the symptom list.
+    candidates.push(...routeByEvidence(segment, value));
   }
 
-  // Unmarked fallbacks run last and only over text no marker claimed, so a
-  // bare "female" inside an address cannot be mistaken for the gender field.
   candidates.push(...collectFallbacks(text, markers, segments));
 
   const gender = inferGender(text, candidates);
@@ -123,10 +87,8 @@ export function extractPatientFields(transcript) {
 
   const { candidates: asserted, negatedHistory } = suppressNegated(text, candidates);
 
-  // A cancelled condition still leaves the doctor's statement on the record:
-  // "no history of diabetes" is information, just not a positive history.
-  if (negatedHistory && !asserted.some(item => item.field === 'medicalHistory')) {
-    const value = applyPostProcessor('text', negatedHistory);
+  if (negatedHistory) {
+    const value = applyPostProcessor('text', negatedHistory.text);
     if (isValid('nonEmptyText', value)) {
       asserted.push({
         field: 'medicalHistory',
@@ -134,8 +96,8 @@ export function extractPatientFields(transcript) {
         confidence: CONFIDENCE.STRONG,
         source: 'negated history',
         method: 'contextual',
-        start: 0,
-        end: 0,
+        start: negatedHistory.start,
+        end: negatedHistory.end,
       });
     }
   }
@@ -151,7 +113,9 @@ export function extractPatientFields(transcript) {
     })),
   );
 
-  const resolved = resolveConflicts(asserted);
+  const resolved = resolveConflicts(
+    markRetractions(asserted, original, at => toOriginalRange(indexMap, at, at).start),
+  );
   appendDenials(resolved, denied);
   const record = { ...empty };
 
@@ -161,8 +125,6 @@ export function extractPatientFields(transcript) {
       value: candidate.value,
       confidence: candidate.confidence,
       source: candidate.source,
-      // The dictated words this value came from, for traceability: the report
-      // shows "Viral fever", the evidence shows "Looks like viral fever to me".
       sourceText: original.slice(range.start, range.end),
       start: range.start,
       end: range.end,
@@ -175,9 +137,135 @@ export function extractPatientFields(transcript) {
 }
 
 /**
- * Negated findings are information the doctor stated, so they are recorded —
- * as an explicit denial in remarks, never as a positive symptom.
+ * Fills fields from dictation no marker claimed.
+ *
+ * Recall is bounded by a closed phrasebook, so ordinary clinical speech —
+ * "Examination suggests a viral respiratory infection" — reaches no field and
+ * the report prints Not Available for something the doctor plainly said.
+ *
+ * A residue sentence is promoted only when the evidence names one field
+ * decisively, and the result is marked `auto: true` so the doctor can see it
+ * came from classification rather than an explicit marker. Everything below the
+ * bar stays a reviewable note, which is the safe direction: a missing value is
+ * visible in the notes card, whereas a confident wrong one is not.
+ *
+ * A field that already holds something is never overwritten — an explicit
+ * marker always outranks a score.
+ *
+ * @param {Object} record output of `extractPatientFields`
+ * @param {Array} residue output of `collectResidue`
+ * @returns {{record: Object, claimed: Array}} the filled record, and the
+ *   residue entries that were consumed
  */
+export function applyClassifiedResidue(record, residue) {
+  const filled = { ...record };
+  const claimed = [];
+
+  for (const item of residue ?? []) {
+    const field = classifyText(item.text, AUTOFILL);
+    if (!field || filled[field]) {
+      continue;
+    }
+
+    const value = applyPostProcessor(FIELD_MARKERS[field].postProcessor, item.text);
+    if (!isValid(FIELD_MARKERS[field].validator, value)) {
+      continue;
+    }
+
+    filled[field] = {
+      value,
+      confidence: CONFIDENCE.FALLBACK,
+      source: 'classified',
+      sourceText: item.text,
+      start: item.start,
+      end: item.end,
+      auto: true,
+    };
+    claimed.push(item);
+  }
+
+  return { record: filled, claimed };
+}
+
+/**
+ * The whole read of one transcript: fields, then whatever is still unaccounted
+ * for.
+ *
+ * Every screen that builds a report draft needs both halves and must apply them
+ * in the same order, so they ask for both together rather than each repeating
+ * the sequence.
+ */
+export function extractForReport(transcript) {
+  const extracted = extractPatientFields(transcript);
+  const residue = collectResidue(transcript, extracted);
+  const { record, claimed } = applyClassifiedResidue(extracted, residue);
+
+  return {
+    record,
+    residue: residue.filter(item => !claimed.includes(item)),
+  };
+}
+
+/**
+ * Splits one segment into the candidates its evidence actually supports.
+ *
+ * A list is routed ENTRY BY ENTRY, the way `suppressNegated` filters cancelled
+ * drugs: "Symptoms are fever. He has diabetes." merges into one symptoms
+ * segment, and judging the joined value would see "fever" and keep diabetes as
+ * a symptom. Each finding is asked separately, so one misfiled entry moves
+ * without disturbing the rest.
+ */
+function routeByEvidence(segment, value) {
+  const asCandidate = (field, fieldValue) => {
+    if (!isValid(FIELD_MARKERS[field].validator, fieldValue)) {
+      return [];
+    }
+    return [
+      {
+        ...segment,
+        field,
+        value: fieldValue,
+        ...(field === segment.field
+          ? {}
+          : { method: 'contextual', source: `${segment.source} + evidence` }),
+      },
+    ];
+  };
+
+  const moveTo = (field, text) =>
+    asCandidate(field, applyPostProcessor(FIELD_MARKERS[field].postProcessor, text));
+
+  if (!Array.isArray(value)) {
+    const destination = reroute(segment.field, value);
+    if (destination === null) {
+      return [];
+    }
+    return destination === undefined
+      ? asCandidate(segment.field, value)
+      : moveTo(destination, segment.value);
+  }
+
+  const staying = [];
+  const moved = new Map();
+
+  for (const entry of value) {
+    const destination = reroute(segment.field, entry);
+    if (destination === null) {
+      continue;
+    }
+    if (destination === undefined) {
+      staying.push(entry);
+      continue;
+    }
+    moved.set(destination, [...(moved.get(destination) ?? []), entry]);
+  }
+
+  return [
+    ...(staying.length ? asCandidate(segment.field, staying) : []),
+    ...[...moved].flatMap(([field, entries]) => moveTo(field, entries.join(', '))),
+  ];
+}
+
 function appendDenials(resolved, denied) {
   const unique = [...new Set(denied.map(item => item.trim().toLowerCase()))].filter(
     item => item.length > 1,
@@ -250,12 +338,10 @@ function emptyRecord() {
   }, {});
 }
 
-/** True when nothing at all could be extracted. */
 export function isRecordEmpty(record) {
   return PATIENT_FIELDS.every(field => !record?.[field.key]);
 }
 
-/** How many of the eleven fields were captured. */
 export function countCapturedFields(record) {
   return PATIENT_FIELDS.filter(field => !!record?.[field.key]).length;
 }
