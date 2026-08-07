@@ -1,20 +1,11 @@
-/**
- * Dual-transcript state fixtures.
- *
- *   node scripts/test-transcript-state.mjs
- *
- * Two transcriptions of one consultation, and the doctor decides which one the
- * report is built from. The rules that matter are the ones that protect work
- * already done: neither transcript may overwrite the other, and a manual field
- * correction must survive a switch.
- */
 import {
   ANUVADINI_STATUS,
   TRANSCRIPT_SOURCE,
   activeText,
   applyResult,
   canOffer,
-  continuationBaseFrom,
+  nextPassIndex,
+  normalizeAnuvadini,
   emptyAnuvadini,
   markPending,
   switchSource,
@@ -31,7 +22,6 @@ const NATIVE =
 const REFINED =
   'The patient name is Nisha Verma. She has sore throat and should take Paracetamol twice daily.';
 
-// ── 1. Status transitions ───────────────────────────────────────────────────
 check('T1.1 starts idle', emptyAnuvadini().status, ANUVADINI_STATUS.IDLE);
 check('T1.2 pending', markPending(emptyAnuvadini()).status, ANUVADINI_STATUS.PENDING);
 
@@ -50,11 +40,9 @@ const failure = applyResult(markPending(emptyAnuvadini()), {
 check('T1.7 failed status', failure.status, ANUVADINI_STATUS.FAILED);
 check('T1.8 error kind kept for the retry chip', failure.error, ERROR_KIND.TIMEOUT);
 
-// A failed retry must not erase a transcript the doctor already has.
 const failedRetry = applyResult(ready, { ok: false, errorKind: ERROR_KIND.NETWORK });
 check('T1.9 a failed retry keeps the earlier text', failedRetry.text, REFINED);
 
-// ── 2. What may be offered ──────────────────────────────────────────────────
 check(
   'T2.1 ready and different → offered',
   canOffer({ nativeText: NATIVE, anuvadini: ready }),
@@ -79,7 +67,6 @@ check(
   false,
 );
 
-// ── 3. Active transcript ────────────────────────────────────────────────────
 check(
   'T3.1 native by default',
   activeText({ nativeText: NATIVE, anuvadini: ready, source: TRANSCRIPT_SOURCE.NATIVE }),
@@ -90,7 +77,6 @@ check(
   activeText({ nativeText: NATIVE, anuvadini: ready, source: TRANSCRIPT_SOURCE.ANUVADINI }),
   REFINED,
 );
-// A failure must never leave the report with no transcript at all.
 check(
   'T3.3 falls back to native when the alternative is empty',
   activeText({
@@ -101,7 +87,6 @@ check(
   NATIVE,
 );
 
-// ── 4. Switching is refused when there is nothing behind it ─────────────────
 check(
   'T4.1 switch accepted when ready',
   switchSource(
@@ -127,10 +112,7 @@ check(
   TRANSCRIPT_SOURCE.NATIVE,
 );
 
-// ── 5. Re-extraction on switch, with manual edits surviving ─────────────────
 const nativeDraft = toDraft(extractPatientFields(NATIVE));
-// "patient image" matches no name marker, which is the whole reason a second
-// transcription is worth offering.
 check('T5.1 the native mishearing yields no name', nativeDraft.patientName.value, '');
 check('T5.2 the native symptom is the misheard one', nativeDraft.symptoms.value, [
   'Thought',
@@ -150,12 +132,9 @@ check('T5.6 an unedited field takes the refined value', switched.symptoms.value,
   'Should take Paracetamol twice daily',
 ]);
 
-// With no manual edit in the way, the refined name is adopted.
 const unedited = mergeExtraction(nativeDraft, refinedRecord);
 check('T5.7 refined name adopted when nothing was typed', unedited.patientName.value, 'Nisha Verma');
 
-// Switching back follows the active transcript for unedited fields, and still
-// leaves the doctor's own value alone.
 const back = mergeExtraction(switched, extractPatientFields(NATIVE));
 check('T5.8 the typed name is still the doctor’s', back.patientName.value, 'N. Verma');
 check('T5.9 unedited fields follow the active transcript', back.symptoms.value, [
@@ -163,7 +142,6 @@ check('T5.9 unedited fields follow the active transcript', back.symptoms.value, 
   'Should take paracetamol to ice daily',
 ]);
 
-// ── 6. Both texts survive independently ─────────────────────────────────────
 const state = {
   nativeText: NATIVE,
   anuvadini: ready,
@@ -180,7 +158,6 @@ check('T6.1 native text intact', afterRoundTrip.nativeText, NATIVE);
 check('T6.2 refined text intact', afterRoundTrip.anuvadini.text, REFINED);
 check('T6.3 back on the refined source', afterRoundTrip.source, TRANSCRIPT_SOURCE.ANUVADINI);
 
-// ── 7. Persistence round trip ───────────────────────────────────────────────
 const persisted = JSON.parse(
   JSON.stringify({ anuvadiniTranscript: ready, transcriptSource: TRANSCRIPT_SOURCE.ANUVADINI }),
 );
@@ -197,7 +174,6 @@ check(
   REFINED,
 );
 
-// ── 8. Editing the draft never touches the raw baseline ─────────────────────
 const SOAR = 'Patient has soar throat.';
 const CORRECTED = 'Patient has sore throat.';
 
@@ -221,41 +197,39 @@ check(
   CORRECTED,
 );
 
-// ── 9. A continuation appends to a snapshot, not to live state ──────────────
 const FEVER = 'He also has fever.';
-const base = continuationBaseFrom(editedAi);
 
-check('T9.1 the snapshot carries the edited draft', base.text, CORRECTED);
-check('T9.2 and the raw baseline separately', base.raw, SOAR);
+check('T9.0 the next pass follows the last', nextPassIndex(editedAi), 2);
 
 const pass2 = applyResult(markPending(editedAi), { ok: true, text: FEVER }, {
-  append: true,
-  base,
+  passIndex: 2,
 });
 
 check('T9.3 the draft keeps the correction and gains the new speech', pass2.text, `${CORRECTED}\n${FEVER}`);
 check('T9.4 raw accumulates only what the service produced', pass2.raw, `${SOAR}\n${FEVER}`);
 check('T9.5 the doctor’s wording never reaches raw', pass2.raw.includes('sore'), false);
 check('T9.6 status is ready', pass2.status, ANUVADINI_STATUS.READY);
+check('T9.9 both passes are recorded', pass2.passes.map(pass => pass.index), [1, 2]);
 
-// Replaying the same continuation must not append it twice.
-const replayed = applyResult(pass2, { ok: true, text: FEVER }, { append: true, base });
-check('T9.7 retry from the same base is idempotent', replayed.text, `${CORRECTED}\n${FEVER}`);
+const replayed = applyResult(pass2, { ok: true, text: FEVER }, { passIndex: 2 });
+check('T9.7 retry of the same pass is idempotent', replayed.text, `${CORRECTED}\n${FEVER}`);
 check('T9.8 idempotent for raw too', replayed.raw, `${SOAR}\n${FEVER}`);
+check('T9.10 and adds no extra pass', replayed.passes.length, 2);
+const unnumbered = applyResult(pass2, { ok: true, text: 'Third thing.' });
+check('T9.11 an unnumbered result appends', unnumbered.text, `${CORRECTED}\n${FEVER}\nThird thing.`);
+check('T9.12 and never drops what came before', unnumbered.raw.includes(SOAR), true);
+check('T9.13 landing as the next pass', unnumbered.passes.map(pass => pass.index), [1, 2, 3]);
 
-// ── 10. A failed continuation destroys nothing ──────────────────────────────
 const failedContinuation = applyResult(markPending(pass2), {
   ok: false,
   errorKind: ERROR_KIND.TIMEOUT,
-}, { append: true, base: continuationBaseFrom(pass2) });
+}, { passIndex: 3 });
 
 check('T10.1 the draft survives', failedContinuation.text, pass2.text);
 check('T10.2 the raw baseline survives', failedContinuation.raw, pass2.raw);
 check('T10.3 status reports the failure', failedContinuation.status, ANUVADINI_STATUS.FAILED);
 check('T10.4 the error kind is kept for Retry', failedContinuation.error, ERROR_KIND.TIMEOUT);
 
-// ── 11. The full multi-pass sequence ────────────────────────────────────────
-// pass 1 success → manual edit → pass 2 failure → retry success → pass 3 success
 const RAW_1 = 'Patient has soar throat.';
 const EDIT_1 = 'Patient has sore throat.';
 const RAW_2 = 'He also has fever.';
@@ -264,24 +238,17 @@ const RAW_3 = 'History of asthma.';
 let sequence = applyResult(emptyAnuvadini(), { ok: true, text: RAW_1 });
 sequence = { ...sequence, text: EDIT_1 };
 
-// Add More Speech: one snapshot for this recording, reused by the retry.
-const baseTwo = continuationBaseFrom(sequence);
 sequence = applyResult(markPending(sequence), { ok: false, errorKind: ERROR_KIND.NETWORK }, {
-  append: true,
-  base: baseTwo,
+  passIndex: 2,
 });
 check('T11.1 the failure left the edit alone', sequence.text, EDIT_1);
 
 sequence = applyResult(markPending(sequence), { ok: true, text: RAW_2 }, {
-  append: true,
-  base: baseTwo,
+  passIndex: 2,
 });
 
-// A second Add More Speech takes a FRESH snapshot.
-const baseThree = continuationBaseFrom(sequence);
 sequence = applyResult(markPending(sequence), { ok: true, text: RAW_3 }, {
-  append: true,
-  base: baseThree,
+  passIndex: 3,
 });
 
 check('T11.2 final draft', sequence.text, `${EDIT_1}\n${RAW_2}\n${RAW_3}`);
@@ -305,7 +272,6 @@ for (const [label, chunk] of [
   );
 }
 
-// ── 12. Continuation while Original is selected ─────────────────────────────
 const whileNative = {
   nativeText: 'native transcript',
   anuvadini: sequence,
@@ -327,10 +293,6 @@ check(
   'native transcript',
 );
 
-// ── 13. A pass owns its own audio and its own base ──────────────────────────
-// Every pass used to write to <sessionId>.wav, so a later pass truncated the
-// recording an earlier FAILED pass was still holding for Retry. Passes now have
-// distinct recordings, and each base belongs to the pass that captured it.
 const passOne = { path: '/consultations/sess_abc-1.wav', bytes: 320044 };
 const passTwo = { path: '/consultations/sess_abc-2.wav', bytes: 160044 };
 
@@ -338,28 +300,59 @@ check('T13.1 passes write to different recordings', passOne.path === passTwo.pat
 
 const draftAfterOne = applyResult(emptyAnuvadini(), { ok: true, text: 'Pass one text.' });
 const editedAfterOne = { ...draftAfterOne, text: 'Pass one corrected.' };
-const baseForTwo = continuationBaseFrom(editedAfterOne);
 
-// Pass two fails; its base and its own audio are what a Retry must use.
 const failedTwo = applyResult(markPending(editedAfterOne), {
   ok: false,
   errorKind: ERROR_KIND.NETWORK,
-}, { append: true, base: baseForTwo });
+}, { passIndex: 2 });
 
 check('T13.2 the failure keeps the earlier correction', failedTwo.text, 'Pass one corrected.');
 check('T13.3 and the earlier raw', failedTwo.raw, 'Pass one text.');
 
-// Retry uses the SAME base and the SAME pass audio, so it appends once.
 const retried = applyResult(markPending(failedTwo), { ok: true, text: 'Pass two text.' }, {
-  append: true,
-  base: baseForTwo,
+  passIndex: 2,
 });
 check('T13.4 retry appends the second pass once', retried.text, 'Pass one corrected.\nPass two text.');
 check('T13.5 raw carries both service outputs', retried.raw, 'Pass one text.\nPass two text.');
 check(
   'T13.6 retrying again does not duplicate',
-  applyResult(retried, { ok: true, text: 'Pass two text.' }, { append: true, base: baseForTwo }).text,
+  applyResult(retried, { ok: true, text: 'Pass two text.' }, { passIndex: 2 }).text,
   'Pass one corrected.\nPass two text.',
 );
+
+let many = applyResult(emptyAnuvadini(), { ok: true, text: 'One.' }, { passIndex: 1 });
+for (const [index, text] of [[2, 'Two.'], [3, 'Three.'], [4, 'Four.']]) {
+  many = applyResult(markPending(many), { ok: true, text }, { passIndex: index });
+}
+
+check('T14.1 every pass is present in order', many.raw, 'One.\nTwo.\nThree.\nFour.');
+check('T14.2 and in the draft', many.text, 'One.\nTwo.\nThree.\nFour.');
+check('T14.3 four passes recorded', many.passes.map(pass => pass.index), [1, 2, 3, 4]);
+for (const text of ['One.', 'Two.', 'Three.', 'Four.']) {
+  check(`T14.4 "${text}" appears exactly once`, many.raw.split(text).length - 1, 1);
+}
+
+const legacy = normalizeAnuvadini({
+  text: 'Edited pass one.',
+  raw: 'Pass one text.',
+  status: ANUVADINI_STATUS.READY,
+  error: null,
+  updatedAt: 1,
+});
+check('T14.5 legacy state reads as one completed pass', legacy.passes, [
+  { index: 1, text: 'Pass one text.' },
+]);
+check('T14.6 its edited draft is untouched', legacy.text, 'Edited pass one.');
+
+const legacyContinued = applyResult(markPending(legacy), { ok: true, text: 'Pass two text.' });
+check(
+  'T14.7 a continuation on legacy state appends rather than replacing',
+  legacyContinued.text,
+  'Edited pass one.\nPass two text.',
+);
+check('T14.8 and raw carries both', legacyContinued.raw, 'Pass one text.\nPass two text.');
+
+check('T14.9 empty state has no passes', normalizeAnuvadini(null).passes, []);
+check('T14.10 and reports pass one next', nextPassIndex(null), 1);
 
 report();
