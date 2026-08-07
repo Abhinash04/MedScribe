@@ -1,22 +1,11 @@
 import { ABSENCE_MARKER_SOURCES } from '../../constants/fieldMarkers.js';
 import { negatedRanges } from './detectNegation.js';
 
-/**
- * Drops candidates the doctor negated or cancelled.
- *
- * Segment markers fire inside a negation just as readily as outside it — the
- * `history of` marker matches "no history of diabetes" and would record
- * diabetes as a positive condition. Symptoms are already handled item-by-item
- * in `splitFindings`; this covers the scalar fields and cancelled medication.
- */
-
-/** "Correction, do not start Paracetamol" cancels an earlier prescription. */
 const CANCEL_INSTRUCTION =
   /\b(?:do\s+not|dont|don't|not|no|never)\s+(?:start|give|take|continue|use|prescribe)\b/i;
 
-/** A retraction cue just before a negation makes it cancel what came before. */
-const CORRECTION_CUE = /\b(?:correction|sorry|actually|i\s+mean|scratch\s+that)\b/i;
-const LOOKBACK = 24;
+export const CORRECTION_CUE = /\b(?:correction|sorry|actually|i\s+mean|scratch\s+that)\b/i;
+export const LOOKBACK = 24;
 
 const INSTRUCTION_WORDS = new Set([
   'start', 'give', 'take', 'continue', 'use', 'prescribe', 'stop', 'with',
@@ -25,7 +14,6 @@ const INSTRUCTION_WORDS = new Set([
   'history', 'medical', 'significant', 'known', 'case',
 ]);
 
-/** "diabetes" and "diabetic" are the same condition to a canceller. */
 const stem = word => word.slice(0, 6);
 
 const drugTokens = slice =>
@@ -46,15 +34,24 @@ const NEGATION_SENSITIVE = new Set([
   'prescriptionNotes',
 ]);
 
+export function markRetractions(candidates, original, toOriginal) {
+  return candidates.map(candidate => {
+    const from = candidate.markerStart ?? candidate.start;
+    const at = from > 0 ? toOriginal(from) : 0;
+    if (!(at > 0)) {
+      return candidate;
+    }
+    const before = original.slice(Math.max(0, at - LOOKBACK), at);
+    return CORRECTION_CUE.test(before) ? { ...candidate, retracts: true } : candidate;
+  });
+}
+
 export function suppressNegated(text, candidates) {
   const ranges = negatedRanges(text);
   if (!ranges.length) {
     return { candidates, negatedHistory: null };
   }
 
-  // A negation only cancels an EARLIER positive when the doctor signalled a
-  // retraction. Without that guard "no chest pain" would delete an unrelated
-  // finding that merely shares a word.
   const cancelled = [];
   for (const range of ranges) {
     const slice = text.slice(range.start, range.end);
@@ -71,14 +68,16 @@ export function suppressNegated(text, candidates) {
     const range = ranges.find(
       item => candidate.start >= item.start && candidate.start < item.end,
     );
-    // "No history of diabetes" IS the cancellation. Suppressing it, or
-    // filtering it against the drug it names, would delete the statement the
-    // doctor actually made and leave the field unanswered.
+
     const absence = ABSENCE_MARKER_SOURCES.has(candidate.source);
 
     if (range && NEGATION_SENSITIVE.has(candidate.field) && !absence) {
       if (candidate.field === 'medicalHistory' && !negatedHistory) {
-        negatedHistory = text.slice(range.start, range.end).trim();
+        negatedHistory = {
+          text: text.slice(range.start, range.end).trim(),
+          start: range.start,
+          end: range.end,
+        };
       }
       continue;
     }
@@ -88,8 +87,6 @@ export function suppressNegated(text, candidates) {
       !absence &&
       (candidate.field === 'prescriptionNotes' || candidate.field === 'medicalHistory')
     ) {
-      // A list is filtered entry by entry: cancelling one drug must not delete
-      // the others prescribed in the same breath.
       if (Array.isArray(candidate.value)) {
         const surviving = candidate.value.filter(entry => !isCancelled(entry, cancelled));
         if (!surviving.length) {

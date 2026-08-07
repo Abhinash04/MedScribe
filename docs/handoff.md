@@ -1,8 +1,8 @@
 # MedScribe — Project Handoff
 
-> **Purpose of this document.** It captures the state of MedScribe after Phases 1–4, including the reasoning behind decisions that are not obvious from reading the code. Several parts of this codebase look like mistakes and are not — those are called out explicitly in [Implementation Notes](#7-implementation-notes--conventions). Read that section before changing anything in the speech, persistence or export pipelines.
+> **Purpose of this document.** It captures the state of MedScribe after Phases 1–9, including the reasoning behind decisions that are not obvious from reading the code. Several parts of this codebase look like mistakes and are not — those are called out explicitly in [Implementation Notes](#7-implementation-notes--conventions). Read that section before changing anything in the speech, persistence or export pipelines.
 
-**Last updated:** 2026-07-31
+**Last updated:** 2026-08-07
 **Branch:** `abhi-dev`
 
 ---
@@ -40,6 +40,8 @@ Phase 4 continues that line past the preview the SRS stops at:
 
 Phase 5 adds the transcript review step in front of extraction, and makes the dictation itself controllable: pause, resume, a live status and timer, automatic saving of the in-flight session, and a single audio cue in place of the system recogniser's beep between every sentence.
 
+Phase 9 closes the gap between what a doctor says and what the report holds. Extraction reads a closed phrasebook, so ordinary speech missed fields and — worse, once measured — filled some with values belonging elsewhere. Speech that reaches no field is now kept verbatim for review, and evidence decides both whether a value may stay where a marker put it and whether an unmarked sentence may fill a field on its own.
+
 **Scope boundary:** the application is a *documentation aid only*. It performs no diagnosis and makes no medical decisions (SRS §1.2). Editable fields do not change that — the doctor is the author of every value; the app only proposes.
 
 Full requirements live in [`MedSrcibe_SRS.md`](./MedSrcibe_SRS.md). The two Antigravity documents in this folder describe the *original Phase 1 plan* and are historical — they do not reflect the current codebase.
@@ -59,6 +61,8 @@ Full requirements live in [`MedSrcibe_SRS.md`](./MedSrcibe_SRS.md). The two Anti
 | **Phase 6** | Extraction v2 — natural phrasing, negation, retraction, pronoun gender, prescription list | Complete |
 | **Phase 7** | Auto-save and consultation recovery, mandatory-field completeness gate | Complete |
 | **Phase 8** | Shared microphone, Anuvadini second transcription, editable AI transcript, continuation, diff | Complete, verified on hardware in **both Debug and Release** |
+| **Phase 9A** | Extraction v3 — nothing dictated is discarded: residue capture, the notes card, the grounding invariant | Complete; **device verification pending** |
+| **Phase 9B** | Extraction v3 — evidence scoring: wrong values rejected or rerouted, unmarked speech promoted | Complete; **device verification pending** |
 
 The hardening round is five commits: `c02369d` (extraction pipeline correctness), `b0c9b6f` (permission rejection + native error surfacing), `9d4ddff` (transcript preserved on error, reset on new dictation), `3095391` (phone numbers + trailing unmarked values), `c59877d` (recording restarts after leaving the screen).
 
@@ -72,11 +76,15 @@ This matters: **dictation cannot be tested on the Android emulator at all.** See
 
 **Phase 8 was measured, not assumed.** The microphone-contention question was answered with a six-phase matrix on the Oppo A059 (§5), and the shared-microphone path that came out of it scores **88% word recall against a 75% recognizer-only baseline**, with partials from 3.0 s and a clean segmented finalisation. The full workflow — dictate → live transcript → Anuvadini → review → select → report — passes on both the Debug and Release APKs.
 
-The extraction and report layers are pure and deterministic, so they are measured against fixtures rather than the device. The full automated gate:
+**Phase 9 was measured too, and the measurement reframed it.** Extraction reaches a field only through a closed phrasebook, so ordinary clinical speech missed: benchmarked across 40 natural phrasings of the four content fields, marker recall was **27/40 (68%)**. Measuring that turned up something worse than the recall gap — **fields were being populated with values belonging to other fields.** The worst case put a diagnosis in the patient's name: *"Clinically this is viral fever"* matched the `this is` name marker, and a shape-only validator accepted `Viral Fever`.
+
+Both were the same missing capability: nothing scored whether a span looked like the field it was assigned to. One scorer now serves two consumers — rejecting a claim its value contradicts, and promoting unmarked speech the evidence places decisively. Recall is **40/40**, and each precision defect is a named assertion. Details in §5; the reasoning that must not be undone is in §7.
+
+The extraction and report layers are pure and deterministic, so they are measured against fixtures rather than the device. The full automated gate — **19 suites, 1557 assertions**:
 
 | Suite | Assertions | What it guards |
 | :-- | --: | :-- |
-| `npm run test:extraction` | **239 / 239** | The regression floor — template, scrambled, conversational, shorthand, filler and Hinglish dictation |
+| `npm run test:extraction` | **240 / 240** | The regression floor — template, scrambled, conversational, shorthand, filler and Hinglish dictation |
 | `npm run test:extraction:natural` | **129 / 129** | Natural phrasing: synonyms, pronoun gender, negation, chronic-vs-acute, prescription vs advice |
 | `npm run test:extraction:adversarial` | **31 / 31** | Conflicting and cancelled dictation: explicit-vs-pronoun, corrections, retractions, numeric bleed, restart duplicates |
 | `npm run test:extraction:samples` | **195 / 195** | Twenty real dictation samples, every stated field asserted exactly, each proving its prescription, plus a punctuation-free variant |
@@ -85,12 +93,16 @@ The extraction and report layers are pure and deterministic, so they are measure
 | `npm run test:extraction:cleanup` | **54 / 54** | Conversational scaffolding removed from all eleven fields, and the clinical modifiers that must survive it |
 | `npm run test:report` | **81 / 81** | Draft bookkeeping, the list-typed prescription round-trip and the PDF payload |
 | `npm run test:completeness` | **63 / 63** | The ten mandatory fields, optional remarks, explicit-none history and prescription, and the Add-More-Speech merge |
-| `npm run test:transcripts` | **69 / 69** | Native vs Anuvadini state, raw baselines versus editable drafts, the continuation base, and a full pass-1 → edit → fail → retry → pass-3 sequence |
+| `npm run test:transcripts` | **86 / 86** | Native vs Anuvadini state, raw baselines versus editable drafts, per-pass results, four continuations each landing exactly once, retry replacing a pass rather than duplicating it, an unnumbered result extending rather than replacing, and migration of state saved before passes existed |
+| `npm run test:capture` | **12 / 12** | Every recording pass ends with an explicit verdict — no input combination returns silence — plus a guard that every `colors.*` / `typography.*` a style names actually exists |
 | `npm run test:diff` | **30 / 30** | "What AI changed": word-level LCS, punctuation and casing normalization, medical substitutions, insertion and deletion |
 | `npm run test:anuvadini` | **78 / 78** | Both transports, request assembly, language normalization, every failure path, no auto-retry, and no audio or token in any result or error |
 | `npm run test:audio` | **89 / 89** | WAV sizing, Base64 growth, the per-request and per-recording ceilings, and chunk plans that are contiguous, disjoint and under the cut |
-| `npm run test:chunks` | **41 / 41** | Chunked upload: sequential order, the ordered join, a mid-pass failure keeping earlier chunks, retry re-sending only what is missing, and a superseded pass applying nothing |
+| `npm run test:chunks` | **46 / 46** | Chunked upload: sequential order, the ordered join, a mid-pass failure keeping earlier chunks, retry re-sending only what is missing, and a superseded pass applying nothing |
 | `npm run test:proxy` | **77 / 77** | Proxy field translation, Bearer containment, guards before any upstream call, and every error mapping |
+| `npm run test:extraction:history` | **68 / 68** | Medical-history aggregation: positive and negative statements combined in dictated order, both orderings, all five retraction cues, restatement dedup, and the denials that must stay out of the field |
+| `npm run test:extraction:residue` | **39 / 39** | Dictated sentences that reach no field, their suggested field, publication only when the doctor keeps it — and the grounding invariant: no word the report prints was left undictated, now asserted over the whole read including promotion |
+| `npm run test:extraction:recall` | **119 / 119** | The 40-phrasing recall benchmark against two floors — markers alone (34) and the whole read (40) — every precision defect ever observed, the `auto` flag asserted both ways, and the invariant that no field holds a value its own evidence contradicts |
 | `npm run lint` | **0 errors** | — |
 
 Those are **clean-text** numbers. Real dictation adds transcription loss on top — see the dropped-words limitation in §9.
@@ -152,6 +164,16 @@ Extraction v2 makes the extractor robust to natural clinical speech rather than 
 | Chronic vs acute | Chronicity cues route a condition to medical history while presentation cues keep it in symptoms. |
 | Prescription as a list | `prescriptionNotes` is list-typed, one entry per drug, dictated wording preserved. Rows saved while it was a scalar are coerced on load. |
 
+Extraction v3 stops the two ways dictation used to go wrong — being lost, and landing in the wrong field:
+
+| Capability | Description |
+| :-- | :-- |
+| Nothing dictated is discarded | A sentence that reaches no field is preserved verbatim in a **Not captured in any field** card below the report, with the field it looks like as a hint. The doctor keeps what belongs; only kept notes print. |
+| Grounding invariant | Machine-checked, not asserted: no word the report prints is absent from the dictation. It is what makes an LLM unnecessary for *safety* — see §5. |
+| Evidence scoring | `scoreField` scores a span against each field from vocabulary the pipeline already owns — drug tokens, doses, symptom terms, chronicity, condition nouns, advice imperatives. One scorer, one place to tune. |
+| Wrong values rejected | A value its field cannot hold is rerouted or dropped: a condition out of the prescription, a dosed drug out of the remarks, a fragment out of the symptom list. `personName` now rejects clinical vocabulary outright. |
+| Unmarked speech promoted | A note whose evidence names one field decisively fills it, marked `auto` and shown as an **AUTO** badge, so a value placed by score is never mistaken for one the doctor stated. Below the bar it stays a note — a missing value is visible, a confident wrong one is not. |
+
 **FR-4 now spans two screens** — the live transcript during dictation and the review screen after it. Extraction reads whatever the doctor approved on the second, never the raw recogniser output.
 
 **FR-1 now means the Dashboard**, not the old landing screen. `HomeScreen.jsx` was deleted; `AnimatedMicButton` and `SectionTitle` are still in use by `DashboardScreen`.
@@ -160,7 +182,13 @@ Extraction v2 makes the extractor robust to natural clinical speech rather than 
 
 ## 4. Pending Work
 
-Phases 1–4 are delivered. What follows is the remaining work, in priority order.
+Phases 1–9 are delivered. What follows is the remaining work, in priority order.
+
+### 0. Verify Phase 9 on the device — open
+
+Phase 9 is green against fixtures and has **not been dictated on hardware.** The fixtures are clean text by construction, so they cannot see transcription loss, and every other phase in this project was signed off on the Oppo A059 before being called done. Until that run happens, treat the §2 rows as "passes its own tests", not "works".
+
+The script, and the expected report for it, are in the Phase 9 validation plan. Read the Transcript Review screen before judging any field — extraction reads the transcript the doctor approves there, and an `en-IN` mis-transcription (§9) is a different failure from a bad extraction.
 
 ### Settled decisions — do not re-open
 
@@ -403,9 +431,9 @@ The library forwards raw Android `SpeechRecognizer` error codes. They are split 
 
 **Amplitude never enters React state.** Android emits `onRmsChanged` 10–20×/second; routing that through the store re-rendered the whole screen subtree at that rate and pushed transcript updates 2–3 seconds behind speech. It is a Reanimated shared value (`amplitudeShared` in `speechService`) read inside worklets, so the waveform costs zero renders.
 
-### Extraction pipeline (FR-5) — v2
+### Extraction pipeline (FR-5) — v3
 
-Ten stages under `src/services/extraction/`, with `extractionService.js` as a thin orchestrator and `clinicalCues.js` holding the contextual vocabulary:
+Twelve stages under `src/services/extraction/`, with `extractionService.js` as a thin orchestrator and `clinicalCues.js` holding the contextual vocabulary:
 
 ```text
 Transcript
@@ -415,12 +443,18 @@ Transcript
    ↓  segmentTranscript     value = marker end → next marker start
    ↓  classifySegment       chronicity reroutes a symptom to history
    ↓  postProcessors        age/phone/PIN typing, findings and medication lists
+   ↓  scoreField.reroute    the VALUE must suit the field the marker chose  ← v3
    ↓  collectEvidence       gender from patient nouns and pronouns
    ↓  suppressNegated       drops negated and cancelled candidates
    ↓  validators            reject implausible values
-   ↓  resolveConflicts      confidence, then position
+   ↓  resolveConflicts      confidence, then position, then restatements
 Structured record
+   ↓  collectResidue        sentences the record does not account for      ← v3
+   ↓  applyClassifiedResidue  decisive ones fill their field, marked auto  ← v3
+Record + reviewable notes
 ```
+
+The last two stages sit **outside** `extractPatientFields` and are composed by `extractForReport`, which is what every screen building a report calls. Keeping them out means the record stage stays exactly what it was — the residue is computed *against* a finished record, and promotion cannot participate in the conflict resolution that produced it.
 
 **Marker segmentation is still the load-bearing idea.** A value ends wherever the *next* marker begins — whatever field that marker belongs to. No field needs to know what may follow it, so **arbitrary dictation order works by construction**, not by enumerating orderings. An earlier design encoded "which keywords may follow this field" in each terminator and collapsed the moment a doctor led with the diagnosis.
 
@@ -470,6 +504,29 @@ That guard is a word list, not comprehension. It covers the common phrasings and
 Both "advised paracetamol" and "advised blood tests" are grammatical, so the marker alone cannot decide. The rule: **only weak markers reroute.** A prescription segment opened by the ambiguous `advised` marker whose content parses as no medication moves to remarks; a segment opened by an explicit marker (`prescribed`, `Rx`, `prescription notes`) keeps its content even with no parsable dose, because "Prescribed paracetamol" is a prescription.
 
 `prescription notes` needs its own explicit marker specifically so that it spans the word `notes`. The bare `notes` remarks marker starts one word later and, before this existed, stole the medication out of nine of ten real dictation samples.
+
+#### Evidence scoring — v3
+
+The marker decides the field. Until v3 **nothing checked that the value was the kind of thing that field holds**, and the measured consequences were not hypothetical:
+
+| Dictation | Field | Value |
+| :-- | :-- | :-- |
+| `Clinically this is viral fever.` | **patientName** | **`Viral Fever`** |
+| `He should continue his regular medication for diabetes…` | prescriptionNotes | `Diabetes and high blood pressure` |
+| `Symptoms are fever. He has diabetes.` | symptoms | `Fever`, **`Diabetes`** |
+| `He should take paracetamol 500 milligrams.` | additionalRemarks | the whole prescription |
+| `…has also been advised to avoid…` | symptoms | `Also been` |
+
+`scoreField(field, text)` returns weighted evidence counts — **the same status the marker confidences already have: only their order and the gap between them mean anything.** Nothing here is calibrated and nothing is a probability. It reuses `looksLikeMedication`, the `MEDICATION_*` cue sets, `SYMPTOM_TERMS`, `CHRONICITY_CUES`, `PRESENTATION_CUES` and `CONDITION_NOUN` rather than inventing a second vocabulary that could drift from the first.
+
+Two consumers, deliberately asymmetric:
+
+- **`reroute` is a short list of explicit contradictions, not "re-rank and take the winner."** Ranking a value in isolation is ambiguous — `Viral fever` scores as a symptom as readily as a diagnosis — and the marker that opened the span is real evidence a bare score does not have. So the marker is overruled only where the value plainly cannot be what it was filed as, and **every rule is a defect observed in the pipeline.** A list is routed entry by entry, so one misfiled item moves without disturbing the rest.
+- **Promotion needs both an absolute floor and a margin over the runner-up** (`AUTOFILL = { floor: 3, margin: 2 }`, against `{ floor: 1, margin: 1 }` for a mere hint). A field already holding something is never overwritten — an explicit marker always outranks a score.
+
+Recall went from **27/40 to 40/40**; marker and hedge additions account for 34 of it, promotion for the rest. `test:extraction:recall` holds both floors separately, because a marker regression and a scorer regression are not the same bug.
+
+**The grounding invariant is what makes this safe without an LLM.** Classification only ever *moves* dictated text between fields, so `test:extraction:residue` asserts over the whole read that no word the report prints was left undictated. If a promoted value ever contains a word the doctor did not say, that check fails — which is the point of it.
 
 #### Conversational cleanup is field-aware
 
@@ -548,6 +605,7 @@ MedScribe/
 ├── index.js                         # AppRegistry entry
 ├── src/
 │   ├── components/
+│   │   ├── AdditionalNotes.jsx      # Dictation that reached no field — keep or leave out
 │   │   ├── AnimatedMicButton.jsx    # Hero mic, Reanimated breathing + ripple
 │   │   ├── AppHeader.jsx            # Brand header, optional back button
 │   │   ├── ListeningVisualizer.jsx  # Aura + spectrum driven by real mic RMS
@@ -555,7 +613,7 @@ MedScribe/
 │   │   ├── MicGlyph.jsx             # Mic icon drawn from Views (no icon font in use)
 │   │   ├── PermissionGate.jsx       # denied / blocked / unavailable states (NFR-4)
 │   │   ├── RecordingControls.jsx    # State-aware button row
-│   │   ├── ReportField.jsx          # One report row — editable when given onChange
+│   │   ├── ReportField.jsx          # One report row — UNCERTAIN / AUTO / EDITED badges
 │   │   ├── ScreenContainer.jsx      # Safe-area wrapper, status bar
 │   │   ├── SectionTitle.jsx         # Title + subtitle block
 │   │   ├── SessionRecoveryModal.jsx # Restore / discard an interrupted dictation
@@ -581,25 +639,28 @@ MedScribe/
 │   ├── services/
 │   │   ├── permissionService.js     # Mic permission, result → state mapping
 │   │   ├── speechService.js         # Vendor isolation layer + amplitudeShared
-│   │   ├── extractionService.js     # FR-5 orchestrator (public API)
-│   │   ├── reportDraft.js           # Pure: extraction → editable draft, merge, diff
+│   │   ├── extractionService.js     # FR-5 orchestrator; extractForReport = record + notes
+│   │   ├── captureOutcome.js        # Every recording pass ends with an explicit verdict
+│   │   ├── reportDraft.js           # Pure: extraction → editable draft, merge, diff, notes
 │   │   ├── reportDocument.js        # Pure: draft → PDF payload
 │   │   ├── pdfService.js            # Native-exporter isolation layer
 │   │   ├── dictationSessionManager.js   # Session lifecycle: timer, cues, autosave, live fields
 │   │   ├── audioFeedbackService.js  # AudioCue isolation layer; no-ops without the module
 │   │   ├── sessionPersistenceService.js # Debounced autosave + recovery (active_sessions)
-│   │   └── extraction/              # One module per pipeline stage (v2)
+│   │   └── extraction/              # One module per pipeline stage (v3)
 │   │       ├── normalizeTranscript.js   #   fillers + index map
 │   │       ├── detectNegation.js        #   negation scopes, findings split
 │   │       ├── detectMarkers.js         #   find introducers
 │   │       ├── segmentTranscript.js     #   slice between markers
 │   │       ├── classifySegment.js       #   chronic condition -> history
 │   │       ├── postProcessors.js        #   typing, findings + medication lists
+│   │       ├── scoreField.js            #   THE SCORER — evidence per field, reroute
+│   │       ├── residue.js               #   sentences no field accounts for
 │   │       ├── collectEvidence.js       #   gender from nouns and pronouns
 │   │       ├── suppressNegated.js       #   drop negated / cancelled values
 │   │       ├── parseMedication.js       #   one entry per drug, attributes
 │   │       ├── validators.js            #   reject implausible values
-│   │       └── resolveConflicts.js      #   repeats, self-correction
+│   │       └── resolveConflicts.js      #   repeats, self-correction, restatements
 │   ├── specs/
 │   │   ├── NativePdfExporter.js     # TurboModule spec — codegen input, lint-ignored (§7)
 │   │   └── NativeAudioCue.js        # TurboModule spec — cues + system-tone suppression
@@ -610,12 +671,12 @@ MedScribe/
 │   │   └── datetime.js              # Display + relative timestamps, PDF filename stamps
 │   └── theme/
 │       ├── colors.js  spacing.js  typography.js  index.js
-├── scripts/
-│   ├── test-extraction.mjs          # 238 assertions — regression floor
-│   ├── test-extraction-natural.mjs  # 89  assertions — natural phrasing
-│   ├── test-extraction-adversarial.mjs # 31 assertions — conflicts and corrections
-│   ├── test-extraction-samples.mjs  # 142 assertions — 20 real dictation samples
-│   └── test-report.mjs              # 71  assertions — draft + PDF payload
+├── scripts/                         # 19 fixture suites — see the gate table in §2
+│   ├── lib/fixture-harness.mjs      # check / expectFields / report; no test framework
+│   ├── test-extraction*.mjs         # the pipeline: floor, natural, adversarial, samples,
+│   │                                #   numeric, cleanup, synonyms, history, residue, recall
+│   └── test-{report,completeness,capture-outcome,transcript-*,anuvadini-client,
+│       audio-budget,chunked-upload,proxy}.mjs
 ├── android/                         # compileSdk/targetSdk 36, minSdk 24, New Arch + Hermes
 │   └── app/src/main/
 │       ├── java/com/medscribe/pdf/  # PdfExporterModule.kt + PdfExporterPackage.kt
@@ -719,6 +780,24 @@ Doctors repeat the label when restating a value: *"…correction, diagnosis is v
 ### `prescription notes` needs its own marker
 
 The bare `notes` remarks marker starts one word after `prescription`, so it opened a remarks segment and left the prescription segment empty — the medication went to remarks in **nine of ten** real dictation samples. The explicit `prescription notes` marker spans the word `notes`, so overlap resolution drops the competitor. Any new two-word marker whose second word is itself a marker needs the same treatment.
+
+### ⚠️ The marker chooses the field; the value must still suit it
+
+A marker is evidence about *which field*, and for years nothing treated it as anything less than proof. It is not. `Clinically this is viral fever` matches the `this is` name marker, and `personName` accepted any run of letters — so **the patient's name on a medical report was a diagnosis.** The same shape put conditions in the prescription, a dosed drug in the remarks, and the fragment `Also been` in the symptom list.
+
+`scoreField.reroute` is the check, and its restraint is deliberate: **a short list of explicit contradictions, never "re-rank and take the winner."** Scoring a value in isolation is ambiguous — `Viral fever` reads as a symptom as easily as a diagnosis — and the marker really is evidence a bare score lacks. Every rule in that list is a defect that was observed. Do not generalise it into a ranker; that trades a rare wrong value for a common one.
+
+`validators.personName` carries the same lesson in the other direction: shape alone cannot separate a name from a diagnosis, because both are letters and spaces. Clinical vocabulary is disqualifying, and that list is the only thing standing between a marker misfire and a falsified record.
+
+### ⚠️ `auto` must be cleared the moment the doctor edits
+
+A promoted value claims *"a score put this here, not the doctor"* — that is the entire safety argument for filling a field from unmarked speech. Once the doctor types over it the value is theirs, and a badge still saying AUTO would misattribute their words to the machine in a medical record. `applyEdit` and `fromStored` both clear the flag when the value differs from its original, and `ReportField` shows the badge only while `!edited`. All three are load-bearing; the recall suite asserts the flag both ways.
+
+### ⚠️ A bare fragment is not a value, and time words count
+
+Weak markers cut mid-sentence and leave residue that looks like content. `Also been` reached the symptom list that way, and the MODERATE `reports` marker — which fires on the *noun* as readily as the verb — made `Tomorrow` a symptom out of "will bring the previous reports tomorrow". `FILLER_ONLY` in `scoreField.js` suppresses spans made **entirely** of connectives, auxiliaries and time adverbs. Note the word entirely: `fever tomorrow` and `chest pain today` keep their qualifier, and any addition to that list must be checked against a qualified finding before it ships.
+
+Worth knowing this class is not caught by the `score >= 0` invariant — `scoreField('symptoms', 'Tomorrow')` is exactly 0, not negative. The invariant catches contradiction; emptiness needs its own list.
 
 ### ⚠️ Never call `subscription.remove()` on speech listeners
 The library's native `removeListeners` iterates its event map **while deleting from that same map**:
@@ -923,11 +1002,17 @@ A future fix would need a symptom lexicon or an NLP stage at the candidate-extra
 
 A single pronoun sets the gender, at low confidence and with the `UNCERTAIN` badge. The companion-noun guard covers "her husband", "his mother" and similar, but it is a word list rather than comprehension — an unusual phrasing that refers to an accompanying relative can still set the patient's gender. The badge is the mitigation; the doctor sees the field flagged for review.
 
-### Extraction cannot infer meaning without a marker
+### Extraction infers from evidence, but still not from meaning
 
-Deterministic matching handles explicit and hedged phrasing, but not genuine inference. *"She's been a bit off colour"* will not map to symptoms; *"probably dengue"* works only because `probably` is a registered diagnosis marker.
+**Rewritten in v3 — the previous version of this section said unmarked speech was simply lost, and that is no longer true.**
 
-Sparse dictation with almost no markers — *"Hema Sharma twenty-two female Sector Twelve…"* — is the concrete argument for replacing the candidate-extraction stage with an NLP model, not for adding more regexes. Pushing further with patterns means guessing, which violates the precision-over-recall rule.
+Unmarked speech is now scored against every field from clinical vocabulary, and placed when the evidence is decisive. *"Examination suggests viral fever"* reaches the diagnosis with no marker involved. What does not clear the bar is preserved verbatim in the notes card, so the doctor sees it and decides — the failure mode is a value the doctor must place by hand, not a sentence that vanished. The grounding invariant makes that machine-checkable.
+
+What remains true is that this is evidence, not comprehension. *"She's been a bit off colour"* still maps to nothing, because no scored vocabulary appears in it. Sparse dictation with almost no markers *and* no clinical terms — *"Hema Sharma twenty-two female Sector Twelve…"* — is still the concrete argument for an NLP model at the candidate-extraction seam, and pushing further with patterns still means guessing.
+
+But the premise has moved. The benchmark that motivated v3 is saturated at **40/40**, so it can no longer tell us anything by passing; the next honest measurement is on-device dictation, not another fixture. **Adding marker vocabulary without a measurement that demands it is guessing** — the extension point in §4 assumes you have a failing case first.
+
+If an LLM is ever revisited here, the constraint from the v3 decision stands: **extractive and span-validated, never generative.** Every span it proposes must be verbatim from the transcript and must pass the same grounding check. A model that writes a report is a different product with a different risk profile, and this one is a documentation aid (§1).
 
 ### Dictation samples are now committed fixtures
 

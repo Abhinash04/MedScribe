@@ -23,6 +23,7 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 - [Available Scripts](#available-scripts)
 - [Troubleshooting](#troubleshooting)
 - [Roadmap](#roadmap)
+- [Documentation](#documentation)
 
 ---
 
@@ -45,13 +46,16 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 - **Natural clinical speech** — the doctor never has to say a field label. Synonyms ("suggestive of", "known case of", "presents with"), gender inferred from a pronoun when it is the only evidence, and a chronic condition routed to medical history while today's complaint stays in symptoms.
 - **Negation and retraction** — "no chest pain" never becomes a symptom; it is recorded as a stated denial instead. "Correction, no history of diabetes" cancels the condition dictated a moment earlier, and "do not start Paracetamol" cancels the prescription.
 - **Prescription as a list** — one editable entry per drug, with strength, frequency, duration and timing preserved exactly as dictated.
-- **Structured report** — a preview with an N-of-10 required-field summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, and values inferred from a hedged phrase are flagged **UNCERTAIN**.
+- **Nothing dictated is discarded** — extraction matches a fixed phrasebook, so speech phrased another way used to vanish without trace. A sentence that reaches no field is now kept verbatim in a **Not captured in any field** card below the report, tagged with the field it looks like. The doctor keeps what belongs in the record and leaves the rest out; only kept notes are printed. Backed by a machine-checked invariant: **no word the report prints is absent from the dictation.**
+- **Unmarked speech still reaches its field** — "Examination suggests viral fever" uses no recognised marker, and used to print *Not Available* for something plainly said. Sentences are now scored against every field using clinical vocabulary the app already knows — drug names and doses, symptom terms, chronicity, condition nouns, advice verbs — and a decisive one fills its field, flagged **AUTO** so a value placed by inference is never mistaken for one the doctor stated. Anything short of decisive stays a note: a missing value is visible, a confident wrong one is not. Measured across 40 natural phrasings, coverage went from **27/40 to 40/40**.
+- **A value has to suit its field** — the phrase that opens a field no longer settles what goes into it. Measured before this existed: *"Clinically this is viral fever"* put **`Viral Fever` in the patient's name**, conditions landed in the prescription, a dosed drug landed in the remarks, and the fragment "Also been" became a symptom. Each is now rejected or rerouted on the evidence in the value itself, and the patient name refuses clinical vocabulary outright.
+- **Structured report** — a preview with an N-of-10 required-field summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, values inferred from a hedged phrase are flagged **UNCERTAIN**, and values placed by classification are flagged **AUTO**. Editing a field clears both — the value is the doctor's from that point on.
 - **Completeness gate** — ten of the eleven fields are mandatory and are checked against their own validators before a report is produced; a six-character PIN and a ten-digit contact number are not merely non-empty text. A blocked report names exactly what is still needed and offers **Add More Speech** or **Review Fields**. Additional Remarks is optional and never blocks anything. Medical History and Prescription Notes accept an explicitly dictated absence — "no significant medical history", "no medication prescribed" — which the app never fills in on the doctor's behalf.
 - **Transcript review step** — dictation lands on a review screen before any report is generated. Two tabs, **Original** and **AI Transcription**, each with a full editor; a **What AI changed** panel below them; then resume dictating or generate the report.
 - **Automatic consultation saving** — the transcript, the report draft and the doctor's manual field edits are written to the database as they change, debounced so a partial speech result never causes a write, and flushed immediately when the app goes to the background. The consultation also records which screen it reached, so after a force-stop, an OS kill or a flat battery the Dashboard offers to resume it at the recording, transcript-review or report stage. The row is cleared only once the report is actually saved or the doctor discards it — not when Generate Report is pressed. Best-effort by design: a failed write is logged and swallowed rather than interrupting the consultation.
 - **Transcript inspection** — the report can reveal the original dictation, which is the fastest way to tell a transcription gap from an extraction gap.
 - **One dictation, two transcripts** — On the tested Oppo A059 / Android 16 configuration, opening `AudioRecord` caused the system recognizer to return `NO_MATCH` on every utterance across all four audio sources; partials did not finalize until the audio pipe closed, requiring a segmented session architecture. The shared-microphone module inverts that by owning the single `AudioRecord` and feeding the recognizer via `EXTRA_AUDIO_SOURCE`, enabling simultaneous live text and WAV capture for second transcription. Measured on the target device: **88% word recall against a 75% recognizer-only baseline**, with partials from three seconds.
-- **Second transcription (Anuvadini)** — the recorded audio is transcribed again by the Anuvadini service, and the doctor picks which transcript the report is built from. A failure is non-blocking: the native transcript still completes the consultation, with a **Retry** offered. See [Environment Setup](#4-anuvadini-credential) for the credential, including what build-time injection does and does not protect.
+- **Second transcription (Anuvadini)** — the recorded audio is transcribed again by the Anuvadini service, and the doctor picks which transcript the report is built from. A failure is non-blocking: the native transcript still completes the consultation, with a **Retry** offered. See [Environment Setup](#3-anuvadini-credential) for the credential, including what build-time injection does and does not protect.
 - **Editable AI transcript** — the AI text is a draft the doctor corrects like any other. The service's own response is kept separately, so **What AI changed** always compares raw against raw and a manual correction can never appear as something the AI did.
 - **Add More Speech continues either transcript** — a continuation appends to both: `raw = raw₁ + raw₂` keeps the comparison honest, while `text = edited₁ + raw₂` keeps the doctor's corrections. A failed continuation leaves the existing transcript untouched, and a retry cannot append the same speech twice.
 - **Viewing is not selecting** — the tabs change what is on screen; only **Use AI Transcription** / **Use Original Transcription** changes which transcript the report is built from, and only that re-runs extraction. The screen states which one is in use.
@@ -88,7 +92,7 @@ Dashboard → New Dictation                                          ├─→ T
 2. **New Dictation** → dictate the consultation, pausing and resuming as needed → **Stop**, and confirm. Text appears as you speak; the same audio is recorded once and sent for a second transcription in the background.
 3. **Review the transcript.** Two tabs: **Original** from the device recognizer, **AI Transcription** from Anuvadini, both editable, with **What AI changed** showing every substitution between them. Pick one with **Use AI Transcription** / **Use Original Transcription** — until you do, the report keeps using whichever is already selected. **Add More Speech** goes back for more and appends to *both* transcripts, keeping any corrections you have already typed.
 4. **Generate Report.** The structured report is extracted from the reviewed transcript. If any of the ten mandatory fields is missing or invalid, generation is held back and the missing details are named — dictate them with **Add More Speech**, which appends to the same consultation and keeps everything already captured, or type them in with **Review Fields**.
-5. **Review and correct** any field — the extraction is a starting point, not the record.
+5. **Review and correct** any field — the extraction is a starting point, not the record. Anything dictated that reached no field is listed verbatim below the report under **Not captured in any field**; keep what belongs in the record and leave the rest out. A value the app placed by inference rather than from a recognised phrase is flagged **AUTO**, so it is obvious which is which.
 6. **Save Report.** It appears on the Dashboard immediately.
 7. Optionally **Download PDF** to print, mail or file it.
 8. **Tap any saved report** to reopen it with its original dictation and every edit intact, and keep working.
@@ -184,7 +188,7 @@ java -version       # 17.x
 adb --version
 ```
 
-### 4. Anuvadini credential
+### 3. Anuvadini credential
 
 The second transcription calls the Anuvadini service directly and needs a Bearer token. It is injected at build time from **`android/local.properties`**, which is gitignored:
 
@@ -337,6 +341,7 @@ MedScribe/
 ├── index.js                         # AppRegistry entry point
 ├── src/
 │   ├── components/                  # Reusable UI
+│   │   ├── AdditionalNotes.jsx      #   Dictation that reached no field — keep or leave out
 │   │   ├── AnimatedMicButton.jsx    #   Hero microphone with Reanimated feedback
 │   │   ├── AppHeader.jsx            #   Brand header + optional back button
 │   │   ├── ListeningVisualizer.jsx  #   Aura + spectrum driven by real mic levels
@@ -344,7 +349,7 @@ MedScribe/
 │   │   ├── MicGlyph.jsx             #   Microphone icon drawn from Views (no icon font)
 │   │   ├── PermissionGate.jsx       #   Denied / blocked / unavailable screens
 │   │   ├── RecordingControls.jsx    #   State-aware action buttons
-│   │   ├── ReportField.jsx          #   One report row — editable when given onChange
+│   │   ├── ReportField.jsx          #   One report row — UNCERTAIN / AUTO / EDITED badges
 │   │   ├── ScreenContainer.jsx      #   Safe-area + status-bar wrapper
 │   │   ├── SectionTitle.jsx         #   Title + subtitle block
 │   │   ├── SessionRecoveryModal.jsx #   Restore or discard an interrupted dictation
@@ -387,14 +392,16 @@ MedScribe/
 │   │   ├── transcriptRefinement.js  # Runs the second transcription; owns the continuation base
 │   │   ├── transcriptDiff.js        # Word-level LCS diff for "What AI changed" (pure)
 │   │   ├── sessionPersistenceService.js  # Debounced autosave and recovery of a live session
-│   │   ├── extractionService.js     # Field extraction orchestrator
-│   │   ├── reportDraft.js           # Extraction → editable draft (pure)
+│   │   ├── extractionService.js     # Field extraction; extractForReport = record + notes
+│   │   ├── captureOutcome.js        # Every recording pass ends with an explicit verdict (pure)
+│   │   ├── reportDraft.js           # Extraction → editable draft, notes, badges (pure)
 │   │   ├── reportCompleteness.js    # Mandatory-field gate (pure)
 │   │   ├── reportDocument.js        # Draft → PDF payload (pure)
 │   │   ├── pdfService.js            # Native PDF exporter isolation layer
 │   │   ├── anuvadini/               # Transcription client
 │   │   │   ├── proxyContract.js     #   Request shapes and error kinds
 │   │   │   ├── transcriptionClient.js #  Transport switch: direct or proxy
+│   │   │   ├── chunkedUpload.js     #   45 s chunks around the upstream truncation
 │   │   │   └── language.js          #   Language normalization (en → en-IN)
 │   │   └── extraction/              # One module per pipeline stage
 │   │       ├── normalizeTranscript.js
@@ -403,6 +410,8 @@ MedScribe/
 │   │       ├── segmentTranscript.js
 │   │       ├── classifySegment.js
 │   │       ├── postProcessors.js
+│   │       ├── scoreField.js        #   Evidence per field; rejects and reroutes
+│   │       ├── residue.js           #   Sentences no field accounts for
 │   │       ├── collectEvidence.js
 │   │       ├── suppressNegated.js
 │   │       ├── parseMedication.js
@@ -424,16 +433,18 @@ MedScribe/
 │       ├── spacing.js
 │       ├── typography.js
 │       └── index.js
-├── scripts/                         # Framework-free fixture suites, run under plain Node
+├── scripts/                         # 19 framework-free fixture suites, plain Node
 │   ├── lib/fixture-harness.mjs      #   Shared check/report harness
 │   ├── test-extraction*.mjs         #   Floor, natural, adversarial, samples, numeric,
-│   │                                #   cleanup, synonyms
+│   │                                #   cleanup, synonyms, history, residue, recall
 │   ├── test-report.mjs              #   Draft + PDF payload
 │   ├── test-completeness.mjs        #   Mandatory-field gate
+│   ├── test-capture-outcome.mjs     #   Every recording pass reports a verdict
 │   ├── test-transcript-state.mjs    #   Dual transcripts, raw baselines, continuation
 │   ├── test-transcript-diff.mjs     #   "What AI changed" diff
 │   ├── test-anuvadini-client.mjs    #   Transcription client, both transports
 │   ├── test-audio-budget.mjs        #   Upload sizing and the duration ceiling
+│   ├── test-chunked-upload.mjs      #   Chunk ordering, partial failure, retry
 │   └── test-proxy.mjs               #   Proxy translation and credential containment
 ├── server/                          # Dependency-free Node proxy — local dev / future prod
 │   ├── index.mjs                    #   Routing, body cap, field translation, error mapping
@@ -487,23 +498,30 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run android` | Build, install and launch. Uses `--active-arch-only` — builds only the connected device's ABI (~4× faster, ~½ the APK size). |
 | `npm run android:all-abis` | Build all four ABIs for a universal APK. Slow; only needed for release or an unknown target device. |
 | `npm run ios` | iOS build. **Unverified — never built.** |
-| `npm run test:extraction` | 239 assertions — the extraction regression floor. Runs under plain Node, no test framework. |
-| `npm run test:extraction:natural` | 102 assertions over natural phrasing: synonyms, progressive-aspect symptoms, pronoun gender, negation, chronic vs acute. |
+| `npm run test:extraction` | 240 assertions — the extraction regression floor. Runs under plain Node, no test framework. |
+| `npm run test:extraction:natural` | 129 assertions over natural phrasing: synonyms, progressive-aspect symptoms, pronoun gender, negation, chronic vs acute. |
 | `npm run test:extraction:adversarial` | 31 assertions over conflicting, corrected and cancelled dictation. |
 | `npm run test:extraction:samples` | 195 assertions over twenty real dictation samples, including a punctuation-free variant. |
 | `npm run test:extraction:synonyms` | 71 assertions, one per phrase family, so a full-sample fixture cannot hide a broken marker. |
 | `npm run test:extraction:numeric` | 49 assertions over PIN and phone grouping, country codes and spoken digits. |
 | `npm run test:extraction:cleanup` | 54 assertions over conversational cleanup across all eleven fields. |
-| `npm run test:report` | 71 assertions over the editable draft, the PDF payload and the dashboard timestamps. Also plain Node. |
+| `npm run test:extraction:history` | 68 assertions over medical-history aggregation: positive and negative statements in dictated order, all five retraction cues, and the denials that must stay out of the field. |
+| `npm run test:extraction:residue` | 39 assertions over dictation that reaches no field — plus the grounding invariant: no word the report prints was left undictated. |
+| `npm run test:extraction:recall` | 119 assertions — the 40-phrasing coverage benchmark against two floors (markers alone, and the whole read), every wrong-field defect ever observed, and the invariant that no field holds a value its own evidence contradicts. |
+| `npm run test:report` | 81 assertions over the editable draft, the PDF payload and the dashboard timestamps. Also plain Node. |
 | `npm run test:completeness` | 63 assertions over the mandatory-field gate, explicit-none statements and the Add-More-Speech merge. |
-| `npm run test:transcripts` | 63 assertions over the dual-transcript state: raw baselines, editable drafts, the continuation base, and manual edits surviving a multi-pass sequence. |
+| `npm run test:capture` | 12 assertions that every recording pass ends with an explicit verdict — no input combination returns silence. |
+| `npm run test:transcripts` | 86 assertions over the dual-transcript state: raw baselines, editable drafts, the continuation base, and manual edits surviving a multi-pass sequence. |
 | `npm run test:diff` | 30 assertions over "What AI changed": word-level diff, punctuation and casing normalization, medical substitutions. |
 | `npm run test:anuvadini` | 78 assertions over the transcription client: both transports, request assembly, language normalization, every failure path, and that the token never reaches a result or an error. |
-| `npm run test:audio` | 31 assertions over the capture upload budget: WAV sizing, Base64 growth and the duration ceiling. |
+| `npm run test:audio` | 89 assertions over the capture upload budget: WAV sizing, Base64 growth, the per-request and per-recording ceilings, and chunk plans that are contiguous and disjoint. |
+| `npm run test:chunks` | 46 assertions over chunked upload: sequential order, the ordered join, a mid-pass failure keeping earlier chunks, and retry re-sending only what is missing. |
 | `npm run test:proxy` | 77 assertions over the transcription proxy: field translation, credential containment and every error mapping. |
 | `npm run proxy` | Runs the local transcription proxy. Needs `server/.env` — see [server/README.md](server/README.md). |
 | `npm run lint` | ESLint across the project. |
 | `npm test` | Jest. **Currently broken** — see below. |
+
+The nineteen fixture suites total **1557 assertions** and are the project's real gate — the extraction, report and transcript layers are pure and RN-free, so they run under plain Node with no framework and no device. `npm test` (Jest) is a separate, currently broken path; it is not what guards this codebase.
 
 Useful direct commands:
 
@@ -631,7 +649,7 @@ The Anuvadini token is missing. Add `ANUVADINI_STT_TOKEN` to `android/local.prop
 npm run android -- --device <your-device-id>
 ```
 
-Everything else keeps working without it; only the second transcription is unavailable. See [Environment Setup](#4-anuvadini-credential).
+Everything else keeps working without it; only the second transcription is unavailable. See [Environment Setup](#3-anuvadini-credential).
 
 ### AI Transcription says "Unable to generate"
 
@@ -656,9 +674,15 @@ Tap **"Show original dictation"** on the report screen first. That single step t
 
 - **Symptoms look merged** — dictation with no commas ("fever cough weakness") groups adjacent symptoms into one list item. Deliberate: splitting on spaces would break "chest pain" and "sore throat". Nothing is lost — split the item on the transcript review screen.
 - **Words are missing from the transcript** — the recognizer dropped them during a restart gap. No extraction change can recover a field whose introducer phrase was never transcribed. Dictate with a brief pause between sentences, and see the recognizer-restart limitation in [`docs/handoff.md`](docs/handoff.md).
-- **The transcript is complete but fields are empty** — the phrasing has no matching marker. Add a row to `src/constants/fieldMarkers.js`; no pipeline logic needs changing.
+- **The transcript is complete but the field is empty, and the sentence is in the notes card** — the phrasing scored too low to place confidently. Nothing was lost; tap **Keep** to publish it as an Additional Clinical Notes item in the report, or manually edit the suggested report field yourself. To make the phrasing recognised outright, add a row to `src/constants/fieldMarkers.js` — no pipeline logic needs changing.
+
+**Scroll to the notes card before assuming anything was dropped.** Any dictated sentence that reached no field is sitting there verbatim — that card exists precisely so a gap is visible rather than silent.
 
 Fields the doctor genuinely never mentioned correctly show **Not Available** — that is FR-7 behaviour, not a bug.
+
+### A field shows AUTO
+
+Not an error. The value came from classifying a sentence that used no recognised marker phrase — "Examination suggests viral fever" reaching Diagnosis, for instance — rather than from something the doctor labelled. It is flagged so the two are never confused in a medical record, and it carries **UNCERTAIN** alongside for the same reason. Editing the field clears both badges and replaces them with **EDITED**: the value is the doctor's from that point on.
 
 ### `PDF export is unavailable in this build`
 
@@ -787,15 +811,19 @@ npm start -- --reset-cache
 | **6** | Extraction v2 — natural phrasing, negation, retraction, pronoun gender, prescription list | Complete |
 | **7** | Auto-save and consultation recovery, mandatory-field completeness gate | Complete |
 | **8** | Shared microphone, Anuvadini second transcription, editable AI transcript, continuation, diff | Complete; verified on device in both Debug and Release |
+| **9** | Extraction v3 — nothing dictated is discarded, and evidence decides whether a value may stay where a marker put it | Complete against fixtures; **device verification pending** |
 
 **Next up**, in priority order:
 
-1. **Deploy `server/` and switch `TRANSCRIPTION_TRANSPORT` to `proxy`.** The Bearer token is currently compiled into the APK, which is acceptable for internal testing and not for distribution. The proxy is written, tested (77 assertions) and dependency-free; deploying it behind HTTPS removes the credential from every device and changes no feature code.
-2. **Promote the realistic dictation samples to committed fixtures** for any dictation style not yet covered.
+1. **Dictate Phase 9 on hardware.** It passes 1557 fixture assertions and has not been spoken to a phone. The fixtures are clean text by construction, so they cannot see transcription loss at all — every other phase here was signed off on a device before being called done.
+2. **Deploy `server/` and switch `TRANSCRIPTION_TRANSPORT` to `proxy`.** The Bearer token is currently compiled into the APK, which is acceptable for internal testing and not for distribution. The proxy is written, tested (77 assertions) and dependency-free; deploying it behind HTTPS removes the credential from every device and changes no feature code. See [`server/README.md`](server/README.md#deploying).
 3. **Improve `en-IN` recognition accuracy**, still bounded by the recognizer rather than by this codebase.
 
 Recently closed, so nobody re-files them:
 
+- **Dictation reaching no field was silently dropped.** It is now kept verbatim in the notes card, and the report is guarded by an invariant that no printed word was left undictated.
+- **Fields could hold values belonging to other fields** — measured, the worst being a diagnosis printed as the patient's name. Evidence now decides, and each observed case is a named assertion in `test:extraction:recall`.
+- **Promote the realistic dictation samples to committed fixtures.** Done — twenty samples in `test-extraction:samples`, plus the 40-phrasing coverage benchmark.
 - Leaving the Recording screen and returning used to strand the app on a permanent "Speech recognition unavailable".
 - **Recognizer restart gaps** were the largest known quality gap. The shared-microphone path addresses them directly — one continuous session instead of a restart per utterance — and measured **88% word recall against the 75% restart-loop baseline** on the target device.
 - **Which audio stream carries the recognizer tone** was Phase 5's one unverified item. Resolved during the contention measurements.

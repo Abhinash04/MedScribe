@@ -12,13 +12,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import AdditionalNotes from '../components/AdditionalNotes';
 import AppHeader from '../components/AppHeader';
 import MissingFieldsModal from '../components/MissingFieldsModal';
 import ReportField from '../components/ReportField';
 import ScreenContainer from '../components/ScreenContainer';
 import { PATIENT_FIELDS, REQUIRED_FIELDS } from '../constants/patientFields';
 import { REPORT_STATUS } from '../db/reportsRepository';
-import { extractPatientFields } from '../services/extractionService';
+import { extractForReport } from '../services/extractionService';
 import { exportReport, shareReport } from '../services/pdfService';
 import {
   blockingFields,
@@ -27,10 +28,13 @@ import {
 import {
   applyEdit,
   countRequiredFilled,
+  draftNotes,
   draftValues,
   fromStored,
   isDirty,
   mergeExtraction,
+  setNoteKept,
+  setNoteText,
   toDraft,
 } from '../services/reportDraft';
 import {
@@ -49,33 +53,17 @@ import { formatDateTime } from '../utils/datetime';
 
 const TOTAL_REQUIRED = REQUIRED_FIELDS.length;
 
-/**
- * Structured report (SRS FR-6, FR-7, FR-8) — now an editable draft.
- *
- * Two modes, one screen, because the doctor does the same thing in both:
- *
- *   no route param  -> fresh dictation: extract from the transcript in the
- *                      recording store, exactly as before.
- *   { reportId }    -> a saved report reopened from the dashboard: values come
- *                      from the database and extraction never re-runs.
- *
- * The extraction result is kept alongside the edits and saved with them, so a
- * corrected field never erases what was actually dictated.
- */
 const ReportScreen = ({ route }) => {
   const navigation = useNavigation();
   const openedId = route?.params?.reportId ?? null;
-
   const transcriptFromStore = useRecordingStore(selectActiveTranscript);
   const resetRecording = useRecordingStore(state => state.reset);
   const setReportDraft = useRecordingStore(state => state.setReportDraft);
   const setStage = useRecordingStore(state => state.setStage);
-
   const fetchReport = useReportsStore(state => state.fetchReport);
   const saveNew = useReportsStore(state => state.saveNew);
   const saveExisting = useReportsStore(state => state.saveExisting);
   const finalizeReport = useReportsStore(state => state.finalize);
-
   const [reportId, setReportId] = useState(openedId);
   const [loading, setLoading] = useState(!!openedId);
   const [transcript, setTranscript] = useState(
@@ -83,7 +71,6 @@ const ReportScreen = ({ route }) => {
   );
   const [extracted, setExtracted] = useState(null);
   const [draft, setDraft] = useState(null);
-  /** Last persisted copy — the baseline for "are there unsaved changes?". */
   const [savedDraft, setSavedDraft] = useState(null);
   const [status, setStatus] = useState(REPORT_STATUS.DRAFT);
   const [createdAt, setCreatedAt] = useState(null);
@@ -94,25 +81,19 @@ const ReportScreen = ({ route }) => {
   const [showMissing, setShowMissing] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
-  // Fresh dictation: extraction is pure and deterministic, so it runs once for
-  // the transcript and the draft owns every value from then on.
   useEffect(() => {
     if (openedId || draft) {
       return;
     }
-    const record = capture(() => extractPatientFields(transcriptFromStore));
-    // A draft already exists when the doctor came through the completeness
-    // gate, or went back to dictate the missing details. Merging keeps the
-    // values they typed by hand; a fresh session has nothing to merge.
+    const { record, residue } = capture(() => extractForReport(transcriptFromStore));
     const stored = useRecordingStore.getState().reportDraft;
     setExtracted(record);
-    setDraft(stored ? mergeExtraction(stored, record) : toDraft(record));
+    setDraft(
+      stored ? mergeExtraction(stored, record, residue) : toDraft(record, residue),
+    );
     setTranscript(transcriptFromStore);
   }, [openedId, transcriptFromStore, draft]);
 
-  // Mirrored into the session store so an "Add More Speech" round trip through
-  // the recording screen does not lose the edits, and written through to the
-  // database so a crash here does not either.
   useEffect(() => {
     if (openedId || !draft) {
       return;
@@ -122,7 +103,6 @@ const ReportScreen = ({ route }) => {
     dictationSessionManager.persistCurrentSession();
   }, [openedId, draft, setReportDraft, setStage]);
 
-  // Saved report: load values, transcript and metadata from the database.
   useEffect(() => {
     if (!openedId) {
       return;
@@ -185,6 +165,14 @@ const ReportScreen = ({ route }) => {
     setDraft(current => applyEdit(current, key, value));
   }, []);
 
+  const handleKeepNote = useCallback((index, kept) => {
+    setDraft(current => setNoteKept(current, index, kept));
+  }, []);
+
+  const handleNoteText = useCallback((index, text) => {
+    setDraft(current => setNoteText(current, index, text));
+  }, []);
+
   const persist = useCallback(async () => {
     if (!draft) {
       return null;
@@ -203,8 +191,6 @@ const ReportScreen = ({ route }) => {
     const now = Date.now();
     setCreatedAt(now);
     setSavedAt(now);
-    // The consultation now lives in the reports table, so the recovery row is
-    // no longer needed — this is the point the draft stops being "unfinished".
     if (!openedId) {
       await dictationSessionManager.clearSession();
     }
@@ -229,7 +215,6 @@ const ReportScreen = ({ route }) => {
     }
     setBusy(true);
     try {
-      // Finalizing an unsaved report would lose the edits it claims to lock.
       const id = await persist();
       if (id) {
         await finalizeReport(id);
@@ -252,7 +237,6 @@ const ReportScreen = ({ route }) => {
     }
     setBusy(true);
     try {
-      // Save first so the PDF and the stored record can never disagree.
       await persist();
       const path = await exportReport(draft, {
         createdAt: createdAt ?? Date.now(),
@@ -274,9 +258,6 @@ const ReportScreen = ({ route }) => {
     navigation.navigate('Dashboard');
   }, [resetRecording, navigation]);
 
-  // Two steps: the unsaved-changes guard has to be disabled before the
-  // navigation is dispatched, or the doctor is asked to discard edits that are
-  // in fact being carried into the next dictation.
   const shareDiagnostics = useCallback(async () => {
     try {
       await Share.share({
@@ -296,11 +277,6 @@ const ReportScreen = ({ route }) => {
     }
   }, [draft, transcript, extracted]);
 
-  /**
-   * The dump contains the entire consultation, so sharing it is an explicit,
-   * named decision rather than a side effect of a long press. Unreachable in a
-   * release build — the handler is not even attached.
-   */
   const handleDiagnostics = useCallback(() => {
     if (!draft || !DIAGNOSTICS_ENABLED) {
       return;
@@ -329,7 +305,6 @@ const ReportScreen = ({ route }) => {
     navigation.navigate('Recording', { resume: true });
   }, [leaving, navigation]);
 
-  // Guard unsaved edits on back, gesture back and hardware back alike.
   usePreventRemove(dirty && !busy && !leaving, ({ data }) => {
     Alert.alert(
       'Discard changes?',
@@ -446,6 +421,12 @@ const ReportScreen = ({ route }) => {
               />
             ))}
           </View>
+
+          <AdditionalNotes
+            notes={draftNotes(draft)}
+            onKeep={handleKeepNote}
+            onChangeText={handleNoteText}
+          />
 
           <Pressable
             style={styles.transcriptToggle}
@@ -601,8 +582,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  // The draft pill is a pale surface fill, the final pill is solid green —
-  // one shared label colour cannot be readable on both.
   statusTextDraft: {
     color: colors.textPrimary,
   },

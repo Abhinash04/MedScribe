@@ -2,13 +2,6 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
-/**
- * Names the mandatory details a report is still waiting on.
- *
- * Framed as an unfinished consultation rather than a validation error: the
- * doctor either keeps dictating or types the values in. Additional Remarks is
- * optional and never reaches this list.
- */
 const MissingFieldsModal = ({
   visible,
   missing = [],
@@ -99,7 +92,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   title: {
-    ...typography.h2,
+    ...typography.largeHeading,
     fontSize: 20,
     color: colors.textPrimary,
     textAlign: 'center',
