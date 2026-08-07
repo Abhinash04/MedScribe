@@ -2,11 +2,6 @@ import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
-/**
- * Stop Confirmation Modal.
- *
- * Prevents accidental session termination when the doctor taps Stop.
- */
 const StopConfirmationModal = ({ visible, onCancel, onConfirm }) => {
   return (
     <Modal
@@ -76,7 +71,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   title: {
-    ...typography.h2,
+    ...typography.largeHeading,
     fontSize: 20,
     color: colors.textPrimary,
     textAlign: 'center',

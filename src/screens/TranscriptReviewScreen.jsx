@@ -28,7 +28,7 @@ import useRecordingStore, {
 } from '../store/useRecordingStore';
 import { colors, spacing, typography } from '../theme';
 import dictationSessionManager from '../services/dictationSessionManager';
-import { extractPatientFields } from '../services/extractionService';
+import { extractForReport } from '../services/extractionService';
 import { validateReportCompleteness } from '../services/reportCompleteness';
 import { mergeExtraction, toDraft } from '../services/reportDraft';
 
@@ -55,20 +55,8 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const selectedSource = useRecordingStore(state => state.transcriptSource);
   const setTranscriptSource = useRecordingStore(state => state.setTranscriptSource);
   const setAnuvadiniText = useRecordingStore(state => state.setAnuvadiniText);
-
-  /**
-   * Which transcript is on screen. Deliberately separate from which one the
-   * report is built from: looking at the alternative must never quietly
-   * re-extract the report behind the doctor.
-   */
   const [viewedSource, setViewedSource] = useState(selectedSource);
   const [blocked, setBlocked] = useState(null);
-  /**
-   * Both footer actions persist and then navigate. A second tap arriving before
-   * the first await settles would extract twice and dispatch two navigations,
-   * so the guard is a ref — state would not update until the next render, which
-   * is exactly the window a double tap lands in.
-   */
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
 
@@ -88,11 +76,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const viewingAi = viewedSource === TRANSCRIPT_SOURCE.ANUVADINI;
   const aiReady = anuvadini.status === ANUVADINI_STATUS.READY && !!anuvadini.text.trim();
-  /**
-   * Editing stays available while a continuation is being transcribed — the
-   * existing draft is still the doctor's to correct, and blanking it behind a
-   * "generating" placeholder would look like the transcript had been lost.
-   */
   const hasAiText = !!anuvadini.text.trim();
   const viewedText = viewingAi ? anuvadini.text : fullTranscript;
 
@@ -107,8 +90,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
     dictationSessionManager.persistCurrentSession();
   }, [setStage]);
 
-  // The editor writes back to whichever transcript is being viewed, so the
-  // other one is never disturbed by an edit made here.
   const commitEditor = useCallback(
     text => {
       if (text === viewedText) {
@@ -124,11 +105,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
     [viewedText, viewingAi, setAnuvadiniText, setFullTranscript],
   );
 
-  /**
-   * Switching tabs commits first. Without this the effect that follows
-   * `viewedText` resets the editor and the doctor's uncommitted correction
-   * disappears the moment they look at the other transcript.
-   */
   const showSource = useCallback(
     source => {
       if (source === viewedSource) {
@@ -141,7 +117,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
   );
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
-
   const handleResumeRecording = useCallback(() => {
     commitEditor(editableText);
     setStage(CONSULTATION_STAGE.RECORDING);
@@ -155,24 +130,19 @@ const TranscriptReviewScreen = ({ navigation }) => {
     }
     try {
       commitEditor(editableText);
-      // Extraction always runs against the SELECTED transcript, which is not
-      // necessarily the one being viewed.
       const text = selectActiveTranscript(useRecordingStore.getState());
-
-      const record = extractPatientFields(text);
-      const draft = reportDraft ? mergeExtraction(reportDraft, record) : toDraft(record);
+      const { record, residue } = extractForReport(text);
+      const draft = reportDraft
+        ? mergeExtraction(reportDraft, record, residue)
+        : toDraft(record, residue);
       setReportDraft(draft);
-
       const result = validateReportCompleteness(draft);
       if (!result.isComplete) {
         setBlocked(result);
         return;
       }
-
       setStage(CONSULTATION_STAGE.REPORT);
       await dictationSessionManager.persistNow();
-      // Released before navigating: this screen is popped straight afterwards,
-      // so clearing in a finally would land on an unmounted component.
       endSubmit();
       navigation.navigate('Report');
     } catch (error) {
@@ -196,22 +166,20 @@ const TranscriptReviewScreen = ({ navigation }) => {
     endSubmit,
   ]);
 
-  /**
-   * The only thing that changes which transcript the report is built from.
-   * Re-extracts, and mergeExtraction is what keeps manually corrected fields.
-   */
   const selectForReport = useCallback(
     source => {
       commitEditor(editableText);
       setTranscriptSource(source);
 
       const next = useRecordingStore.getState();
-      const record = extractPatientFields(selectActiveTranscript(next));
+      const { record, residue } = extractForReport(selectActiveTranscript(next));
       const previous = next.reportDraft;
       const kept = previous
         ? Object.keys(previous).filter(key => previous[key]?.edited).length
         : 0;
-      setReportDraft(previous ? mergeExtraction(previous, record) : toDraft(record));
+      setReportDraft(
+        previous ? mergeExtraction(previous, record, residue) : toDraft(record, residue),
+      );
       dictationSessionManager.persistCurrentSession();
 
       Alert.alert(
@@ -266,8 +234,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
       case ANUVADINI_STATUS.READY:
         return aiReady ? 'Ready' : 'Same as original';
       case ANUVADINI_STATUS.FAILED:
-        // A dictation refused for its length must say so; reporting it as a
-        // generic failure sends the doctor to Retry, which cannot help.
         return anuvadini.error === ERROR_KIND.AUDIO_TOO_LARGE
           ? 'Recording too long to process'
           : 'Unable to generate';
