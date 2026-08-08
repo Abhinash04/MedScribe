@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import IPCLogo from './IPCLogo';
 import { colors, spacing, typography } from '../theme';
 
 const AppHeader = ({
@@ -27,8 +28,7 @@ const AppHeader = ({
         </TouchableOpacity>
       ) : (
         <View style={styles.logoBadge}>
-          <View style={styles.crossVertical} />
-          <View style={styles.crossHorizontal} />
+          <IPCLogo size={24} />
         </View>
       )}
 
@@ -39,8 +39,6 @@ const AppHeader = ({
       >
         <Text style={typography.brandTitle}>{title}</Text>
       </TouchableOpacity>
-
-      {/* Empty view for symmetry when back button is shown */}
       {showBack ? <View style={styles.placeholderRight} /> : null}
     </View>
   );
@@ -56,27 +54,13 @@ const styles = StyleSheet.create({
     height: 56,
   },
   logoBadge: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     backgroundColor: colors.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
-  },
-  crossVertical: {
-    position: 'absolute',
-    width: 3,
-    height: 14,
-    backgroundColor: colors.primaryAccent,
-    borderRadius: 1.5,
-  },
-  crossHorizontal: {
-    position: 'absolute',
-    width: 14,
-    height: 3,
-    backgroundColor: colors.primaryAccent,
-    borderRadius: 1.5,
   },
   backButton: {
     position: 'absolute',
@@ -128,9 +112,6 @@ const styles = StyleSheet.create({
     top: 10,
     transform: [{ rotate: '45deg' }],
   },
-  // Mirrors backButton's absolute positioning. As a static element it could
-  // not balance an absolutely-positioned button, so longer titles such as
-  // "Patient Report" sat off-centre.
   placeholderRight: {
     position: 'absolute',
     right: 0,
