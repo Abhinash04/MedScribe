@@ -34,21 +34,6 @@ import kotlin.math.sqrt
 
 const val SHARED_MIC_NAME = "SharedMic"
 
-/**
- * One microphone, two consumers.
- *
- * Running SpeechRecognizer and AudioRecord side by side does not work: the
- * device spike measured the recognizer returning NO_MATCH on every utterance
- * across all four audio sources, because our AudioRecord wins the microphone
- * outright. The platform's answer is EXTRA_AUDIO_SOURCE (API 31+), which lets
- * the recognizer read from a file descriptor we supply instead of opening the
- * microphone itself. So this module owns the only AudioRecord and fans the same
- * PCM out to a WAV file and to the recognizer through a pipe.
- *
- * State is polled rather than pushed. The measurement needs counters and a
- * transcript, not an event stream, and polling keeps this module free of
- * emitter plumbing until the architecture has been proven on a real device.
- */
 class SharedMicModule(reactContext: ReactApplicationContext) :
   NativeSharedMicSpec(reactContext) {
 
@@ -57,27 +42,12 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     const val CONSULTATION_DIR = "consultations"
     const val QUEUE_FRAMES = 32
     const val SILENCE_RMS = 120.0
-
-    /** Canonical PCM WAV header, and 16-bit mono's two-byte sample. */
     const val WAV_HEADER_BYTES = 44
     const val BLOCK_ALIGN = 2
-
-    /**
-     * The largest range one request may carry, mirroring CHUNK_HARD_CAP_SECONDS
-     * in `audioBudget.js`: 50 s at 32 KB/s, plus the header the chunk carries.
-     */
     const val MAX_CHUNK_BYTES = 50L * 32000L + WAV_HEADER_BYTES
     const val JOIN_TIMEOUT_MS = 2000L
     const val RESTART_DELAY_MS = 250L
-
-    /**
-     * One bad configuration produced 116 identical errors in 30 seconds and an
-     * unreadable log. Five is enough to distinguish a transient failure from a
-     * configuration the device will never accept.
-     */
     const val MAX_CONSECUTIVE_ERRORS = 5
-
-    /** How long stop() waits for the service to finalise after EOF. */
     const val SESSION_END_TIMEOUT_MS = 10000L
   }
 
@@ -94,37 +64,14 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
   private var recognizer: SpeechRecognizer? = null
   private var outputFile: File? = null
   private var sampleRate = 16000
-
-  /**
-   * Frames waiting for the recognizer. Bounded and drop-oldest: a stalled
-   * reader must never block the thread that is also writing the WAV, or the
-   * recording itself would be damaged by a slow recognition service.
-   */
   private val frames = ArrayBlockingQueue<ByteArray>(QUEUE_FRAMES)
   @Volatile private var pipeOut: OutputStream? = null
   @Volatile private var droppedFrames = 0
-
-  /**
-   * "The caller of the recognizer is responsible for closing the audio" — so
-   * this is held for the life of the session and closed in stop(), not the
-   * moment after startListening().
-   */
   private var pipeRead: ParcelFileDescriptor? = null
   @Volatile private var segmented = true
   @Volatile private var consecutiveErrors = 0
-
-  /** Released by the callback that finalises a session, awaited by stop(). */
   @Volatile private var sessionEnd: CountDownLatch? = null
-
-  /** Kept so a restart after a pause can rebuild the same intent. */
   @Volatile private var recognitionLanguage = "en-IN"
-
-  /**
-   * Set when a session ends with no one waiting on it — the service finished
-   * during a pause, or between stop() clearing `running` and arming the latch.
-   * Without this, stop() waits the full timeout for a callback that has already
-   * fired, which is exactly the common "pause then stop" path.
-   */
   @Volatile private var sessionFinished = false
 
   private var totalBytes = 0L
@@ -251,14 +198,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  /**
-   * Stops the microphone; the file stays open.
-   *
-   * Setting the flag alone was not enough: AudioRecord kept capturing into its
-   * ring buffer, so the pause leaked into the recording and the doctor was
-   * recorded while they believed they were not. Under `lock` because stop() may
-   * be releasing the recorder on another thread.
-   */
   override fun pause(promise: Promise) {
     synchronized(lock) {
       if (!running || paused) {
@@ -294,9 +233,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       Log.i(TAG, "resumed")
     }
 
-    // The recognition service ends its own session when a pause starves it of
-    // audio, and nothing restarts a segmented session, so everything said after
-    // the first pause was lost. Recovered here rather than left to the timeout.
     main.post {
       if (running && !paused && sessionEnd == null && !listening) {
         Log.i(TAG, "restarting recognition after resume")
@@ -334,18 +270,11 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     readerThread?.join(JOIN_TIMEOUT_MS)
     pumpThread?.join(JOIN_TIMEOUT_MS)
     record?.release()
-
-    // A segmented session "will end when and only when the audio is closed",
-    // so closing the write end IS the request to finalise. Destroying the
-    // recognizer first — which is what this used to do — threw the results
-    // away microseconds before they arrived.
     val settled = CountDownLatch(1)
     sessionEnd = settled
     closeWriteEnd()
 
     val finished = if (sessionFinished) {
-      // The service already ended the session — during a pause, or in the
-      // window before the latch was armed. Nothing further is coming.
       true
     } else {
       try {
@@ -373,20 +302,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
   override fun getState(promise: Promise) {
     promise.resolve(buildState())
   }
-
-  // ── Recording files ──────────────────────────────────────────────────────
-  //
-  // These live here rather than in AudioCaptureModule because that module is
-  // registered in debug builds only. A release APK could therefore record a
-  // consultation and then neither read nor delete it.
-
-  /**
-   * Refuses anything outside the consultation directory.
-   *
-   * The path comes from JavaScript, and these methods only ever need one
-   * folder, so the canonical path is checked rather than trusted — which also
-   * covers `..` traversal and symlinks.
-   */
   private fun consultationFile(path: String): File? {
     val directory = File(appContext.filesDir, CONSULTATION_DIR).canonicalFile
     val file = File(path).canonicalFile
@@ -418,19 +333,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       promise.reject("E_READ", error.message, error)
     }
   }
-
-  /**
-   * One byte range of a recording, wrapped as a WAV in its own right.
-   *
-   * The service reads roughly the first 57 seconds of whatever it is given and
-   * silently discards the rest, so a long dictation has to arrive as several
-   * shorter submissions. Each carries a fresh canonical header describing only
-   * its own range — the same header `writeWavHeader` produces, since the format
-   * is fixed at 16 kHz mono 16-bit.
-   *
-   * Encoding one range at a time also puts peak memory BELOW the whole-file
-   * encode this replaces, rather than above it.
-   */
   override fun readCaptureChunkBase64(path: String, start: Double, end: Double, promise: Promise) {
     val file = consultationFile(path)
     if (file == null) {
@@ -449,8 +351,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       promise.reject("E_RANGE", "Range $from..$to is not inside a ${length}-byte recording")
       return
     }
-    // The planner never asks for more than a chunk, but the range arrives from
-    // JavaScript, so the allocation is bounded here rather than trusted.
     if (to - from > MAX_CHUNK_BYTES) {
       promise.reject("E_TOO_LARGE", "Chunk of ${to - from} bytes exceeds $MAX_CHUNK_BYTES")
       return
@@ -472,17 +372,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  /**
-   * Moves each cut point to the quietest moment near it.
-   *
-   * A boundary that lands mid-word splits that word across two submissions and
-   * mangles it in both. Scanning a window either side and cutting where the RMS
-   * is lowest puts the join between words instead. Every boundary is snapped in
-   * one pass so that consecutive chunks keep sharing an offset exactly — cutting
-   * each chunk independently is what would lose or duplicate speech.
-   *
-   * The first and last points are the file's own edges and never move.
-   */
   override fun snapChunkBoundaries(
     path: String,
     boundaries: ReadableArray,
@@ -511,7 +400,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
             } else {
               quietestOffset(input, target, window, previous, length)
             }
-          // Monotonic even when a snap would otherwise cross its neighbour.
           val safe = at.coerceIn(previous, length).let { it - (it % BLOCK_ALIGN) }
           snapped.pushDouble(safe.toDouble())
           previous = safe
@@ -522,12 +410,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       promise.reject("E_READ", error.message, error)
     }
   }
-
-  /**
-   * The start of the lowest-energy step within the window, or the target if the
-   * window cannot be read. Steps are 20 ms, short enough to land in the pause
-   * between two words rather than only between sentences.
-   */
   private fun quietestOffset(
     input: RandomAccessFile,
     target: Long,
@@ -551,18 +433,15 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       input.seek(offset)
       input.readFully(buffer)
       val rms = rmsOf(buffer)
-      // Ties go to the offset nearest the target, keeping chunks even.
       if (rms < bestRms || (rms == bestRms && abs(offset - target) < abs(best - target))) {
         bestRms = rms
         best = offset
       }
       if (rms < SILENCE_RMS) {
-        // Already silent; no quieter point is worth drifting further for.
         return offset
       }
       offset += step
     }
-
     return best
   }
 
@@ -578,7 +457,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     return if (samples > 0) sqrt(sum / samples) else 0.0
   }
 
-  /** The recording's own rate, so a chunk never claims a rate the audio is not. */
   private fun sampleRateOf(file: File): Int {
     return try {
       RandomAccessFile(file, "r").use { input ->
@@ -674,8 +552,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  // ── Audio ────────────────────────────────────────────────────────────────
-
   private fun readLoop(record: AudioRecord, file: File, rate: Int, bufferBytes: Int) {
     val buffer = ShortArray(bufferBytes / 2)
     val bytesPerWindow = rate * 2
@@ -713,10 +589,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
             windowSumSquares += (value * value).toDouble()
             windowSamples += 1
           }
-
-          // The WAV is written first and unconditionally: the recording is the
-          // record of the consultation, and a slow recognition service must
-          // never be able to damage it.
           out.write(bytes)
           synchronized(this) { totalBytes += bytes.size }
 
@@ -730,8 +602,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
           if (windowBytes >= bytesPerWindow && windowSamples > 0) {
             val rms = sqrt(windowSumSquares / windowSamples)
             synchronized(this) {
-              // The most recent window, so the waveform has something live to
-              // draw. sumRms/rmsWindows is a session average and never moves.
               lastRms = rms
               sumRms += rms
               rmsWindows += 1
@@ -767,14 +637,11 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
         stream.write(frame)
         stream.flush()
       } catch (error: Exception) {
-        // The recognizer closed its end between utterances. The next one opens
-        // a fresh pipe; the recording is unaffected.
         Log.d(TAG, "pipe write ended: ${error.message}")
       }
     }
   }
 
-  /** The EOF a segmented session waits for. */
   private fun closeWriteEnd() {
     try {
       pipeOut?.close()
@@ -784,7 +651,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     pipeOut = null
   }
 
-  /** Ours to close — the docs put that responsibility on the caller. */
   private fun closeReadEnd() {
     try {
       pipeRead?.close()
@@ -798,8 +664,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     closeWriteEnd()
     closeReadEnd()
   }
-
-  // ── Recognition ──────────────────────────────────────────────────────────
 
   private fun startRecognition(language: String) {
     if (!running) {
@@ -830,15 +694,11 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_CHANNEL_COUNT, 1)
       putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
       putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_SAMPLING_RATE, sampleRate)
-      // One session for the whole dictation: it "will end when and only when
-      // the audio is closed", which is what stop() does. Without this the
-      // recognizer ends per utterance and every restart needs a new pipe.
       if (segmented) {
         putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
       }
     }
 
-    // A fresh session supersedes any earlier natural ending.
     sessionFinished = false
 
     Log.i(TAG, "startListening segmented=$segmented rate=$sampleRate lang=$language")
@@ -872,13 +732,8 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
         }
         Log.w(TAG, "onError $error segmented=$segmented consecutive=$consecutiveErrors")
 
-        // An error after EOF still settles the session, or stop() would wait
-        // the full timeout for a callback that is never coming.
         sessionEnd?.countDown()
 
-        // A configuration the device refuses fails instantly and identically.
-        // Try the classic single-utterance shape once before giving up, so one
-        // run tells us which mode this handset honours.
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
           if (segmented) {
             Log.w(TAG, "segmented mode rejected; falling back to single-utterance")
@@ -924,8 +779,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
           return
         }
         partial = text
-        // Whether partials stream during a segmented session decides whether
-        // the doctor sees text while speaking, so the first one is timed.
         synchronized(this@SharedMicModule) {
           partialCount += 1
           if (firstPartialAtMs == 0L) {
@@ -945,15 +798,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  /**
-   * A segmented session that ends before we asked it to is not the end of the
-   * dictation — the recognition service does this when a pause starves it of
-   * audio. `sessionEnd` is non-null only while stop() is awaiting finalisation,
-   * so it is what separates "the doctor is still dictating" from "we asked it
-   * to finish".
-   *
-   * @return true when the session was genuinely finished
-   */
   private fun finishSessionOrRestart(language: String): Boolean {
     val latch = sessionEnd
     if (latch != null) {
@@ -961,8 +805,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
       return true
     }
     if (!running || paused) {
-      // Nobody is waiting yet. Remember it, so stop() does not sit out the full
-      // timeout for a callback that has already been delivered.
       sessionFinished = true
       return true
     }
@@ -992,18 +834,11 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     partial = ""
   }
 
-  /**
-   * Recognition is single-utterance, so continuous dictation means restarting.
-   * Each restart needs a fresh pipe — the previous read end is consumed once
-   * the service finishes with it.
-   */
   private fun scheduleRestart(language: String) {
     if (!running) {
       return
     }
     synchronized(this) { restarts += 1 }
-    // Re-checked inside the runnable, not only here: an abort, a pause or a
-    // stop can land in the delay window.
     main.postDelayed({
       if (running && !paused && sessionEnd == null) {
         startRecognition(language)
@@ -1034,12 +869,6 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  /**
-   * The canonical header, written into the first 44 bytes of an array.
-   *
-   * Shared by the recording and by every chunk read out of it, so a chunk can
-   * never describe itself differently from the file it came from.
-   */
   private fun wavHeaderInto(target: ByteArray, rate: Int, dataBytes: Int) {
     var at = 0
     fun put(bytes: ByteArray) {

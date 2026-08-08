@@ -27,29 +27,12 @@ import kotlin.math.sqrt
 
 const val AUDIO_CAPTURE_NAME = "AudioCapture"
 
-/**
- * PCM capture, in two scopes.
- *
- * The spike scope runs while the system SpeechRecognizer holds the microphone,
- * so concurrent capture can be measured on a real device. The consultation
- * scope produces the WAV a transcription service is given, and its audio is
- * patient data: internal storage only, and deleted by the caller rather than
- * left behind.
- *
- * Reports per-second RMS and read-gap statistics rather than a bare byte count:
- * Android returns buffers of zeros to a losing concurrent capturer, so "bytes
- * arrived" is not evidence that audio arrived.
- */
 class AudioCaptureModule(reactContext: ReactApplicationContext) :
   NativeAudioCaptureSpec(reactContext) {
 
   private companion object {
     const val TAG = "AudioCaptureModule"
     const val CAPTURE_DIR = "spike"
-
-    // Patient audio lives in internal storage, where a file manager or a USB
-    // connection cannot reach it. The spike directory is external and stays
-    // that way — it holds test recordings, never a consultation.
     const val CONSULTATION_DIR = "consultations"
     const val SCOPE_CONSULTATION = "consultation"
     const val PAUSE_POLL_MS = 100L
@@ -68,12 +51,10 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
 
   private val appContext = reactContext
   private val lock = Any()
-
   private var recorder: AudioRecord? = null
   private var worker: Thread? = null
   @Volatile private var capturing = false
   @Volatile private var paused = false
-
   private var outputFile: File? = null
   private var startedAtMs = 0L
   private var totalBytes = 0L
@@ -89,7 +70,6 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
   private var audioSourceName = "mic"
   private var audioSessionId = 0
   private val timeline = mutableListOf<WritableMap>()
-
   private val audioManager =
     reactContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
   private val configHandler = Handler(Looper.getMainLooper())
@@ -274,8 +254,6 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
       Log.w(TAG, "stop failed", error)
     }
 
-    // Join BEFORE releasing: the worker can still be inside read(), and the
-    // WAV header is written from totalBytes, which it is still incrementing.
     thread?.join(JOIN_TIMEOUT_MS)
     if (thread?.isAlive == true) {
       Log.w(TAG, "capture thread did not stop within ${JOIN_TIMEOUT_MS}ms")
@@ -294,11 +272,6 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
     promise.resolve(buildStats())
   }
 
-  /**
-   * Encoded on this side so the bytes are not copied through JS twice, and
-   * size-checked before the allocation rather than after it — a long dictation
-   * on an entry-level device is an out-of-memory, not a slow request.
-   */
   override fun readCaptureBase64(path: String, maxBytes: Double, promise: Promise) {
     val file = File(path)
     if (!file.exists()) {
@@ -358,11 +331,6 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
     readErrorCodes.clear()
   }
 
-  /**
-   * The platform's own answer to "is our capture being silenced?" — on API 29+
-   * a losing concurrent capturer is handed zeroed buffers rather than an error,
-   * so this is the only non-inferential way to tell contention from a bug.
-   */
   private fun startConfigPolling() {
     stopConfigPolling()
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -395,9 +363,6 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
       Log.w(TAG, "recording configs unavailable", error)
       return
     }
-
-    // Session id, not just source: another client can hold the same source,
-    // and only the session tells us which configuration is ours.
     val ours = configs.filter {
       it.clientAudioSessionId == audioSessionId || (audioSessionId == 0 && it.clientAudioSource == audioSource)
     }
@@ -434,9 +399,6 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
         out.write(ByteArray(44))
 
         while (capturing) {
-          // A paused dictation must not keep recording the room. The file stays
-          // open so the consultation remains one continuous WAV with the pause
-          // removed rather than several fragments.
           if (paused) {
             Thread.sleep(PAUSE_POLL_MS)
             lastReadAt = System.currentTimeMillis()
@@ -628,8 +590,6 @@ class AudioCaptureModule(reactContext: ReactApplicationContext) :
       } catch (error: Exception) {
         Log.w(TAG, "invalidate stop failed", error)
       }
-      // The worker owns the RandomAccessFile; joining lets its `use` block
-      // close the file before the recorder goes away underneath it.
       worker?.join(JOIN_TIMEOUT_MS)
       worker = null
       recorder?.release()

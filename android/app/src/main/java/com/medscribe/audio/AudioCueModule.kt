@@ -17,27 +17,6 @@ import java.io.File
 
 const val AUDIO_CUE_NAME = "AudioCue"
 
-/**
- * Dictation audio feedback: one short cue of our own, and suppression of the
- * system recognizer's per-utterance tones.
- *
- * The start/end tones heard between sentences are played by the Android
- * RecognitionService, not by this app, so they cannot be turned off through
- * SpeechRecognizer. Requesting audio focus does not silence them either — audio
- * focus asks other apps to yield, it does not mute a system service. Muting the
- * carrying streams for the duration of the session is the only mechanism that
- * works, which makes "restore, always" the module's central obligation.
- *
- * Five independent restore paths, because leaving a doctor's phone muted is a
- * far worse failure than a stray beep:
- *   1. JavaScript calls restoreSystemTones() on pause, stop, error and unmount.
- *   2. onHostPause / onHostDestroy / invalidate — covers a JS crash or reload.
- *   3. A watchdog Runnable restores unconditionally after watchdogMs.
- *   4. A SharedPreferences flag, committed before the first mute, is checked on
- *      the next launch — covers process death mid-session.
- *   5. AudioService itself drops per-client mute requests when the process dies.
- *      Treated as a bonus, never relied upon.
- */
 class AudioCueModule(reactContext: ReactApplicationContext) :
   NativeAudioCueSpec(reactContext), LifecycleEventListener {
 
@@ -45,16 +24,9 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
     const val TAG = "AudioCueModule"
     const val PREFS = "medscribe_audio"
     const val KEY_MUTED = "streams_muted"
+    const val PROMPT_PREFIX = "medscribe_prompt"
     const val CUE_VOLUME = 70
     const val CUE_MS = 140
-
-    /**
-     * Ordered by likelihood of carrying the recognizer tone. The ring group
-     * additionally needs Do-Not-Disturb access on API 23+ and throws
-     * SecurityException without it; asking a doctor for DND access to silence a
-     * beep is not a trade worth making, so each stream is attempted
-     * independently and a refusal is logged, never escalated.
-     */
     val CANDIDATE_STREAMS = listOf(
       AudioManager.STREAM_MUSIC to "music",
       AudioManager.STREAM_SYSTEM to "system",
@@ -68,20 +40,9 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
   private val prefs =
     reactContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
   private val handler = Handler(Looper.getMainLooper())
-
-  /**
-   * Guards `mutedStreams` and `watchdog`. They are reached from three threads:
-   * the TurboModule call thread, the main thread (the watchdog Runnable and the
-   * lifecycle callbacks), and whichever thread `invalidate()` runs on. Without
-   * serialization a restore can interleave with a suppression and clear the list
-   * while a stream is still muted — which is the one failure this module exists
-   * to prevent.
-   */
   private val lock = Any()
   private val mutedStreams = mutableListOf<Int>()
   private var watchdog: Runnable? = null
-
-  /** Guards `player` and `playerFile`, reached from the same three threads. */
   private val speechLock = Any()
   private var player: MediaPlayer? = null
   private var playerFile: File? = null
@@ -89,14 +50,18 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
 
   init {
     reactContext.addLifecycleEventListener(this)
-    // The previous process died while muted. Nothing else will undo it.
     if (prefs.getBoolean(KEY_MUTED, false)) {
       CANDIDATE_STREAMS.forEach { (stream, _) -> unmuteStream(stream) }
       prefs.edit().putBoolean(KEY_MUTED, false).commit()
     }
+    try {
+      appContext.cacheDir
+        ?.listFiles { file -> file.name.startsWith(PROMPT_PREFIX) }
+        ?.forEach { it.delete() }
+    } catch (error: Exception) {
+      Log.w(TAG, "could not purge stale prompt audio", error)
+    }
   }
-
-  // ------------------------------------------------------------------ cues
 
   override fun playCue(kind: String, promise: Promise) {
     try {
@@ -105,9 +70,6 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
         "stop" -> ToneGenerator.TONE_PROP_BEEP2 to CUE_MS
         else -> ToneGenerator.TONE_PROP_ACK to CUE_MS
       }
-
-      // A ToneGenerator holds a hardware track, so it is created per cue and
-      // released on the same handler rather than kept alive for the session.
       val generator = ToneGenerator(AudioManager.STREAM_MUSIC, CUE_VOLUME)
       generator.startTone(tone, durationMs)
       handler.postDelayed({
@@ -120,34 +82,12 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
 
       promise.resolve(true)
     } catch (error: Exception) {
-      // A missing or busy audio path must never break a dictation session.
       Log.w(TAG, "playCue failed", error)
       promise.resolve(false)
     }
   }
 
-  // ---------------------------------------------------------------- speech
-
-  /**
-   * Plays the spoken missing-field prompt.
-   *
-   * Two obligations beyond "call MediaPlayer":
-   *
-   * 1. Restore the streams first. A dictation mutes STREAM_MUSIC, and this
-   *    prompt plays on STREAM_MUSIC. Speaking into that mute is silence, and
-   *    the caller has no way to know it happened. Because the mute and the
-   *    playback live in one class, the ordering is enforced here rather than
-   *    trusted to a caller.
-   * 2. Delete the staged file on every exit. MediaPlayer cannot read a byte
-   *    array, so the audio is written to cacheDir; a prompt is patient-adjacent
-   *    data and must not outlive its playback.
-   *
-   * Resolves rather than rejects on failure. A prompt that cannot be spoken is
-   * an enhancement that did not happen, never a broken consultation - the
-   * written warning has already told the doctor everything.
-   */
   override fun playSpeech(audioBase64: String, promise: Promise) {
-    // A prompt is inaudible while the dictation mute is still in force.
     restoreInternal()
     stopSpeechInternal(resolveAs = false)
 
@@ -157,7 +97,7 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
         promise.resolve(false)
         return
       }
-      File.createTempFile("medscribe_prompt", ".wav", appContext.cacheDir).apply {
+      File.createTempFile(PROMPT_PREFIX, ".wav", appContext.cacheDir).apply {
         writeBytes(bytes)
       }
     } catch (error: Exception) {
@@ -166,35 +106,34 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
       return
     }
 
+    val media = MediaPlayer()
+    synchronized(speechLock) {
+      player = media
+      playerFile = staged
+    }
+
     try {
-      val media = MediaPlayer().apply {
-        setAudioAttributes(
-          AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ASSISTANT)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-            .build(),
-        )
-        setDataSource(staged.absolutePath)
-        setOnCompletionListener { stopSpeechInternal(resolveAs = true) }
-        setOnErrorListener { _, what, extra ->
-          Log.w(TAG, "prompt playback error what=" + what + " extra=" + extra)
-          stopSpeechInternal(resolveAs = false)
-          true
-        }
-        prepare()
+      media.setAudioAttributes(
+        AudioAttributes.Builder()
+          .setUsage(AudioAttributes.USAGE_ASSISTANT)
+          .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+          .build(),
+      )
+      media.setDataSource(staged.absolutePath)
+      media.setOnCompletionListener { stopSpeechInternal(resolveAs = true) }
+      media.setOnErrorListener { _, what, extra ->
+        Log.w(TAG, "prompt playback error what=" + what + " extra=" + extra)
+        stopSpeechInternal(resolveAs = false)
+        true
       }
+      media.prepare()
 
-      synchronized(speechLock) {
-        player = media
-        playerFile = staged
-        speechPromise = promise
-      }
-
+      synchronized(speechLock) { speechPromise = promise }
       media.start()
     } catch (error: Exception) {
       Log.w(TAG, "cannot play prompt audio", error)
-      staged.delete()
       synchronized(speechLock) { speechPromise = null }
+      stopSpeechInternal(resolveAs = false)
       promise.resolve(false)
     }
   }
@@ -204,15 +143,7 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
     promise.resolve(true)
   }
 
-  /**
-   * The single teardown path. Completion, error, an explicit stop and every
-   * lifecycle callback all route here, so the player and its staged file are
-   * released exactly once however the playback ended.
-   */
   private fun stopSpeechInternal(resolveAs: Boolean) {
-    // Returned out of the critical section rather than assigned into captured
-    // vals: the state is cleared under the lock, and everything that can throw
-    // happens outside it.
     val taken = synchronized(speechLock) {
       val snapshot = Triple(player, playerFile, speechPromise)
       player = null
@@ -249,20 +180,13 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
     pending?.resolve(resolveAs)
   }
 
-  // ----------------------------------------------------------- suppression
-
   override fun suppressSystemTones(watchdogMs: Double, promise: Promise) {
-    // Suppression is armed as a dictation starts, so a prompt still playing is
-    // about to be recorded into the transcript. The JS layer stops it before
-    // navigating; this is the backstop for every path that does not.
     stopSpeechInternal(resolveAs = false)
     try {
       val applied = synchronized(lock) {
         cancelWatchdogLocked()
 
         if (mutedStreams.isEmpty()) {
-          // Committed before the first mute so a crash between the two still
-          // leaves the marker that the next launch reads.
           prefs.edit().putBoolean(KEY_MUTED, true).commit()
         }
 
@@ -315,8 +239,6 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
   private fun restoreInternal() {
     synchronized(lock) {
       cancelWatchdogLocked()
-      // Iterates a copy: unmuteStream can throw per stream and must not abandon
-      // the rest of the list half-restored.
       mutedStreams.toList().forEach { unmuteStream(it) }
       mutedStreams.clear()
       prefs.edit().putBoolean(KEY_MUTED, false).commit()
@@ -338,8 +260,6 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
     watchdog = null
   }
 
-  // ------------------------------------------------------------- lifecycle
-
   override fun onHostResume() = Unit
 
   override fun onHostPause() {
@@ -355,8 +275,6 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
   override fun invalidate() {
     stopSpeechInternal(resolveAs = false)
     restoreInternal()
-    // Otherwise the dead module stays in the context's listener list and is
-    // called back on the next host pause.
     appContext.removeLifecycleEventListener(this)
     super.invalidate()
   }
