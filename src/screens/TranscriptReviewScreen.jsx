@@ -12,10 +12,7 @@ import {
   Easing,
   Platform,
   LayoutAnimation,
-  UIManager,
 } from 'react-native';
-// Not react-native's own Clipboard: that one is deprecated and slated for
-// removal, which would turn Copy into a runtime crash rather than a build error.
 import Clipboard from '@react-native-clipboard/clipboard';
 import Icon from 'react-native-vector-icons/Feather';
 import RefiningOverlay from '../components/RefiningOverlay';
@@ -35,8 +32,6 @@ import useRecordingStore, {
   selectActiveTranscript,
   selectFullTranscript,
 } from '../store/useRecordingStore';
-// The redesign styles this screen with literal hex; these are still needed by
-// the AI-refinement fallback notice, which is themed like the rest of the app.
 import { colors, spacing } from '../theme';
 import dictationSessionManager from '../services/dictationSessionManager';
 import { isRetryableFailure } from '../services/captureOutcome';
@@ -48,9 +43,10 @@ import {
 import { mergeExtraction, toDraft } from '../services/reportDraft';
 import { speakMissingFields, stopPrompt } from '../services/speechPromptService';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// No opt-in call here on purpose. LayoutAnimation is always enabled under the
+// New Architecture, which this app runs (newArchEnabled=true), so
+// setLayoutAnimationEnabledExperimental is a no-op that only logs a warning.
+// `LayoutAnimation.configureNext` below still works.
 
 function formatDuration(totalSeconds = 0) {
   const mins = Math.floor(totalSeconds / 60);
@@ -76,12 +72,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const selectedSource = useRecordingStore(state => state.transcriptSource);
   const setTranscriptSource = useRecordingStore(state => state.setTranscriptSource);
   const setAnuvadiniText = useRecordingStore(state => state.setAnuvadiniText);
-
-  /**
-   * Which transcript is on screen. Deliberately separate from which one the
-   * report is built from: looking at the alternative must never quietly
-   * re-extract the report behind the doctor.
-   */
   const [viewedSource, setViewedSource] = useState(selectedSource);
   const [blocked, setBlocked] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -90,15 +80,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const [skippedRefinement, setSkippedRefinement] = useState(false);
   const [dismissedAt, setDismissedAt] = useState(0);
   const [copied, setCopied] = useState(false);
-
-  // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Entrance animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -114,7 +101,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
       }),
     ]).start();
 
-    // Pulse animation for waveform
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -130,7 +116,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
       ])
     ).start();
 
-    // Float animation for illustration
     Animated.loop(
       Animated.sequence([
         Animated.timing(floatAnim, {
@@ -307,13 +292,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
     setViewedSource(TRANSCRIPT_SOURCE.ANUVADINI);
   }, [anuvadini, applySource]);
 
-  /**
-   * Copies whatever transcript is on screen.
-   *
-   * The tick replaces the icon for a moment because a clipboard write is
-   * otherwise completely silent — without it there is no way to tell a
-   * successful copy from a dead button, which is what this control used to be.
-   */
   const handleCopyTranscript = useCallback(() => {
     if (!editableText) {
       return;
@@ -393,8 +371,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
       case ANUVADINI_STATUS.PENDING:
         return 'Generating…';
       case ANUVADINI_STATUS.READY:
-        // Reachable: the AI draft is editable, so the doctor can empty it.
-        // "Same as original" would be a lie about a transcript they deleted.
         if (!hasAiText) return 'Emptied — type here or use the original';
         return aiReady ? 'Ready' : 'Same as original';
       case ANUVADINI_STATUS.FAILED:
@@ -417,7 +393,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   return (
     <ScreenContainer style={styles.container}>
-      {/* Top App Bar */}
       <View style={styles.appBar}>
         <Pressable
           onPress={goBack}
@@ -428,22 +403,18 @@ const TranscriptReviewScreen = ({ navigation }) => {
           <Icon name="arrow-left" size={20} color="#0F172A" />
         </Pressable>
         <Text style={styles.appBarTitle}>Transcript Review</Text>
-        <View style={{ width: 44 }} />
+        <View style={styles.appBarRightSpacer} />
       </View>
 
       <ScrollView
-        style={{ flex: 1 }}
+        style={styles.flexOne}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], flex: 1 }}>
-          {/* Hero Section */}
+        <Animated.View style={[styles.flexOne, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <View style={styles.heroSection}>
             <View style={styles.heroLeft}>
-              <View style={styles.heroLabelRow}>
-                {/* <View style={styles.heroLine} /> */}
-                {/* <Text style={styles.heroLabel}>ONE LAST CHECK</Text> */}
-              </View>
+              <View style={styles.heroLabelRow} />
               <Text style={styles.heroTitle}>Review & Edit{'\n'}Transcript</Text>
               <Text style={styles.heroSubtitle}>
                 Compare both transcriptions, then choose which one the report is built from.
@@ -457,11 +428,8 @@ const TranscriptReviewScreen = ({ navigation }) => {
                   { transform: [{ translateY: floatAnim }] },
                 ]}
               >
-                {/* Background Blobs */}
                 <View style={[styles.blob, styles.blobBlue]} />
-                <View style={[styles.blob, styles.blobLavender]} />
-                
-                {/* Icons */}
+                <View style={[styles.blob, styles.blobLavender]} />              
                 <View style={styles.illusDoc}>
                   <Icon name="file-text" size={28} color="#2F6BFF" />
                   <View style={styles.illusSparkle}>
@@ -475,10 +443,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Summary Cards */}
           <View style={styles.summaryRow}>
             <View style={styles.summaryCard}>
-              <View style={[styles.iconCircle, { backgroundColor: '#F0F5FF' }]}>
+              <View style={[styles.iconCircle, styles.iconCircleBlue]}>
                 <Icon name="clock" size={18} color="#2F6BFF" />
               </View>
               <View style={styles.summaryTextCol}>
@@ -487,7 +454,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
               </View>
             </View>
             <View style={styles.summaryCard}>
-              <View style={[styles.iconCircle, { backgroundColor: '#F3E8FF' }]}>
+              <View style={[styles.iconCircle, styles.iconCirclePurple]}>
                 <Icon name="layers" size={18} color="#8B5CF6" />
               </View>
               <View style={styles.summaryTextCol}>
@@ -497,7 +464,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Transcript Selector */}
           <View style={styles.segmentContainer}>
             {[TRANSCRIPT_SOURCE.NATIVE, TRANSCRIPT_SOURCE.ANUVADINI].map(source => {
               const isSelectedTab = viewedSource === source;
@@ -510,7 +476,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
                 >
                   <View style={styles.segmentTabHeader}>
                     {source === TRANSCRIPT_SOURCE.ANUVADINI && !isSelectedTab && (
-                      <Icon name="star" size={14} color="#8B5CF6" style={{ marginRight: 4 }} />
+                      <Icon name="star" size={14} color="#8B5CF6" style={styles.starIconMargin} />
                     )}
                     <Text style={[styles.segmentTabText, isSelectedTab && styles.segmentTabTextActive]}>
                       {LABEL[source]}
@@ -561,8 +527,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
               ) : null}
             </View>
           )}
-
-          {/* Transcript Card */}
           <View style={styles.editorCard}>
             <View style={styles.editorHeader}>
               <View style={styles.editorHeaderLeft}>
@@ -577,13 +541,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
                 </View>
               )}
             </View>
-
-            {/*
-              The placeholder is for "no transcription exists" only. Once one has
-              arrived, the field stays editable even when empty — replacing it
-              with text would strand a doctor who cleared the draft, with no way
-              to type it back.
-            */}
             {viewingAi && !hasAiText && anuvadini.status !== ANUVADINI_STATUS.READY ? (
               <Text style={styles.placeholder}>
                 {anuvadini.status === ANUVADINI_STATUS.PENDING
@@ -716,6 +673,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
+  },
+  flexOne: {
+    flex: 1,
+  },
+  appBarRightSpacer: {
+    width: 44,
   },
   appBarTitle: {
     fontSize: 18,
@@ -870,6 +833,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  iconCircleBlue: {
+    backgroundColor: '#F0F5FF',
+  },
+  iconCirclePurple: {
+    backgroundColor: '#F3E8FF',
+  },
+  starIconMargin: {
+    marginRight: 4,
   },
   summaryTextCol: {
     flex: 1,
