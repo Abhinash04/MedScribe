@@ -1,15 +1,19 @@
 package com.medscribe.audio
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.MediaPlayer
 import android.media.ToneGenerator
 import android.os.Handler
 import android.os.Looper
+import android.util.Base64
 import android.util.Log
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.medscribe.specs.NativeAudioCueSpec
+import java.io.File
 
 const val AUDIO_CUE_NAME = "AudioCue"
 
@@ -77,6 +81,12 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
   private val mutedStreams = mutableListOf<Int>()
   private var watchdog: Runnable? = null
 
+  /** Guards `player` and `playerFile`, reached from the same three threads. */
+  private val speechLock = Any()
+  private var player: MediaPlayer? = null
+  private var playerFile: File? = null
+  private var speechPromise: Promise? = null
+
   init {
     reactContext.addLifecycleEventListener(this)
     // The previous process died while muted. Nothing else will undo it.
@@ -116,9 +126,136 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  // ---------------------------------------------------------------- speech
+
+  /**
+   * Plays the spoken missing-field prompt.
+   *
+   * Two obligations beyond "call MediaPlayer":
+   *
+   * 1. Restore the streams first. A dictation mutes STREAM_MUSIC, and this
+   *    prompt plays on STREAM_MUSIC. Speaking into that mute is silence, and
+   *    the caller has no way to know it happened. Because the mute and the
+   *    playback live in one class, the ordering is enforced here rather than
+   *    trusted to a caller.
+   * 2. Delete the staged file on every exit. MediaPlayer cannot read a byte
+   *    array, so the audio is written to cacheDir; a prompt is patient-adjacent
+   *    data and must not outlive its playback.
+   *
+   * Resolves rather than rejects on failure. A prompt that cannot be spoken is
+   * an enhancement that did not happen, never a broken consultation - the
+   * written warning has already told the doctor everything.
+   */
+  override fun playSpeech(audioBase64: String, promise: Promise) {
+    // A prompt is inaudible while the dictation mute is still in force.
+    restoreInternal()
+    stopSpeechInternal(resolveAs = false)
+
+    val staged = try {
+      val bytes = Base64.decode(audioBase64, Base64.DEFAULT)
+      if (bytes.isEmpty()) {
+        promise.resolve(false)
+        return
+      }
+      File.createTempFile("medscribe_prompt", ".wav", appContext.cacheDir).apply {
+        writeBytes(bytes)
+      }
+    } catch (error: Exception) {
+      Log.w(TAG, "cannot stage prompt audio", error)
+      promise.resolve(false)
+      return
+    }
+
+    try {
+      val media = MediaPlayer().apply {
+        setAudioAttributes(
+          AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ASSISTANT)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build(),
+        )
+        setDataSource(staged.absolutePath)
+        setOnCompletionListener { stopSpeechInternal(resolveAs = true) }
+        setOnErrorListener { _, what, extra ->
+          Log.w(TAG, "prompt playback error what=" + what + " extra=" + extra)
+          stopSpeechInternal(resolveAs = false)
+          true
+        }
+        prepare()
+      }
+
+      synchronized(speechLock) {
+        player = media
+        playerFile = staged
+        speechPromise = promise
+      }
+
+      media.start()
+    } catch (error: Exception) {
+      Log.w(TAG, "cannot play prompt audio", error)
+      staged.delete()
+      synchronized(speechLock) { speechPromise = null }
+      promise.resolve(false)
+    }
+  }
+
+  override fun stopSpeech(promise: Promise) {
+    stopSpeechInternal(resolveAs = false)
+    promise.resolve(true)
+  }
+
+  /**
+   * The single teardown path. Completion, error, an explicit stop and every
+   * lifecycle callback all route here, so the player and its staged file are
+   * released exactly once however the playback ended.
+   */
+  private fun stopSpeechInternal(resolveAs: Boolean) {
+    // Returned out of the critical section rather than assigned into captured
+    // vals: the state is cleared under the lock, and everything that can throw
+    // happens outside it.
+    val taken = synchronized(speechLock) {
+      val snapshot = Triple(player, playerFile, speechPromise)
+      player = null
+      playerFile = null
+      speechPromise = null
+      snapshot
+    }
+
+    val media = taken.first
+    val file = taken.second
+    val pending = taken.third
+
+    if (media != null) {
+      try {
+        if (media.isPlaying) {
+          media.stop()
+        }
+      } catch (error: Exception) {
+        Log.w(TAG, "prompt stop failed", error)
+      }
+      try {
+        media.release()
+      } catch (error: Exception) {
+        Log.w(TAG, "prompt release failed", error)
+      }
+    }
+
+    try {
+      file?.delete()
+    } catch (error: Exception) {
+      Log.w(TAG, "prompt file delete failed", error)
+    }
+
+    pending?.resolve(resolveAs)
+  }
+
   // ----------------------------------------------------------- suppression
 
   override fun suppressSystemTones(watchdogMs: Double, promise: Promise) {
+    // Suppression is armed as a dictation starts, so a prompt still playing is
+    // about to be recorded into the transcript. The JS layer stops it before
+    // navigating; this is the backstop for every path that does not.
+    stopSpeechInternal(resolveAs = false)
     try {
       val applied = synchronized(lock) {
         cancelWatchdogLocked()
@@ -206,14 +343,17 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
   override fun onHostResume() = Unit
 
   override fun onHostPause() {
+    stopSpeechInternal(resolveAs = false)
     restoreInternal()
   }
 
   override fun onHostDestroy() {
+    stopSpeechInternal(resolveAs = false)
     restoreInternal()
   }
 
   override fun invalidate() {
+    stopSpeechInternal(resolveAs = false)
     restoreInternal()
     // Otherwise the dead module stays in the context's listener list and is
     // called back on the next host pause.
