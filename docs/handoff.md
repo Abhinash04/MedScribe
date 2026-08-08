@@ -662,8 +662,8 @@ MedScribe/
 │   │       ├── validators.js            #   reject implausible values
 │   │       └── resolveConflicts.js      #   repeats, self-correction, restatements
 │   ├── specs/
-│   │   ├── NativePdfExporter.js     # TurboModule spec — codegen input, lint-ignored (§7)
-│   │   └── NativeAudioCue.js        # TurboModule spec — cues + system-tone suppression
+│   │   ├── NativePdfExporter.ts     # TurboModule spec — codegen input, lint-ignored (§7)
+│   │   └── NativeAudioCue.ts        # TurboModule spec — cues + system-tone suppression
 │   ├── store/
 │   │   ├── useRecordingStore.js     # Zustand: status, segments, partial, duration, live fields
 │   │   └── useReportsStore.js       # Zustand: saved reports, load/save/finalize/remove
@@ -703,11 +703,17 @@ MedScribe/
 ### ESLint jest override
 `@react-native`'s ESLint config globs its jest environment as `*.{spec,test}.{js,ts,tsx}` — note the absent `jsx`. Renaming the test file to `.jsx` therefore broke `no-undef` on `test`/`expect`. `.eslintrc.js` carries a local override to restore it. Do not remove it.
 
-### `src/specs/**` is excluded from ESLint
+### `src/specs/**` is TypeScript, and that is the only TypeScript here
 
-`hermes-eslint` is not installed, so `@react-native`'s config parses `.js` with `@babel/eslint-parser`. Its scope analysis has no visitor keys for the Flow `interface` node a TurboModule spec is built around, and dies with `Parsing error: Cannot read properties of undefined (reading 'forEach')` — a parser crash, not a code defect.
+Superseded. The specs were Flow `.js`, and two tools could not read them: `hermes-eslint` is not installed, so `@react-native`'s config fell back to `@babel/eslint-parser`, whose scope analysis has no visitor keys for a Flow `interface` and died with `Parsing error: Cannot read properties of undefined (reading 'forEach')`; and VS Code's TypeScript service reported ~120 phantom syntax errors across the five files, because Flow annotations in a `.js` file are not valid JavaScript.
 
-The spec is validated where it matters: React Native codegen reads it at build time and emits `NativePdfExporterSpec.java`, which `PdfExporterModule.kt` must satisfy to compile. A signature error there is a **build** failure, which is stricter than lint. Do not "fix" this by rewriting the spec to please the parser.
+They are now `.ts`, which codegen supports natively. **The conversion was verified rather than assumed**: the codegen schema generated from the TypeScript specs is byte-identical to the one the Flow specs produced, so the emitted `*Spec.java` — and therefore every Kotlin module compiled against it — is unchanged. Both tools are now happy, so `src/specs/**` is no longer excluded from ESLint and the specs are linted like everything else.
+
+`Object` is used rather than importing `UnsafeObject` from `react-native/Libraries/Types/CodegenTypes`: it yields the identical schema without a deep import into an RN internal path that can move between versions.
+
+This does **not** reintroduce TypeScript to the project. These five files are codegen input, never application code, and there is no `tsconfig.json` — `tsc --noEmit` was run under both `bundler` and `node10` resolution to confirm they are clean whichever way an editor infers the project.
+
+The specs are still validated where it matters most: codegen reads them at build time and emits `NativePdfExporterSpec.java`, which `PdfExporterModule.kt` must satisfy to compile. A signature error there is a **build** failure, which is stricter than lint.
 
 ### ⚠️ `getEnforcing` is resolved lazily inside `pdfService`
 
@@ -900,6 +906,28 @@ Build-time injection keeps it out of Git. It does **not** make it secret inside 
 ### ⚠️ The diagnostic dump is development-only
 
 `DIAGNOSTICS_ENABLED = __DEV__`. `ReportScreen` passes `onLongPressTitle` only when it is true, so a release build has no handler at all rather than an inert one. The diagnostic dump carries the full consultation trace and is restricted to development builds; PDF export remains available in release builds.
+
+### ⚠️ `metro.config.js` blocks the Gradle output directories, and must keep the default
+
+Metro watches everything under the project root, which includes the app's own
+`build` and `.cxx` folders and eight `node_modules/<pkg>/android/build` trees —
+all rewritten by Gradle on every build. A build running alongside Metro
+therefore deletes directories mid-crawl, and on Windows, where there is no
+watchman and Metro falls back to raw `fs.watch`, that surfaces as an uncaught
+`ENOENT: no such file or directory, watch …/prefab/modules/op-sqlite/libs/…`
+that kills the bundler. `--active-arch-only` alone triggers it: building one ABI
+removes the others while they are being walked.
+
+Nothing under those paths is ever imported by JavaScript — they hold `.so`, `.a`
+and prefab metadata — so excluding them cannot affect resolution, and it
+shortens the crawl. Deleting `GRADLE_OUTPUT` reintroduces a bundler crash that
+looks nothing like a config problem.
+
+**`blockList` must be an array that includes the default.** Assigning a bare
+regex REPLACES React Native's own `/(\\__tests__\\.*)$/`, silently pulling
+`__tests__/` back into the module map. It is derived from
+`defaultConfig.resolver.blockList` rather than hardcoded so a future RN default
+is preserved automatically.
 
 ### Build & tooling gotchas
 - **Manifest changes require a full native rebuild.** Metro fast-refresh will not pick them up. If permission dialogs silently stop appearing after a manifest edit, this is why.

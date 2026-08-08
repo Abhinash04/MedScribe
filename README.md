@@ -129,7 +129,7 @@ Single doctor, no login. Multi-doctor and authentication are Roadmap items, not 
 
 | Tool | Required | Verified working |
 | :-- | :-- | :-- |
-| **Node.js** | ≥ 22.11.0 (enforced by `engines`) | v24.18.0 |
+| **Node.js** | ≥ 22.12.0 (enforced by `engines`) | v24.18.0 |
 | **npm** | Bundled with Node | — |
 | **JDK** | 17 | OpenJDK 17.0.9 |
 | **Android Studio** | Latest stable (for SDK + AVD tooling) | — |
@@ -183,7 +183,7 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator
 
 Restart your terminal, then verify:
 ```bash
-node --version      # ≥ v22.11.0
+node --version      # ≥ v22.12.0
 java -version       # 17.x
 adb --version
 ```
@@ -418,11 +418,11 @@ MedScribe/
 │   │       ├── validators.js
 │   │       └── resolveConflicts.js
 │   ├── specs/                       # TurboModule specs (React Native codegen input)
-│   │   ├── NativePdfExporter.js     #   PDF rendering
-│   │   ├── NativeAudioCue.js        #   Cues + system-tone suppression
-│   │   ├── NativeSharedMic.js       #   Shared microphone + consultation recording files
-│   │   ├── NativeAudioCapture.js    #   Contention spike probe (debug builds only)
-│   │   └── NativeAppConfig.js       #   Build-time configuration
+│   │   ├── NativePdfExporter.ts     #   PDF rendering
+│   │   ├── NativeAudioCue.ts        #   Cues, tone suppression, spoken prompts
+│   │   ├── NativeSharedMic.ts       #   Shared microphone + consultation recording files
+│   │   ├── NativeAudioCapture.ts    #   Contention spike probe (debug builds only)
+│   │   └── NativeAppConfig.ts       #   Build-time configuration
 │   ├── store/
 │   │   ├── useRecordingStore.js     # Zustand recording state
 │   │   └── useReportsStore.js       # Zustand saved-report state
