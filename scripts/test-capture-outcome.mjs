@@ -101,12 +101,6 @@ check('O2.1 every colour token referenced by a style exists', missing, []);
 check('O2.2 the palette was actually read', COLORS.has('primaryAccent'), true);
 check('O2.3 and the type scale', TYPOGRAPHY.has('largeHeading'), true);
 check('O2.4 a wrong name is not in the palette', COLORS.has('primary'), false);
-
-// A failed pass offers Retry, and Retry re-reads the recording that pass made.
-// Two kinds have no recording to re-read, so the button could only fail again:
-// offering it hides the remedy that does work, which is to dictate again. This
-// is the second half of the Add-More-Speech failure - the doctor pressed Retry
-// and watched it fail identically every time.
 check(
   'O3.1 no audio is not retryable',
   isRetryableFailure(ERROR_KIND.NO_AUDIO),
@@ -124,10 +118,14 @@ for (const kind of [
   ERROR_KIND.CLIENT_ERROR,
   ERROR_KIND.MALFORMED,
   ERROR_KIND.EMPTY_TRANSCRIPTION,
-  ERROR_KIND.AUDIO_TOO_LARGE,
 ]) {
   check(`O3.3 ${kind} is worth retrying`, isRetryableFailure(kind), true);
 }
+check(
+  'O3.3b oversized audio is not retryable either',
+  isRetryableFailure(ERROR_KIND.AUDIO_TOO_LARGE),
+  false,
+);
 check('O3.4 no failure means no retry offered', isRetryableFailure(null), false);
 check('O3.5 nor does an empty kind', isRetryableFailure(''), false);
 

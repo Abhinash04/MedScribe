@@ -237,23 +237,23 @@ check('10 invalid timestamp', formatRelativeDateTime(Number.NaN, CLOCK), '');
   const draft = toDraft(extractPatientFields('Complains of fever and cough.'));
   check('E1 extraction ingested two findings', draft.symptoms.value, ['Fever', 'Cough']);
 
-  const added = addListItem(draft, 'symptoms');
-  check('E2 + Add item leaves a row to type into', added.symptoms.value, [
+  const addedItem = addListItem(draft, 'symptoms');
+  check('E2 + Add item leaves a row to type into', addedItem.symptoms.value, [
     'Fever',
     'Cough',
     '',
   ]);
-  check('E3 the row is editable', added.symptoms.value.length, 3);
+  check('E3 the row is editable', addedItem.symptoms.value.length, 3);
 
-  const typed = applyEdit(added, 'symptoms', ['Fever', 'Cough', 'Headache']);
+  const typed = applyEdit(addedItem, 'symptoms', ['Fever', 'Cough', 'Headache']);
   check('E4 typing into the new row works', typed.symptoms.value, [
     'Fever',
     'Cough',
     'Headache',
   ]);
 
-  const cleared = applyEdit(draft, 'symptoms', ['', 'Cough']);
-  check('E5 clearing a row does not delete it', cleared.symptoms.value, ['', 'Cough']);
+  const clearedList = applyEdit(draft, 'symptoms', ['', 'Cough']);
+  check('E5 clearing a row does not delete it', clearedList.symptoms.value, ['', 'Cough']);
 
   const removed = removeListItem(typed, 'symptoms', 2);
   check('E6 remove still works', removed.symptoms.value, ['Fever', 'Cough']);

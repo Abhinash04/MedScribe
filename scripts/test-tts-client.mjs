@@ -79,6 +79,11 @@ for (const [label, body] of [
 }
 
 check(
+  'T2.6a a blank key still finds a later real one',
+  readAudio({ audio: '   ', audioFile: AUDIO }).audioBase64,
+  AUDIO,
+);
+check(
   'T2.6 a data URI is stripped to its payload',
   readAudio({ audio: `data:audio/wav;base64,${AUDIO}` }).audioBase64,
   AUDIO,
@@ -92,7 +97,7 @@ const failures = [
   ['T3.4 no body', fake(200, null), ERROR_KIND.MALFORMED],
   ['T3.5 no audio key', fake(200, { message: 'ok' }), ERROR_KIND.MALFORMED],
   ['T3.6 success false', fake(200, { success: false }), ERROR_KIND.SERVER_ERROR],
-  ['T3.7 empty audio', fake(200, { audio: '   ' }), ERROR_KIND.MALFORMED],
+  ['T3.7 whitespace-only audio', fake(200, { audio: '   ' }), ERROR_KIND.EMPTY_SPEECH],
   ['T3.8 network', fake(0, null, { throws: new Error('ECONNREFUSED') }), ERROR_KIND.NETWORK],
   ['T3.9 timeout', fake(0, null, { throws: new Error('timeout') }), ERROR_KIND.TIMEOUT],
 ];
@@ -143,11 +148,26 @@ for (const [label, override, kind] of guards) {
 {
   const controller = new AbortController();
   controller.abort();
-  const result = await speak(fake(0, null, { throws: new Error('aborted') }), {
-    signal: controller.signal,
-  });
+  // A transport that WOULD succeed, so the assertion is that it is never
+  // reached rather than that it happened to throw.
+  const transport = fake(200, { audio: AUDIO });
+  const result = await speak(transport, { signal: controller.signal });
   check('T5.1 an aborted signal reads as cancelled', result.errorKind, ERROR_KIND.CANCELLED);
+  check('T5.2 and the request is never sent', transport.calls.length, 0);
 }
+
+// A link where base64 was expected. Decoding it yields noise that reaches the
+// player, so it is refused rather than forwarded.
+for (const value of ['https://cdn.example.com/a.wav', 'http://x/y.wav']) {
+  const result = await speak(fake(200, { audio_url: value }));
+  check(`T3.10 "${value}" is refused`, result.errorKind, ERROR_KIND.MALFORMED);
+  check(`T3.10 "${value}" yields no audio`, result.audioBase64, '');
+}
+check(
+  'T3.11 a data URI is still accepted',
+  readAudio({ audio_url: `data:audio/wav;base64,${AUDIO}` }).audioBase64,
+  AUDIO,
+);
 
 // ── 6. The proxy shape ──────────────────────────────────────────────────────
 // Direct mode speaks Anuvadini's contract, proxy mode speaks ours. Asserted on

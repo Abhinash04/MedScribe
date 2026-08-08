@@ -29,6 +29,9 @@ export const destroy = async () => {
   try {
     return await VoiceToText.destroy();
   } finally {
+    // destroy() clears the library's native listener map, so the registrations
+    // this module cached are gone. Nulling it is what lets the next subscribe()
+    // rebuild them instead of short-circuiting on a stale non-null value.
     nativeSubscriptions = null;
   }
 };

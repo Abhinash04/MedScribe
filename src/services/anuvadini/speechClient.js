@@ -65,6 +65,13 @@ export async function synthesize({
     return failed(ERROR_KIND.NO_TEXT);
   }
 
+  // Already cancelled before we started — the caller has moved on, so there is
+  // nothing worth sending. Without this the request goes out and is only then
+  // aborted, which costs a round trip nobody is waiting for.
+  if (signal?.aborted) {
+    return failed(ERROR_KIND.CANCELLED);
+  }
+
   const normalized = normalizeAnuvadiniLanguage(language);
   const config = normalized ? voiceFor(normalized) : null;
   if (!config) {
