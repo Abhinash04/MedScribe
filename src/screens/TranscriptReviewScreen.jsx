@@ -8,12 +8,16 @@ import {
   Text,
   TextInput,
   View,
+  Animated,
+  Easing,
+  Platform,
+  LayoutAnimation,
 } from 'react-native';
-import AppHeader from '../components/AppHeader';
-import MissingFieldsModal from '../components/MissingFieldsModal';
+import Clipboard from '@react-native-clipboard/clipboard';
+import Icon from 'react-native-vector-icons/Feather';
 import RefiningOverlay from '../components/RefiningOverlay';
 import ScreenContainer from '../components/ScreenContainer';
-import SectionTitle from '../components/SectionTitle';
+import MissingFieldsModal from '../components/MissingFieldsModal';
 import TranscriptDiffView from '../components/TranscriptDiffView';
 import { isTranscriptionAvailable } from '../config/features';
 import { refineTranscript } from '../services/transcriptRefinement';
@@ -28,7 +32,7 @@ import useRecordingStore, {
   selectActiveTranscript,
   selectFullTranscript,
 } from '../store/useRecordingStore';
-import { colors, spacing, typography } from '../theme';
+import { colors, spacing } from '../theme';
 import dictationSessionManager from '../services/dictationSessionManager';
 import { isRetryableFailure } from '../services/captureOutcome';
 import { extractForReport } from '../services/extractionService';
@@ -70,11 +74,63 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const chosenRef = useRef(false);
   const [skippedRefinement, setSkippedRefinement] = useState(false);
   const [dismissedAt, setDismissedAt] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.3,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -12,
+          duration: 3500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 3500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [fadeAnim, slideAnim, pulseAnim, floatAnim]);
 
   const beginSubmit = useCallback(() => {
-    if (submittingRef.current) {
-      return false;
-    }
+    if (submittingRef.current) return false;
     submittingRef.current = true;
     setSubmitting(true);
     return true;
@@ -105,9 +161,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const commitEditor = useCallback(
     text => {
-      if (text === viewedText) {
-        return viewedText;
-      }
+      if (text === viewedText) return viewedText;
       if (viewingAi) {
         setAnuvadiniText(text);
       } else {
@@ -120,10 +174,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const showSource = useCallback(
     source => {
-      if (source === viewedSource) {
-        return;
-      }
+      if (source === viewedSource) return;
       commitEditor(editableText);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setViewedSource(source);
     },
     [viewedSource, commitEditor, editableText],
@@ -139,9 +192,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
   }, [navigation, editableText, commitEditor, setStage]);
 
   const handleGenerateReport = useCallback(async () => {
-    if (!beginSubmit()) {
-      return;
-    }
+    if (!beginSubmit()) return;
     try {
       commitEditor(editableText);
       const text = selectActiveTranscript(useRecordingStore.getState());
@@ -236,6 +287,22 @@ const TranscriptReviewScreen = ({ navigation }) => {
     setViewedSource(TRANSCRIPT_SOURCE.ANUVADINI);
   }, [anuvadini, applySource]);
 
+  const handleCopyTranscript = useCallback(() => {
+    if (!editableText) {
+      return;
+    }
+    Clipboard.setString(editableText);
+    setCopied(true);
+  }, [editableText]);
+
+  useEffect(() => {
+    if (!copied) {
+      return undefined;
+    }
+    const timer = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
   const handleSkipRefinement = useCallback(() => {
     chosenRef.current = true;
     setSkippedRefinement(true);
@@ -273,9 +340,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
   }, [blocked]);
 
   const handleReviewFields = useCallback(async () => {
-    if (!beginSubmit()) {
-      return;
-    }
+    if (!beginSubmit()) return;
     try {
       setBlocked(null);
       await stopPrompt();
@@ -296,13 +361,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
   }, [navigation, setStage, beginSubmit, endSubmit]);
 
   const aiStatusLine = () => {
-    if (!isTranscriptionAvailable()) {
-      return 'Not configured in this build';
-    }
+    if (!isTranscriptionAvailable()) return 'Not configured in this build';
     switch (anuvadini.status) {
       case ANUVADINI_STATUS.PENDING:
         return 'Generating…';
       case ANUVADINI_STATUS.READY:
+        if (!hasAiText) return 'Emptied — type here or use the original';
         return aiReady ? 'Ready' : 'Same as original';
       case ANUVADINI_STATUS.FAILED:
         if (anuvadini.error === ERROR_KIND.AUDIO_TOO_LARGE) {
@@ -320,145 +384,247 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const canSelectViewed = viewingAi ? aiReady : true;
   const viewedIsSelected = viewedSource === selectedSource;
 
+  const wordCount = editableText ? editableText.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
+
   return (
     <ScreenContainer style={styles.container}>
-      <AppHeader showBack onBackPress={goBack} title="Transcript Review" />
+      <View style={styles.appBar}>
+        <Pressable
+          onPress={goBack}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Icon name="arrow-left" size={20} color="#0F172A" />
+        </Pressable>
+        <Text style={styles.appBarTitle}>Transcript Review</Text>
+        <View style={styles.appBarRightSpacer} />
+      </View>
 
       <ScrollView
+        style={styles.flexOne}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <SectionTitle
-          title="Review & Edit Transcript"
-          subtitle="Compare both transcriptions, then choose which one the report is built from."
-        />
-
-        <View style={styles.metaRow}>
-          <View style={styles.metaBadge}>
-            <Text style={styles.metaBadgeLabel}>Recording Time</Text>
-            <Text style={styles.metaBadgeValue}>{formatDuration(durationSeconds)}</Text>
-          </View>
-          <View style={styles.metaBadge}>
-            <Text style={styles.metaBadgeLabel}>Report Uses</Text>
-            <Text style={styles.metaBadgeValue}>{LABEL[selectedSource]}</Text>
-          </View>
-        </View>
-
-        <View style={styles.toggleRow}>
-          {[TRANSCRIPT_SOURCE.NATIVE, TRANSCRIPT_SOURCE.ANUVADINI].map(source => {
-            const active = viewedSource === source;
-            return (
-              <Pressable
-                key={source}
-                style={[styles.toggleBtn, active && styles.toggleBtnActive]}
-                onPress={() => showSource(source)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
+        <Animated.View style={[styles.flexOne, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <View style={styles.heroSection}>
+            <View style={styles.heroLeft}>
+              <View style={styles.heroLabelRow} />
+              <Text style={styles.heroTitle}>Review & Edit{'\n'}Transcript</Text>
+              <Text style={styles.heroSubtitle}>
+                Compare both transcriptions, then choose which one the report is built from.
+              </Text>
+            </View>
+            
+            <View style={styles.heroRight}>
+              <Animated.View
+                style={[
+                  styles.illustrationContainer,
+                  { transform: [{ translateY: floatAnim }] },
+                ]}
               >
-                <Text style={[styles.toggleText, active && styles.toggleTextActive]}>
-                  {LABEL[source]}
-                </Text>
-                {source === selectedSource ? (
-                  <Text style={[styles.inUse, active && styles.inUseActive]}>IN USE</Text>
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {showFailureNotice ? (
-          <View style={styles.fallbackNotice}>
-            <Text style={styles.fallbackText}>
-              AI refinement could not be completed — continuing with the original
-              transcription.
-            </Text>
-            <Pressable
-              onPress={() => setDismissedAt(anuvadini.updatedAt)}
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss"
-              hitSlop={8}
-            >
-              <Text style={styles.fallbackDismiss}>✕</Text>
-            </Pressable>
+                <View style={[styles.blob, styles.blobBlue]} />
+                <View style={[styles.blob, styles.blobLavender]} />              
+                <View style={styles.illusDoc}>
+                  <Icon name="file-text" size={28} color="#2F6BFF" />
+                  <View style={styles.illusSparkle}>
+                    <Icon name="star" size={10} color="#FFF" />
+                  </View>
+                </View>
+                <View style={styles.illusWave}>
+                  <Icon name="activity" size={14} color="#8B5CF6" />
+                </View>
+              </Animated.View>
+            </View>
           </View>
-        ) : null}
 
-        {viewingAi ? (
-          <View style={styles.statusRow}>
-            {anuvadini.status === ANUVADINI_STATUS.PENDING ? (
-              <ActivityIndicator size="small" color={colors.secondaryAccent} />
-            ) : null}
-            <Text style={styles.statusText}>{aiStatusLine()}</Text>
-            {anuvadini.status === ANUVADINI_STATUS.FAILED && canRetryRefinement ? (
-              <Pressable onPress={handleRetryRefinement} accessibilityRole="button">
-                <Text style={styles.retry}>Retry</Text>
-              </Pressable>
-            ) : null}
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCard}>
+              <View style={[styles.iconCircle, styles.iconCircleBlue]}>
+                <Icon name="clock" size={18} color="#2F6BFF" />
+              </View>
+              <View style={styles.summaryTextCol}>
+                <Text style={styles.summaryTitle}>Recording Time</Text>
+                <Text style={styles.summaryValue}>{formatDuration(durationSeconds)}</Text>
+              </View>
+            </View>
+            <View style={styles.summaryCard}>
+              <View style={[styles.iconCircle, styles.iconCirclePurple]}>
+                <Icon name="layers" size={18} color="#8B5CF6" />
+              </View>
+              <View style={styles.summaryTextCol}>
+                <Text style={styles.summaryTitle}>Report Uses</Text>
+                <Text style={styles.summaryValue}>{LABEL[selectedSource]}</Text>
+              </View>
+            </View>
           </View>
-        ) : null}
 
-        <View style={styles.editorCard}>
-          <Text style={styles.cardLabel}>
-            {viewingAi ? 'AI TRANSCRIPTION' : 'ORIGINAL TRANSCRIPTION'}
-          </Text>
-          {viewingAi && !hasAiText ? (
-            <Text style={styles.placeholder}>
-              {anuvadini.status === ANUVADINI_STATUS.PENDING
-                ? 'The AI transcription is still being generated. The original transcript is ready to use in the meantime.'
-                : 'No AI transcription for this dictation. The original transcript is unaffected and can still generate the report.'}
-            </Text>
-          ) : (
-            <TextInput
-              style={styles.fullTextInput}
-              multiline
-              value={editableText}
-              onChangeText={setEditableText}
-              placeholder="Dictated text will appear here..."
-              placeholderTextColor={colors.textMuted}
-            />
+          <View style={styles.segmentContainer}>
+            {[TRANSCRIPT_SOURCE.NATIVE, TRANSCRIPT_SOURCE.ANUVADINI].map(source => {
+              const isSelectedTab = viewedSource === source;
+              const isUsed = selectedSource === source;
+              return (
+                <Pressable
+                  key={source}
+                  style={[styles.segmentTab, isSelectedTab && styles.segmentTabActive]}
+                  onPress={() => showSource(source)}
+                >
+                  <View style={styles.segmentTabHeader}>
+                    {source === TRANSCRIPT_SOURCE.ANUVADINI && !isSelectedTab && (
+                      <Icon name="star" size={14} color="#8B5CF6" style={styles.starIconMargin} />
+                    )}
+                    <Text style={[styles.segmentTabText, isSelectedTab && styles.segmentTabTextActive]}>
+                      {LABEL[source]}
+                    </Text>
+                  </View>
+                  {isUsed && (
+                    <Text style={[styles.inUseText, isSelectedTab && styles.inUseTextActive]}>
+                      IN USE
+                    </Text>
+                  )}
+                  {isUsed && isSelectedTab && (
+                    <View style={styles.checkBadge}>
+                      <Icon name="check" size={12} color="#2F6BFF" />
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {showFailureNotice ? (
+            <View style={styles.fallbackNotice}>
+              <Text style={styles.fallbackText}>
+                AI refinement could not be completed — continuing with the
+                original transcription.
+              </Text>
+              <Pressable
+                onPress={() => setDismissedAt(anuvadini.updatedAt)}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss"
+                hitSlop={8}
+              >
+                <Text style={styles.fallbackDismiss}>✕</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {viewingAi && !aiReady && (
+            <View style={styles.statusRow}>
+              {anuvadini.status === ANUVADINI_STATUS.PENDING ? (
+                <ActivityIndicator size="small" color="#2F6BFF" />
+              ) : null}
+              <Text style={styles.statusText}>{aiStatusLine()}</Text>
+              {anuvadini.status === ANUVADINI_STATUS.FAILED && canRetryRefinement ? (
+                <Pressable onPress={handleRetryRefinement} accessibilityRole="button">
+                  <Text style={styles.retry}>Retry</Text>
+                </Pressable>
+              ) : null}
+            </View>
           )}
-        </View>
+          <View style={styles.editorCard}>
+            <View style={styles.editorHeader}>
+              <View style={styles.editorHeaderLeft}>
+                <Icon name="file-text" size={16} color="#2F6BFF" />
+                <Text style={styles.editorHeaderTitle}>
+                  {viewingAi ? 'AI Transcription' : 'Original Transcription'}
+                </Text>
+              </View>
+              {viewedIsSelected && (
+                <View style={styles.selectedBadge}>
+                  <Text style={styles.selectedBadgeText}>Selected</Text>
+                </View>
+              )}
+            </View>
+            {viewingAi && !hasAiText && anuvadini.status !== ANUVADINI_STATUS.READY ? (
+              <Text style={styles.placeholder}>
+                {anuvadini.status === ANUVADINI_STATUS.PENDING
+                  ? 'The AI transcription is still being generated. The original transcript is ready to use in the meantime.'
+                  : 'No AI transcription for this dictation. The original transcript is unaffected and can still generate the report.'}
+              </Text>
+            ) : (
+              <TextInput
+                style={styles.editorInput}
+                multiline
+                value={editableText}
+                onChangeText={setEditableText}
+                placeholder="Dictated text will appear here..."
+                placeholderTextColor="#94A3B8"
+              />
+            )}
 
-        {canSelectViewed && !viewedIsSelected ? (
-          <Pressable
-            style={({ pressed }) => [styles.useBtn, pressed && styles.pressed]}
-            onPress={() => selectForReport(viewedSource)}
-            accessibilityRole="button"
-          >
-            <Text style={styles.useBtnText}>
-              {viewingAi ? 'Use AI Transcription' : 'Use Original Transcription'}
-            </Text>
-          </Pressable>
-        ) : null}
+            <View style={styles.editorToolbar}>
+              <View style={styles.toolbarLeft}>
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                  <Icon name="activity" size={16} color="#2F6BFF" />
+                </Animated.View>
+                <Text style={styles.wordCount}>{wordCount} words</Text>
+              </View>
+              <View style={styles.toolbarRight}>
+                <Pressable
+                  style={styles.toolbarIcon}
+                  onPress={handleCopyTranscript}
+                  disabled={!editableText}
+                  accessibilityRole="button"
+                  accessibilityLabel="Copy the transcript"
+                  accessibilityState={{ disabled: !editableText }}
+                  hitSlop={8}
+                >
+                  <Icon
+                    name={copied ? 'check' : 'copy'}
+                    size={18}
+                    color={editableText ? '#2F6BFF' : '#94A3B8'}
+                  />
+                </Pressable>
+              </View>
+            </View>
+          </View>
 
-        <TranscriptDiffView original={nativeRaw} revised={anuvadini.raw} />
+          {canSelectViewed && !viewedIsSelected ? (
+            <Pressable
+              style={({ pressed }) => [styles.useBtn, pressed && styles.pressed]}
+              onPress={() => selectForReport(viewedSource)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.useBtnText}>
+                {viewingAi ? 'Use AI Transcription' : 'Use Original Transcription'}
+              </Text>
+            </Pressable>
+          ) : null}
+
+          <TranscriptDiffView original={nativeRaw} revised={anuvadini.raw} />
+        </Animated.View>
       </ScrollView>
 
+      {/* Bottom Actions */}
       <View style={styles.footer}>
         <Pressable
           style={({ pressed }) => [
-            styles.button,
-            styles.resumeBtn,
+            styles.addMoreBtn,
             pressed && styles.pressed,
             submitting && styles.disabled,
           ]}
           onPress={handleResumeRecording}
           disabled={submitting}
         >
-          <Text style={styles.resumeBtnText}>+ Add More Speech</Text>
+          <Icon name="plus" size={20} color="#2F6BFF" />
+          <Text style={styles.addMoreBtnText}>Add More Speech</Text>
         </Pressable>
 
         <Pressable
           style={({ pressed }) => [
-            styles.button,
             styles.generateBtn,
-            pressed && styles.pressed,
+            pressed && styles.generateBtnPressed,
             submitting && styles.disabled,
           ]}
           onPress={handleGenerateReport}
           disabled={submitting}
         >
-          <Text style={styles.generateBtnText}>Generate Report ➔</Text>
+          <View style={styles.generateBtnContent}>
+            <Icon name="file-text" size={20} color="#FFF" />
+            <Text style={styles.generateBtnText}>Generate Report</Text>
+          </View>
+          <Icon name="arrow-right" size={20} color="#FFF" />
         </Pressable>
       </View>
 
@@ -479,72 +645,267 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#FAFCFF',
+    flex: 1,
+  },
+  appBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 12 : 24,
+    paddingBottom: 16,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  flexOne: {
+    flex: 1,
+  },
+  appBarRightSpacer: {
+    width: 44,
+  },
+  appBarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0F172A',
   },
   scrollContent: {
-    paddingBottom: spacing.xl,
-    gap: spacing.md,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
   },
-  metaRow: {
+  heroSection: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginVertical: spacing.xs,
-  },
-  metaBadge: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    padding: spacing.md,
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 24,
   },
-  metaBadgeLabel: {
+  heroLeft: {
+    flex: 1,
+  },
+  heroLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  heroLine: {
+    width: 24,
+    height: 2,
+    backgroundColor: '#2F6BFF',
+    marginRight: 8,
+  },
+  heroLabel: {
     fontSize: 12,
-    color: colors.textMuted,
+    fontWeight: '700',
+    color: '#2F6BFF',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
-  metaBadgeValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.primaryAccent,
-    marginTop: 4,
+  heroTitle: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#0F172A',
+    lineHeight: 44,
+    marginBottom: 12,
   },
-  toggleRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+  heroSubtitle: {
+    fontSize: 15,
+    color: '#64748B',
+    lineHeight: 22,
+    maxWidth: '90%',
   },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: spacing.sm,
+  heroRight: {
+    width: 90,
+    height: 90,
+    justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 8,
-    gap: 2,
   },
-  toggleBtnActive: {
-    backgroundColor: colors.primaryAccent,
+  illustrationContainer: {
+    position: 'relative',
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
+  blob: {
+    position: 'absolute',
+    borderRadius: 40,
+    opacity: 0.4,
   },
-  toggleTextActive: {
-    color: colors.onPrimary,
+  blobBlue: {
+    width: 70,
+    height: 70,
+    backgroundColor: '#E0E7FF',
+    top: -5,
+    left: -5,
   },
-  inUse: {
-    fontSize: 9,
+  blobLavender: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#F3E8FF',
+    bottom: -5,
+    right: -10,
+  },
+  illusDoc: {
+    width: 48,
+    height: 60,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 5,
+    zIndex: 2,
+  },
+  illusSparkle: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#2F6BFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFF',
+  },
+  illusWave: {
+    position: 'absolute',
+    bottom: 2,
+    left: -12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 4,
+    zIndex: 3,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 24,
+    marginHorizontal: -16,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 12,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 35,
+    elevation: 4,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  iconCircleBlue: {
+    backgroundColor: '#F0F5FF',
+  },
+  iconCirclePurple: {
+    backgroundColor: '#F3E8FF',
+  },
+  starIconMargin: {
+    marginRight: 4,
+  },
+  summaryTextCol: {
+    flex: 1,
+  },
+  summaryTitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 22,
     fontWeight: '700',
-    letterSpacing: 0.8,
-    color: colors.textMuted,
+    color: '#2F6BFF',
   },
-  inUseActive: {
-    color: colors.onPrimary,
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F5FA',
+    borderRadius: 999,
+    padding: 6,
+    marginBottom: 24,
+    marginHorizontal: -16,
+  },
+  segmentTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentTabActive: {
+    backgroundColor: '#2F6BFF',
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  segmentTabHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  segmentTabText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  segmentTabTextActive: {
+    color: '#FFFFFF',
+  },
+  inUseText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  inUseTextActive: {
+    color: '#E0E7FF',
+  },
+  checkBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    right: 16,
   },
   fallbackNotice: {
     flexDirection: 'row',
@@ -573,93 +934,181 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 8,
+    marginBottom: 16,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.textMuted,
+    color: '#94A3B8',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   retry: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.primaryAccent,
+    color: '#2F6BFF',
   },
   editorCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    padding: spacing.md,
-    minHeight: 200,
+    borderColor: '#E0E7FF',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 35,
+    elevation: 3,
+    marginBottom: 24,
+    marginHorizontal: -16,
   },
-  cardLabel: {
-    fontSize: 11,
+  editorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F7FAFF',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E7FF',
+  },
+  editorHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  editorHeaderTitle: {
+    fontSize: 16,
     fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.8,
-    marginBottom: spacing.xs,
+    color: '#0F172A',
+  },
+  selectedBadge: {
+    backgroundColor: '#34D399',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  selectedBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   placeholder: {
-    ...typography.body,
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  fullTextInput: {
-    ...typography.body,
-    color: colors.textPrimary,
-    minHeight: 160,
-    textAlignVertical: 'top',
+    padding: 24,
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 28,
+    color: '#94A3B8',
+    minHeight: 200,
+  },
+  editorInput: {
+    padding: 24,
+    fontSize: 16,
+    lineHeight: 28,
+    color: '#1E293B',
+    minHeight: 200,
+    textAlignVertical: 'top',
+  },
+  editorToolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  toolbarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  wordCount: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  toolbarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  toolbarIcon: {
+    padding: 4,
   },
   useBtn: {
-    backgroundColor: colors.secondaryAccent,
-    paddingVertical: spacing.md,
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 16,
     borderRadius: 999,
     alignItems: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
+    elevation: 3,
+    marginBottom: 24,
   },
   useBtnText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
-    color: colors.onPrimary,
+    color: '#FFFFFF',
   },
   footer: {
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
+    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+    paddingTop: 16,
+    backgroundColor: '#FAFCFF',
+    gap: 16,
   },
-  button: {
-    paddingVertical: spacing.md,
-    borderRadius: 999,
+  addMoreBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  resumeBtn: {
-    backgroundColor: 'transparent',
+    paddingVertical: 16,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: '#2F6BFF',
+    gap: 8,
+  },
+  addMoreBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2F6BFF',
   },
   generateBtn: {
-    backgroundColor: colors.primaryAccent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#2F6BFF',
+    paddingHorizontal: 24,
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.22,
+    shadowRadius: 40,
+    elevation: 8,
+  },
+  generateBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  generateBtnPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
+  },
+  generateBtnText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   pressed: {
-    opacity: 0.8,
+    opacity: 0.7,
   },
   disabled: {
     opacity: 0.5,
-  },
-  resumeBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  generateBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.onPrimary,
   },
 });
 

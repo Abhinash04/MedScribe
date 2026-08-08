@@ -2,41 +2,64 @@ import { StyleSheet } from 'react-native';
 import colors from './colors';
 
 export const typography = StyleSheet.create({
-  largeHeading: {
-    fontSize: 28,
+  screenTitle: {
+    fontSize: 40,
     fontWeight: '700',
     color: colors.textPrimary,
-    textAlign: 'center',
-    letterSpacing: 0.3,
-    lineHeight: 36,
+    letterSpacing: -0.5,
+  },
+  sectionHeading: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  cardHeading: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+  },
+  body: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: colors.textSecondary,
+    lineHeight: 24,
+  },
+  smallLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textMuted,
+  },
+  statistics: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  // Legacy aliases to prevent breakages, mapped to new values where possible:
+  largeHeading: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
   },
   mediumSubtitle: {
     fontSize: 16,
     fontWeight: '500',
     color: colors.textSecondary,
-    textAlign: 'center',
     lineHeight: 24,
-    letterSpacing: 0.1,
   },
   smallCaption: {
     fontSize: 13,
     fontWeight: '500',
     color: colors.textMuted,
-    textAlign: 'center',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  body: {
-    fontSize: 15,
-    fontWeight: '400',
-    color: colors.textPrimary,
-    lineHeight: 22,
   },
   brandTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.textPrimary,
-    letterSpacing: 0.5,
+    letterSpacing: -0.3,
   },
 });
 

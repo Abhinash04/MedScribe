@@ -351,16 +351,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 999,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 6,
     gap: 6,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   statusPillListening: {
-    borderColor: colors.primaryAccent,
+    shadowColor: colors.success,
   },
   statusPillPaused: {
-    borderColor: colors.secondaryAccent,
+    shadowColor: colors.secondaryAccent,
   },
   statusDot: {
     width: 6,
@@ -369,7 +371,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.textMuted,
   },
   dotListening: {
-    backgroundColor: colors.primaryAccent,
+    backgroundColor: colors.success,
   },
   dotPaused: {
     backgroundColor: colors.secondaryAccent,

@@ -5,9 +5,9 @@ import { spacing, typography } from '../theme';
 const SectionTitle = ({ title, subtitle, style }) => {
   return (
     <View style={[styles.container, style]}>
-      {title ? <Text style={typography.largeHeading}>{title}</Text> : null}
+      {title ? <Text style={[typography.largeHeading, styles.centerText]}>{title}</Text> : null}
       {subtitle ? (
-        <Text style={[typography.mediumSubtitle, styles.subtitle]}>
+        <Text style={[typography.mediumSubtitle, styles.subtitle, styles.centerText]}>
           {subtitle}
         </Text>
       ) : null}
@@ -24,6 +24,9 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: spacing.sm,
     maxWidth: 320,
+  },
+  centerText: {
+    textAlign: 'center',
   },
 });
 

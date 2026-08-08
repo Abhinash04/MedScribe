@@ -10,6 +10,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/Feather';
+import IPCLogo from '../components/IPCLogo';
 import MicGlyph from '../components/MicGlyph';
 import ScreenContainer from '../components/ScreenContainer';
 import { REPORT_STATUS } from '../db/reportsRepository';
@@ -26,25 +29,13 @@ import useReportsStore from '../store/useReportsStore';
 import { colors, spacing, typography } from '../theme';
 import { formatRelativeDateTime } from '../utils/datetime';
 
-/**
- * Doctor dashboard — the launch screen (SRS FR-1).
- *
- * Single doctor, no authentication (deliberate for this phase). Every number on
- * this screen is derived from saved reports; nothing is estimated or invented,
- * because a metric a doctor cannot trace back to a record is worse than no
- * metric at all.
- *
- * The list reads through `useReportsStore`, so no screen touches SQL.
- */
-
 const RECENT_LIMIT = 3;
 
-/** Avatar tints, picked per report so a patient keeps the same colour. */
 const AVATAR_TINTS = [
   { fill: colors.accentSoft, text: colors.secondaryAccent },
   { fill: colors.violetSoft, text: colors.violet },
-  { fill: colors.warningSoft, text: colors.warning },
-  { fill: colors.successSoft, text: colors.success },
+  { fill: colors.warningSoft, text: colors.warningText },
+  { fill: colors.successSoft, text: colors.successText },
 ];
 
 function greetingFor(date) {
@@ -80,20 +71,48 @@ function tintFor(id) {
   return AVATAR_TINTS[sum % AVATAR_TINTS.length];
 }
 
-const StatTile = ({ label, value, tint, accent, glyph }) => (
-  <View style={styles.statTile}>
-    <View style={[styles.statChip, { backgroundColor: tint }]}>
-      <Text style={[styles.statGlyph, { color: accent }]}>{glyph}</Text>
-    </View>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
+const MiniBarChart = ({ color }) => (
+  <View style={styles.miniBarChart}>
+    <View style={[styles.bar, styles.bar1, { backgroundColor: color }]} />
+    <View style={[styles.bar, styles.bar2, { backgroundColor: color }]} />
+    <View style={[styles.bar, styles.bar3, { backgroundColor: color }]} />
+    <View style={[styles.bar, styles.bar4, { backgroundColor: color }]} />
   </View>
 );
 
-const QuickAction = ({ label, glyph, accent, tint, active, onPress }) => (
+const StatTile = ({ label, subLabel, value, tint, accent, glyph = accent, iconName }) => (
+  <View style={styles.statTile}>
+    <View style={styles.statTileHeader}>
+      <View style={[styles.statChip, { backgroundColor: tint }]}>
+        <Icon name={iconName} size={16} color={glyph} />
+      </View>
+      <Text style={styles.statTileLabel}>{label}</Text>
+    </View>
+    <View style={styles.statTileBody}>
+      <View style={styles.statTileTextGroup}>
+        <Text style={styles.statValue}>{value}</Text>
+        <Text style={styles.statSubLabel}>{subLabel}</Text>
+      </View>
+      <MiniBarChart color={accent} />
+    </View>
+  </View>
+);
+
+const QuickAction = ({
+  label,
+  subLabel,
+  iconName,
+  accent,
+  glyph = accent,
+  tint,
+  active,
+  onPress,
+  style,
+}) => (
   <Pressable
     style={({ pressed }) => [
       styles.quickAction,
+      style,
       active && styles.quickActionActive,
       pressed && styles.pressed,
     ]}
@@ -102,10 +121,12 @@ const QuickAction = ({ label, glyph, accent, tint, active, onPress }) => (
     accessibilityLabel={label}
     accessibilityState={{ selected: !!active }}
   >
-    <View style={[styles.quickChip, { backgroundColor: tint }]}>
-      <Text style={[styles.quickGlyph, { color: accent }]}>{glyph}</Text>
+    <View style={[styles.quickChip, { backgroundColor: tint, borderColor: accent }]}>
+      <Icon name={iconName} size={22} color={glyph} />
     </View>
-    <Text style={styles.quickLabel}>{label}</Text>
+    <Text style={styles.quickLabel} numberOfLines={1}>{label}</Text>
+    <Text style={styles.quickSubLabel} numberOfLines={1}>{subLabel}</Text>
+    <View style={[styles.quickIndicator, { backgroundColor: accent }]} />
   </Pressable>
 );
 
@@ -125,15 +146,12 @@ const DashboardScreen = ({ navigation }) => {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
 
-  // Refresh on focus, not just on mount: returning from a save must show it.
   useFocusEffect(
     useCallback(() => {
       loadAll();
     }, [loadAll]),
   );
 
-  // An interrupted consultation is offered here as well as on the recording
-  // screen, because a crash on the report screen leaves nothing else to find.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
@@ -186,9 +204,7 @@ const DashboardScreen = ({ navigation }) => {
   const filtersActive = draftsOnly || query.trim().length > 0;
 
   const handleNewDictation = useCallback(() => {
-    // Explicit reset rather than relying on RecordingScreen clearing on mount.
     resetRecording();
-    // A new consultation must never append onto the previous one's transcript.
     clearRefinementState();
     navigation.navigate('Recording');
   }, [resetRecording, navigation]);
@@ -224,9 +240,6 @@ const DashboardScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             await clearActiveSession(unfinished?.id);
-            // Discarding the only unfinished consultation means no consultation
-            // audio should survive it, and after a restart the path is no
-            // longer known in memory.
             await purgeAbandoned(0);
             clearRefinementState();
             setUnfinished(null);
@@ -255,9 +268,6 @@ const DashboardScreen = ({ navigation }) => {
   );
 
   const handleToggleSearch = useCallback(() => {
-    // Read from the closure rather than nesting setQuery inside the setSearching
-    // updater: React may invoke an updater twice, and a side effect in there
-    // runs twice with it.
     if (searching) {
       setQuery('');
     }
@@ -286,9 +296,8 @@ const DashboardScreen = ({ navigation }) => {
           onPress={() => handleOpen(item.id)}
           onLongPress={() => handleDelete(item)}
           accessibilityRole="button"
-          accessibilityLabel={`Open report for ${
-            item.patientName || 'unnamed patient'
-          }`}
+          accessibilityLabel={`Open report for ${item.patientName || 'unnamed patient'
+            }`}
           accessibilityHint="Long press to delete"
         >
           <View style={[styles.avatar, { backgroundColor: tint.fill }]}>
@@ -323,7 +332,7 @@ const DashboardScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          <Text style={styles.chevron}>›</Text>
+          <Icon name="chevron-right" size={20} color={colors.textMuted} />
         </Pressable>
       );
     },
@@ -342,28 +351,52 @@ const DashboardScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.logoBadge}>
-          <View style={styles.logoCrossVertical} />
-          <View style={styles.logoCrossHorizontal} />
+          <IPCLogo size={42} />
         </View>
       </View>
 
       <Text style={styles.readyLine}>Ready for your next consultation.</Text>
 
       <Pressable
-        style={({ pressed }) => [styles.ctaCard, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.ctaWrapper, pressed && styles.pressed]}
         onPress={handleNewDictation}
         accessibilityRole="button"
         accessibilityLabel="Start new recording"
         accessibilityHint="Opens the dictation screen"
       >
-        <View style={styles.ctaMic}>
-          <MicGlyph size={26} color={colors.onPrimary} />
-        </View>
-        <View style={styles.ctaText}>
-          <Text style={styles.ctaTitle}>Start New Recording</Text>
-          <Text style={styles.ctaSubtitle}>Tap to begin a new dictation</Text>
-        </View>
-        <Text style={styles.ctaChevron}>›</Text>
+        <LinearGradient
+          colors={['#2F6BFF', '#7C4DFF']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.ctaCard}
+        >
+          <View style={styles.waveContainerLeft}>
+            <View style={[styles.waveBar, styles.waveBar8]} />
+            <View style={[styles.waveBar, styles.waveBar16]} />
+            <View style={[styles.waveBar, styles.waveBar12]} />
+            <View style={[styles.waveBar, styles.waveBar20]} />
+          </View>
+          
+          <View style={styles.ctaMic}>
+            <MicGlyph size={28} color="#2F6BFF" />
+          </View>
+          
+          <View style={styles.waveContainerRight}>
+            <View style={[styles.waveBar, styles.waveBar20]} />
+            <View style={[styles.waveBar, styles.waveBar12]} />
+            <View style={[styles.waveBar, styles.waveBar16]} />
+            <View style={[styles.waveBar, styles.waveBar8]} />
+          </View>
+
+          <View style={styles.ctaText}>
+            <Text style={styles.ctaTitle} numberOfLines={1} adjustsFontSizeToFit={true} minimumFontScale={0.8}>Start New Recording</Text>
+            <Text style={styles.ctaSubtitle} numberOfLines={2}>Tap to begin a new dictation</Text>
+          </View>
+          
+          <View style={styles.ctaChevronContainer}>
+            <Text style={styles.ctaChevron}>›</Text>
+          </View>
+        </LinearGradient>
       </Pressable>
 
       {unfinished ? (
@@ -403,86 +436,128 @@ const DashboardScreen = ({ navigation }) => {
         </View>
       ) : null}
 
-      <Text style={styles.sectionTitle}>Overview</Text>
-      <View style={styles.statGrid}>
-        <StatTile
-          label="Total Reports"
-          value={stats.total}
-          glyph="▤"
-          tint={colors.accentSoft}
-          accent={colors.secondaryAccent}
-        />
-        <StatTile
-          label="Today"
-          value={stats.today}
-          glyph="◷"
-          tint={colors.violetSoft}
-          accent={colors.violet}
-        />
-        <StatTile
-          label="Drafts"
-          value={stats.drafts}
-          glyph="✎"
-          tint={colors.warningSoft}
-          accent={colors.warning}
-        />
-        <StatTile
-          label="Finalized"
-          value={stats.final}
-          glyph="✓"
-          tint={colors.successSoft}
-          accent={colors.success}
-        />
+      <View style={styles.overviewContainer}>
+        <View style={styles.overviewHeader}>
+          <View style={styles.overviewHeaderLeft}>
+            <View style={[styles.overviewIconContainer, { backgroundColor: colors.violetSoft }]}>
+               <Icon name="bar-chart-2" size={20} color={colors.violet} />
+            </View>
+            <View style={styles.overviewHeaderText}>
+              <Text style={styles.overviewTitle}>Overview</Text>
+              <Text style={styles.overviewSubtitle}>Quick summary of your reports</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.statGrid}>
+          <StatTile
+            label="Total Reports"
+            subLabel="All time"
+            value={stats.total}
+            iconName="file-text"
+            tint={colors.accentSoft}
+            accent={colors.secondaryAccent}
+          />
+          <StatTile
+            label="Today"
+            subLabel="Generated today"
+            value={stats.today}
+            iconName="clock"
+            tint={colors.violetSoft}
+            accent={colors.violet}
+          />
+          <StatTile
+            label="Drafts"
+            subLabel="Pending reports"
+            value={stats.drafts}
+            iconName="edit-2"
+            tint={colors.warningSoft}
+            accent={colors.warning}
+            glyph={colors.warningText}
+          />
+          <StatTile
+            label="Finalized"
+            subLabel="Completed reports"
+            value={stats.final}
+            iconName="check"
+            tint={colors.successSoft}
+            accent={colors.success}
+            glyph={colors.successText}
+          />
+        </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
+      <View style={styles.quickActionsHeader}>
+        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+        <Pressable
+          onPress={handleShowAll}
+          accessibilityRole="button"
+          accessibilityLabel={showAll ? 'Show recent reports only' : 'View all reports'}
+          hitSlop={8}
+        >
+          <Text style={styles.viewAllTextQuick}>View All ›</Text>
+        </Pressable>
+      </View>
+      
       <View style={styles.quickGrid}>
         <QuickAction
           label="New Consultation"
-          glyph="＋"
-          tint={colors.accentSoft}
+          subLabel="Start a new dictation"
+          iconName="plus"
+          tint={colors.violetSoft}
           accent={colors.secondaryAccent}
           onPress={handleNewDictation}
+          style={styles.quickBorderRight}
         />
         <QuickAction
           label="Search Patients"
-          glyph="⌕"
+          subLabel="Find existing patients"
+          iconName="search"
           tint={colors.violetSoft}
-          accent={colors.violet}
+          accent={colors.secondaryAccent}
           active={searching}
           onPress={handleToggleSearch}
         />
         <QuickAction
           label="Pending Drafts"
-          glyph="!"
+          subLabel="Continue incomplete reports"
+          iconName="alert-circle"
           tint={colors.warningSoft}
           accent={colors.warning}
+            glyph={colors.warningText}
           active={draftsOnly}
           onPress={handleToggleDrafts}
+          style={styles.quickBorderRight}
         />
         {__DEV__ ? (
           <QuickAction
             label="STT Measure"
-            glyph="▤"
+            subLabel="Speech to Text analytics"
+            iconName="file-text"
             tint={colors.successSoft}
             accent={colors.success}
+            glyph={colors.successText}
             onPress={() => navigation.navigate('SttMeasure')}
           />
         ) : null}
         {__DEV__ ? (
           <QuickAction
             label="Mic Spike"
-            glyph="◉"
+            subLabel="Audio quality monitor"
+            iconName="activity"
             tint={colors.warningSoft}
             accent={colors.warning}
+            glyph={colors.warningText}
             onPress={() => navigation.navigate('MicSpike')}
+            style={styles.quickBorderRight}
           />
         ) : null}
         <QuickAction
           label={showAll ? 'Recent Only' : 'All Reports'}
-          glyph="▦"
-          tint={colors.successSoft}
-          accent={colors.success}
+          subLabel="View and manage reports"
+          iconName="folder"
+          tint={colors.infoLight}
+          accent={colors.info}
           active={showAll}
           onPress={handleShowAll}
         />
@@ -564,8 +639,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: FAB_SIZE + spacing.xl,
   },
-
-  // ------------------------------------------------------------- greeting
   greetingRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -599,25 +672,15 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.accentSoft,
-    borderWidth: 1,
-    borderColor: colors.primaryAccent,
+    backgroundColor: colors.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logoCrossVertical: {
-    position: 'absolute',
-    width: 6,
-    height: 24,
-    borderRadius: 3,
-    backgroundColor: colors.secondaryAccent,
-  },
-  logoCrossHorizontal: {
-    position: 'absolute',
-    width: 24,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.secondaryAccent,
+    padding: spacing.xs,
+    shadowColor: colors.primaryAccent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   readyLine: {
     ...typography.body,
@@ -625,57 +688,146 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: spacing.sm,
   },
-
-  // ------------------------------------------------------------------ CTA
+  ctaWrapper: {
+    marginTop: spacing.md,
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 8,
+  },
   ctaCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.primaryAccent,
-    borderRadius: 18,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    elevation: 6,
-    shadowColor: colors.primaryAccent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+  },
+  waveContainerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginRight: 8,
+  },
+  waveContainerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginLeft: 8,
+    marginRight: 8,
+  },
+  waveBar: {
+    width: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 1,
+  },
+  waveBar8: {
+    height: 8,
+  },
+  waveBar12: {
+    height: 12,
+  },
+  waveBar16: {
+    height: 16,
+  },
+  waveBar20: {
+    height: 20,
   },
   ctaMic: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.onPrimarySoft,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   ctaText: {
     flex: 1,
+    marginRight: 6,
   },
   ctaTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: colors.onPrimary,
-    letterSpacing: 0.2,
+    color: '#FFFFFF',
+    letterSpacing: 0.1,
   },
   ctaSubtitle: {
-    fontSize: 13,
-    color: colors.onPrimaryMuted,
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 2,
   },
-  ctaChevron: {
-    fontSize: 26,
-    lineHeight: 28,
-    color: colors.onPrimary,
+  ctaChevronContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  // ---------------------------------------------------------------- stats
+  ctaChevron: {
+    fontSize: 22,
+    lineHeight: 24,
+    color: '#7C4DFF',
+    marginLeft: 2,
+  },
+  overviewContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  overviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+    paddingHorizontal: 4,
+  },
+  overviewHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  overviewHeaderText: {
+    flex: 1,
+  },
+  overviewIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overviewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  overviewSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   sectionTitle: {
     ...typography.body,
     fontSize: 16,
     fontWeight: '700',
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
+    color: '#000000',
   },
   statGrid: {
     flexDirection: 'row',
@@ -684,86 +836,172 @@ const styles = StyleSheet.create({
   },
   statTile: {
     flexGrow: 1,
-    flexBasis: '47%',
-    backgroundColor: colors.surface,
+    flexBasis: '46%',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: colors.border,
     padding: spacing.md,
-    gap: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  statTileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   statChip: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  statGlyph: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-
-  // -------------------------------------------------------- quick actions
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  quickAction: {
-    flexGrow: 1,
-    flexBasis: '47%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-  },
-  quickActionActive: {
-    borderColor: colors.secondaryAccent,
-  },
-  quickChip: {
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickGlyph: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  quickLabel: {
-    flex: 1,
-    fontSize: 12,
+  statTileLabel: {
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textPrimary,
+    flex: 1,
+  },
+  statTileBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  statTileTextGroup: {
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  statSubLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  miniBarChart: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 3,
+    height: 26,
+  },
+  bar: {
+    width: 5,
+    borderRadius: 2.5,
+  },
+  bar1: {
+    height: 8,
+    opacity: 0.3,
+  },
+  bar2: {
+    height: 14,
+    opacity: 0.5,
+  },
+  bar3: {
+    height: 20,
+    opacity: 0.7,
+  },
+  bar4: {
+    height: 26,
+    opacity: 1,
   },
 
-  // ---------------------------------------------------------------- list
+  quickActionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 4,
+  },
+  quickActionsTitle: {
+    ...typography.body,
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    color: '#000000',
+  },
+  viewAllTextQuick: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.secondaryAccent,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingVertical: spacing.md,
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickAction: {
+    width: '50%',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  quickBorderRight: {
+    borderRightWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  quickActionActive: {
+    backgroundColor: colors.primarySoft,
+  },
+  quickChip: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  quickSubLabel: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  quickIndicator: {
+    width: 28,
+    height: 2,
+    borderRadius: 1,
+  },
   search: {
     ...typography.body,
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     marginTop: spacing.md,
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 2,
   },
   listHeaderRow: {
     flexDirection: 'row',
@@ -773,23 +1011,29 @@ const styles = StyleSheet.create({
   reportRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
+    gap: spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
+    borderColor: colors.border,
+    shadowColor: '#2F6BFF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
+    padding: spacing.md,
+    paddingRight: 12,
+    marginBottom: spacing.md,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
@@ -797,19 +1041,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   patientName: {
-    ...typography.body,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
   reportMeta: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textSecondary,
     marginTop: 2,
   },
   statusPill: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
   },
   statusDraft: {
@@ -822,23 +1066,15 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.5,
   },
   statusTextDraft: {
-    color: colors.warning,
+    color: colors.warningText,
   },
   statusTextFinal: {
-    color: colors.success,
+    color: colors.successText,
   },
-  chevron: {
-    fontSize: 22,
-    lineHeight: 24,
-    color: colors.textMuted,
-    paddingHorizontal: 2,
-  },
-
-  // --------------------------------------------------------------- states
   emptyBox: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
@@ -906,8 +1142,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.secondaryAccent,
   },
-
-  // ------------------------------------------------------------------ fab
   fabRow: {
     position: 'absolute',
     left: 0,
