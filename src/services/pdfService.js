@@ -1,4 +1,5 @@
-import { buildReportDocument } from './reportDocument';
+import getIpcReportHtml from '../templates/ipcReportTemplate';
+import { draftValues } from './reportDraft';
 
 /**
  * Isolation layer for the native PDF exporter.
@@ -48,10 +49,9 @@ export function isAvailable() {
  * @returns {Promise<string>} absolute path of the written file
  */
 export async function exportReport(draft, meta = {}) {
-  const document = buildReportDocument(draft, meta);
-  // A single JSON string keeps the codegen spec stable: adding a block type
-  // later needs no change to the native method signature.
-  return nativeModule().exportReport(JSON.stringify(document));
+  const data = draftValues(draft);
+  const htmlContent = getIpcReportHtml(data);
+  return nativeModule().exportReport(htmlContent);
 }
 
 /** Hand a written PDF to the system share sheet (print, mail, save). */

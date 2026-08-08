@@ -272,43 +272,24 @@ class PdfExporterModule(reactContext: ReactApplicationContext) :
 
   // --------------------------------------------------------------- exports
 
-  override fun exportReport(documentJson: String, promise: Promise) {
+  override fun exportReport(htmlContent: String, promise: Promise) {
     try {
-      val document = JSONObject(documentJson)
-      val pages = paginate(buildBlocks(document))
-      val disclaimer = document.optString("disclaimer")
-
-      val pdf = PdfDocument()
-      try {
-        pages.forEachIndexed { index, blocks ->
-          val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, index + 1).create()
-          val page = pdf.startPage(pageInfo)
-          page.canvas.drawColor(Color.WHITE)
-          drawPage(page.canvas, blocks, index + 1, pages.size, disclaimer)
-          pdf.finishPage(page)
-        }
-
-        // App-scoped external storage: shareable through FileProvider and
-        // readable over adb, with no runtime storage permission on any API level.
-        val directory = File(
-          reactApplicationContext.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
-          REPORTS_DIR,
-        )
-        if (!directory.exists() && !directory.mkdirs()) {
-          promise.reject("E_PDF_DIR", "Could not create the reports folder.")
-          return
-        }
-
-        val fileName = document.optString("fileName").ifEmpty { "patient-report.pdf" }
-        val file = File(directory, fileName)
-        FileOutputStream(file).use { stream -> pdf.writeTo(stream) }
-
-        promise.resolve(file.absolutePath)
-      } finally {
-        pdf.close()
+      val directory = File(
+        reactApplicationContext.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
+        REPORTS_DIR,
+      )
+      if (!directory.exists() && !directory.mkdirs()) {
+        promise.reject("E_HTML_DIR", "Could not create the reports folder.")
+        return
       }
+
+      val fileName = "patient-report-" + System.currentTimeMillis() + ".html"
+      val file = File(directory, fileName)
+      FileOutputStream(file).use { stream -> stream.write(htmlContent.toByteArray()) }
+
+      promise.resolve(file.absolutePath)
     } catch (error: Exception) {
-      promise.reject("E_PDF_EXPORT", error.message, error)
+      promise.reject("E_HTML_EXPORT", error.message, error)
     }
   }
 
@@ -316,7 +297,7 @@ class PdfExporterModule(reactContext: ReactApplicationContext) :
     try {
       val file = File(path)
       if (!file.exists()) {
-        promise.reject("E_PDF_MISSING", "The exported file no longer exists.")
+        promise.reject("E_HTML_MISSING", "The exported file no longer exists.")
         return
       }
 
@@ -328,7 +309,7 @@ class PdfExporterModule(reactContext: ReactApplicationContext) :
       )
 
       val send = Intent(Intent.ACTION_SEND).apply {
-        type = "application/pdf"
+        type = if (file.name.endsWith(".html")) "text/html" else "application/pdf"
         putExtra(Intent.EXTRA_STREAM, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
       }
@@ -346,7 +327,7 @@ class PdfExporterModule(reactContext: ReactApplicationContext) :
 
       promise.resolve(true)
     } catch (error: Exception) {
-      promise.reject("E_PDF_SHARE", error.message, error)
+      promise.reject("E_HTML_SHARE", error.message, error)
     }
   }
 }

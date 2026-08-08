@@ -1,50 +1,55 @@
 export const colors = {
-  primaryBackground: '#FAFBFC',
-  background: '#FAFBFC',
-  surface: '#FFFFFF',
-  surfaceSoft: '#F8FAFC',
-  surfaceBorder: '#E5E7EB',
-  border: '#E5E7EB',
-  borderSoft: '#F1F5F9',
+  primaryBackground: '#FFFFFF',
+  background: '#FFFFFF',
+  surface: '#F8FAFF',
+  surfaceSoft: '#F6F3FF',
+  surfaceBorder: '#EAF0FF',
+  border: '#EAF0FF',
+  borderSoft: '#F0F5FF',
   borderStrong: '#CBD5E1',
 
-  primaryAccent: '#2563EB',
+  primaryAccent: '#2F6BFF',
   primaryHover: '#1D4ED8',
   primaryActive: '#1E40AF',
   primaryDisabled: '#93C5FD',
   primaryLight: '#EFF6FF',
+  primarySoft: '#F0F5FF',
 
-  secondaryAccent: '#0284C7',
-  accentGlow: 'rgba(37, 99, 235, 0.15)',
-  accentGlowActive: 'rgba(37, 99, 235, 0.3)',
+  secondaryAccent: '#7C4DFF',
+  accentGlow: 'rgba(47, 107, 255, 0.15)',
+  accentGlowActive: 'rgba(47, 107, 255, 0.3)',
 
-  textPrimary: '#0F172A',
-  textSecondary: '#334155',
-  textMuted: '#64748B',
+  textPrimary: '#16213E',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
   onPrimary: '#FFFFFF',
 
-  success: '#16A34A',
-  successLight: '#F0FDF4',
-  successSoft: 'rgba(22, 163, 74, 0.12)',
+  success: '#22C55E',
+  successLight: '#DFF8EC',
+  successSoft: '#DFF8EC',
 
   warning: '#F59E0B',
-  warningLight: '#FEF3C7',
-  warningSoft: 'rgba(245, 158, 11, 0.12)',
+  warningLight: '#FFFBEB', // Soft Orange
+  warningSoft: '#FFFBEB',
 
   danger: '#DC2626',
   error: '#DC2626',
-  errorLight: '#FEF2F2',
-  errorSoft: 'rgba(220, 38, 38, 0.12)',
+  errorLight: '#FEF2F2', // Soft Red
+  errorSoft: '#FEF2F2',
 
-  info: '#0284C7',
-  infoLight: '#F0F9FF',
+  info: '#2F6BFF',
+  infoLight: '#EAF0FF', // Pastel Blue
 
-  accentSoft: 'rgba(37, 99, 235, 0.12)',
+  accentSoft: 'rgba(47, 107, 255, 0.12)',
   onPrimarySoft: 'rgba(255, 255, 255, 0.18)',
   onPrimaryMuted: 'rgba(255, 255, 255, 0.88)',
-  violet: '#7C3AED',
-  violetSoft: 'rgba(124, 58, 237, 0.12)',
-  overlay: 'rgba(15, 23, 42, 0.65)',
+  
+  violet: '#7C4DFF',
+  violetSoft: '#F6F3FF', // Lavender Surface
+  lavender: '#7C4DFF',
+  lavenderSoft: '#F6F3FF',
+  
+  overlay: 'rgba(22, 33, 62, 0.65)',
 };
 
 export default colors;
