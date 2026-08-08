@@ -1,0 +1,71 @@
+import { ERROR_KIND } from './proxyContract.js';
+
+export const SPEECH_REQUEST_FIELDS = {
+  TEXT: 'text',
+  LANGUAGE: 'lang',
+  VOICE: 'language_voice',
+  GENDER: 'gender',
+};
+
+export const DIRECT_SPEECH_REQUEST_FIELDS = {
+  TEXT: 'text',
+  LANGUAGE: 'lang',
+  VOICE: 'languageVoice',
+  GENDER: 'gender',
+};
+
+const VOICES = {
+  'en-IN': { voice: 'en-IN-PrabhatNeural', gender: 'Female' },
+};
+
+export function voiceFor(normalizedLanguage) {
+  return VOICES[normalizedLanguage] || null;
+}
+
+export function buildSpeechRequestBody(text, normalizedLanguage, config) {
+  return {
+    [SPEECH_REQUEST_FIELDS.TEXT]: text,
+    [SPEECH_REQUEST_FIELDS.LANGUAGE]: normalizedLanguage,
+    [SPEECH_REQUEST_FIELDS.VOICE]: config.voice,
+    [SPEECH_REQUEST_FIELDS.GENDER]: config.gender,
+  };
+}
+
+export function buildDirectSpeechRequestBody(text, normalizedLanguage, config) {
+  return {
+    [DIRECT_SPEECH_REQUEST_FIELDS.TEXT]: text,
+    [DIRECT_SPEECH_REQUEST_FIELDS.LANGUAGE]: normalizedLanguage,
+    [DIRECT_SPEECH_REQUEST_FIELDS.VOICE]: config.voice,
+    [DIRECT_SPEECH_REQUEST_FIELDS.GENDER]: config.gender,
+  };
+}
+
+const AUDIO_KEYS = ['audio', 'audio_url', 'audioFile'];
+
+const firstString = candidates =>
+  candidates.find(value => typeof value === 'string' && value.trim());
+
+export function readAudio(body) {
+  if (!body || typeof body !== 'object') {
+    return { ok: false, errorKind: ERROR_KIND.MALFORMED };
+  }
+  if (body.success === false) {
+    return { ok: false, errorKind: ERROR_KIND.SERVER_ERROR };
+  }
+
+  const found = firstString([
+    ...AUDIO_KEYS.map(key => body[key]),
+    ...AUDIO_KEYS.map(key => body.data?.[key]),
+  ]);
+
+  if (found === undefined) {
+    return { ok: false, errorKind: ERROR_KIND.MALFORMED };
+  }
+
+  const audioBase64 = found.trim().replace(/^data:[^,]*,/, '');
+  if (!audioBase64) {
+    return { ok: false, errorKind: ERROR_KIND.EMPTY_SPEECH };
+  }
+
+  return { ok: true, audioBase64 };
+}
