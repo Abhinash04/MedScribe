@@ -13,13 +13,6 @@ function appConfig() {
   return nativeModule;
 }
 
-/**
- * Build-time configuration, isolated so nothing above this file knows it came
- * from BuildConfig.
- *
- * The token is returned to the caller that needs it and never logged, never
- * put in an error, and never included in the diagnostic dump.
- */
 export function getAnuvadiniToken() {
   const module = appConfig();
   if (!module) {
@@ -32,7 +25,6 @@ export function getAnuvadiniToken() {
   }
 }
 
-/** For the UI, which needs to say "not configured" without seeing the value. */
 export function hasAnuvadiniToken() {
   return getAnuvadiniToken().length > 0;
 }

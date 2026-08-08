@@ -13,15 +13,6 @@ function sharedMic() {
   return nativeModule;
 }
 
-/**
- * Isolation layer over the shared-microphone module.
- *
- * Nothing above this file knows that one AudioRecord is feeding both the
- * recognizer and the recording, exactly as `speechService` hides the vendor
- * recognizer. Every call degrades rather than throws when the module is absent,
- * so a build without it simply reports "unsupported".
- */
-
 export function isAvailable() {
   return !!sharedMic();
 }
@@ -81,13 +72,6 @@ export async function getState() {
   }
 }
 
-/**
- * Recording files.
- *
- * Served by this module, not the capture spike, because the spike is only
- * registered in debug builds — a release APK has to be able to read and delete
- * the consultation it just recorded.
- */
 export async function readCaptureBase64(path, maxBytes) {
   const module = sharedMic();
   if (!module) {
@@ -104,11 +88,6 @@ export async function readCaptureChunkBase64(path, from, to) {
   return module.readCaptureChunkBase64(path, from, to);
 }
 
-/**
- * Snapping is an improvement, not a requirement: a build without the module, or
- * a file the search cannot read, falls back to the planned cut points, which are
- * already inside the ceiling.
- */
 export async function snapChunkBoundaries(path, boundaries, windowBytes) {
   const module = sharedMic();
   if (!module || !path || !Array.isArray(boundaries) || boundaries.length < 2) {

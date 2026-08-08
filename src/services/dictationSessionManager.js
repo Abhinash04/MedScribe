@@ -22,23 +22,9 @@ import useRecordingStore, {
 } from '../store/useRecordingStore';
 import { extractPatientFields } from './extractionService';
 
-/**
- * Dictation Session Manager (Orchestrator).
- *
- * Central orchestrator connecting the Speech Engine, Store, Audio Feedback,
- * Session Persistence, and Live Entity Extraction. UI components interact
- * with this orchestrator.
- */
-
 const SAMPLE_RATE_HZ = 16000;
 const RECOGNITION_LANGUAGE = 'en-IN';
 const SHARED_MIC_POLL_MS = 400;
-
-/**
- * The vendor recognizer reports roughly -2..10 for silence..loud speech, and
- * the visualizer is tuned to that. PCM RMS is 0..32767, so it is mapped onto
- * the same range rather than giving the waveform a scale it cannot draw.
- */
 const rmsToLevel = rms => Math.max(0, Math.min(10, ((rms ?? 0) / 3000) * 10));
 
 class DictationSessionManager {
@@ -50,82 +36,67 @@ class DictationSessionManager {
     this.sharedMicPollId = null;
     this.lastSharedText = '';
     this.passIndex = 0;
-    // The two-second debounce is exactly long enough to lose the last edit to
-    // a process the OS kills while the app sits in the background.
     this.appStateSubscription = AppState.addEventListener('change', state => {
       if (state === 'background' || state === 'inactive') {
         flushPendingSave().catch(() => {});
       }
     });
-    // Patient audio an interrupted app left behind must not accumulate.
     consultationAudio.purgeAbandoned().catch(() => {});
   }
 
-  /**
-   * Starts a new dictation session or begins recording.
-   */
   async startSession() {
     const store = useRecordingStore.getState();
-    // A new session starts from no extraction history, so an identical
-    // transcript in a later consultation is not mistaken for "unchanged".
     this.lastExtractedTranscript = '';
     audioFeedbackService.playStartCue();
     this.startTimer();
     store.setStatus(RECORDING_STATE.LISTENING);
 
-    // One dictation, two outputs: the recognizer produces live text while the
-    // same speech is written to a WAV for the alternative transcription. Whether
-    // the two can share the microphone is a per-device question, so a failure
-    // to start capture is silent — the consultation continues on native alone.
     if (isCaptureEnabled() && (await sharedMic.isSupported())) {
-      // Every recording claims a pass number, not only continuations. A later
-      // pass captures only the new speech, so its transcript extends the
-      // earlier one rather than replacing it, and a Retry of any pass lands
-      // under the same number and replaces its entry instead of duplicating it.
       beginPass();
       await this.startSharedMic(store.sessionId);
     }
   }
 
-  /**
-   * One microphone feeding both the recognizer and the recording.
-   *
-   * Returns whether it took over. When it does, the vendor recognizer must stay
-   * out of the way — a second client would starve this one, which is the
-   * contention the device measurements established.
-   */
   async startSharedMic(sessionId) {
+    this.passIndex += 1;
+    const name = `${sessionId}-${this.passIndex}`;
+
+    const attempt = () =>
+      sharedMic.start(SAMPLE_RATE_HZ, name, RECOGNITION_LANGUAGE, true);
+
     try {
-      // One recording per PASS, not per session. Add More Speech reuses the
-      // session id, so a shared name let a later pass truncate the audio an
-      // earlier failed pass was still holding for Retry.
-      this.passIndex += 1;
-      await sharedMic.start(
-        SAMPLE_RATE_HZ,
-        `${sessionId}-${this.passIndex}`,
-        RECOGNITION_LANGUAGE,
-        true,
-      );
-      this.sharedMicActive = true;
-      this.lastSharedText = '';
-      this.startSharedMicPolling();
-      return true;
+      await attempt();
     } catch (error) {
-      console.warn('[dictationSessionManager] shared mic unavailable:', error?.message);
-      this.sharedMicActive = false;
-      return false;
+      console.warn(
+        '[dictationSessionManager] shared mic start failed, recovering:',
+        error?.message ?? error,
+      );
+      try {
+        await sharedMic.stop();
+      } catch {
+      }
+      try {
+        await attempt();
+      } catch (retryError) {
+        console.warn(
+          '[dictationSessionManager] shared mic unavailable:',
+          retryError?.message ?? retryError,
+        );
+        this.sharedMicActive = false;
+        return false;
+      }
     }
+
+    this.sharedMicActive = true;
+    this.lastSharedText = '';
+    this.startSharedMicPolling();
+    return true;
   }
 
   usesSharedMic() {
     return this.sharedMicActive;
   }
 
-  /**
-   * The module reports state rather than emitting events, so the live
-   * transcript is polled. Partials arrive continuously; a segmented session
-   * delivers its final text only when the audio closes.
-   */
   startSharedMicPolling() {
     this.stopSharedMicPolling();
     this.sharedMicPollId = setInterval(async () => {
@@ -136,8 +107,6 @@ class DictationSessionManager {
       const store = useRecordingStore.getState();
       store.setPartial(state.partial ?? '');
       this.absorbSharedText(state.text);
-      // The visualizer reads the same shared value the vendor recognizer feeds,
-      // so it keeps animating on whichever engine holds the microphone.
       speech.amplitudeShared.value = rmsToLevel(state.lastRms);
     }, SHARED_MIC_POLL_MS);
   }
@@ -149,7 +118,6 @@ class DictationSessionManager {
     }
   }
 
-  /** Appends only what is new, so a poll cannot duplicate an utterance. */
   absorbSharedText(text) {
     const full = (text ?? '').trim();
     if (!full || full === this.lastSharedText) {
@@ -165,9 +133,6 @@ class DictationSessionManager {
     }
   }
 
-  /**
-   * Pauses the active dictation session.
-   */
   async pauseSession() {
     const store = useRecordingStore.getState();
     this.stopTimer();
@@ -190,9 +155,6 @@ class DictationSessionManager {
     this.persistCurrentSession();
   }
 
-  /**
-   * Resumes dictation from a paused state.
-   */
   async resumeSession() {
     const store = useRecordingStore.getState();
     audioFeedbackService.playResumeCue();
@@ -205,9 +167,6 @@ class DictationSessionManager {
     }
   }
 
-  /**
-   * Finalizes and stops the dictation session.
-   */
   async stopSession() {
     const store = useRecordingStore.getState();
     audioFeedbackService.playStopCue();
@@ -220,9 +179,15 @@ class DictationSessionManager {
 
     if (this.sharedMicActive) {
       this.stopSharedMicPolling();
-      // A segmented session delivers its transcript when the audio closes, so
-      // the authoritative text is whatever stop() comes back with.
-      const final = await sharedMic.stop();
+      let final = null;
+      try {
+        final = await sharedMic.stop();
+      } catch (error) {
+        console.warn(
+          '[dictationSessionManager] shared mic stop failed:',
+          error?.message ?? error,
+        );
+      }
       this.sharedMicActive = false;
       if (final) {
         this.absorbSharedText(final.text);
@@ -236,22 +201,14 @@ class DictationSessionManager {
       }
     }
 
-    // Cancel the queued run first: a debounced extraction landing after
-    // clearSession() would repopulate liveExtractedFields for a session that
-    // no longer exists.
     if (this.extractDebounceId) {
       clearTimeout(this.extractDebounceId);
       this.extractDebounceId = null;
     }
-    // Frozen before the review screen can offer an editor, so the comparison
-    // baseline is always the recognizer's own words.
     useRecordingStore.getState().setNativeRaw(selectFullTranscript(useRecordingStore.getState()));
 
     this.runLiveExtraction();
     this.persistCurrentSession();
-
-    // The doctor moves on to the transcript review immediately; the alternative
-    // transcription runs behind them and reports into the store when it lands.
     captured = captured ?? (await consultationAudio.finish());
 
     const outcome = decideCaptureOutcome({
@@ -265,9 +222,6 @@ class DictationSessionManager {
       return;
     }
 
-    // Every other outcome ends the pass explicitly. Returning in silence is what
-    // made a lost "Add More Speech" recording indistinguishable from a
-    // successful one.
     if (outcome === CAPTURE_OUTCOME.NO_AUDIO) {
       useRecordingStore
         .getState()
@@ -286,9 +240,6 @@ class DictationSessionManager {
     }
   }
 
-  /**
-   * Timer management.
-   */
   startTimer() {
     this.stopTimer();
     this.timerId = setInterval(() => {
@@ -306,11 +257,6 @@ class DictationSessionManager {
     }
   }
 
-  /**
-   * Drops every timer this singleton owns. Called from the recording screen's
-   * teardown — the manager outlives the screen, so anything left running here
-   * leaks for the rest of the app's life.
-   */
   dispose() {
     this.stopTimer();
     if (this.extractDebounceId) {
@@ -319,9 +265,6 @@ class DictationSessionManager {
     }
   }
 
-  /**
-   * Handles incoming segment text and triggers debounced persistence and extraction.
-   */
   onSegmentReceived(text, confidence = 1.0) {
     const store = useRecordingStore.getState();
     store.appendSegment({ text, confidence });
@@ -330,9 +273,6 @@ class DictationSessionManager {
     this.scheduleLiveExtraction();
   }
 
-  /**
-   * Debounced background live entity extraction.
-   */
   scheduleLiveExtraction() {
     if (this.extractDebounceId) {
       clearTimeout(this.extractDebounceId);
@@ -346,8 +286,6 @@ class DictationSessionManager {
   runLiveExtraction() {
     try {
       const store = useRecordingStore.getState();
-      // Shared selector rather than a local join, so the live preview and the
-      // report always read the transcript the same way.
       const fullTranscript = selectFullTranscript(store);
       if (!fullTranscript || fullTranscript === this.lastExtractedTranscript) {
         return;
@@ -361,10 +299,6 @@ class DictationSessionManager {
     }
   }
 
-  /**
-   * Persists the whole consultation — transcript, draft, manual edits and the
-   * stage the doctor reached — so recovery can reopen where they left off.
-   */
   persistCurrentSession() {
     const store = useRecordingStore.getState();
     saveSessionDebounced({
@@ -381,20 +315,14 @@ class DictationSessionManager {
     });
   }
 
-  /** Writes now rather than in two seconds — used at stage boundaries. */
   async persistNow() {
     this.persistCurrentSession();
     await flushPendingSave();
   }
 
-  /**
-   * Clears saved session when report generation completes or user discards.
-   */
   async clearSession() {
     const store = useRecordingStore.getState();
     await clearActiveSession(store.sessionId);
-    // The audio a continuation or a part-finished upload would have retried
-    // with is going away, so neither may outlive the consultation.
     clearRefinementState();
     this.passIndex = 0;
     await consultationAudio.discard();
