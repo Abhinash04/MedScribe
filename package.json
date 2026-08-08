@@ -28,6 +28,7 @@
     "test:proxy": "node scripts/test-proxy.mjs",
     "test:tts:prompt": "node scripts/test-tts-prompt.mjs",
     "test:tts:client": "node scripts/test-tts-client.mjs",
+    "test:tts:service": "node scripts/test-tts-prompt-service.mjs",
     "proxy": "node --env-file=server/.env server/index.mjs",
     "start": "react-native start",
     "test": "jest"

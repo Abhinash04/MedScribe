@@ -80,7 +80,7 @@ This matters: **dictation cannot be tested on the Android emulator at all.** See
 
 Both were the same missing capability: nothing scored whether a span looked like the field it was assigned to. One scorer now serves two consumers — rejecting a claim its value contradicts, and promoting unmarked speech the evidence places decisively. Recall is **40/40**, and each precision defect is a named assertion. Details in §5; the reasoning that must not be undone is in §7.
 
-The extraction and report layers are pure and deterministic, so they are measured against fixtures rather than the device. The full automated gate — **19 suites, 1557 assertions**:
+The extraction and report layers are pure and deterministic, so they are measured against fixtures rather than the device. The full automated gate — **22 suites, 1731 assertions**:
 
 | Suite | Assertions | What it guards |
 | :-- | --: | :-- |
@@ -93,16 +93,19 @@ The extraction and report layers are pure and deterministic, so they are measure
 | `npm run test:extraction:cleanup` | **54 / 54** | Conversational scaffolding removed from all eleven fields, and the clinical modifiers that must survive it |
 | `npm run test:report` | **81 / 81** | Draft bookkeeping, the list-typed prescription round-trip and the PDF payload |
 | `npm run test:completeness` | **63 / 63** | The ten mandatory fields, optional remarks, explicit-none history and prescription, and the Add-More-Speech merge |
-| `npm run test:transcripts` | **86 / 86** | Native vs Anuvadini state, raw baselines versus editable drafts, per-pass results, four continuations each landing exactly once, retry replacing a pass rather than duplicating it, an unnumbered result extending rather than replacing, and migration of state saved before passes existed |
-| `npm run test:capture` | **12 / 12** | Every recording pass ends with an explicit verdict — no input combination returns silence — plus a guard that every `colors.*` / `typography.*` a style names actually exists |
+| `npm run test:transcripts` | **103 / 103** | Native vs Anuvadini state, raw baselines versus editable drafts, per-pass results, four continuations each landing exactly once, retry replacing a pass rather than duplicating it, an unnumbered result extending rather than replacing, and migration of state saved before passes existed |
+| `npm run test:capture` | **23 / 23** | Every recording pass ends with an explicit verdict — no input combination returns silence — plus a guard that every `colors.*` / `typography.*` a style names actually exists |
 | `npm run test:diff` | **30 / 30** | "What AI changed": word-level LCS, punctuation and casing normalization, medical substitutions, insertion and deletion |
 | `npm run test:anuvadini` | **78 / 78** | Both transports, request assembly, language normalization, every failure path, no auto-retry, and no audio or token in any result or error |
 | `npm run test:audio` | **89 / 89** | WAV sizing, Base64 growth, the per-request and per-recording ceilings, and chunk plans that are contiguous, disjoint and under the cut |
 | `npm run test:chunks` | **46 / 46** | Chunked upload: sequential order, the ordered join, a mid-pass failure keeping earlier chunks, retry re-sending only what is missing, and a superseded pass applying nothing |
-| `npm run test:proxy` | **77 / 77** | Proxy field translation, Bearer containment, guards before any upstream call, and every error mapping |
+| `npm run test:proxy` | **97 / 97** | Proxy field translation, Bearer containment, guards before any upstream call, and every error mapping |
 | `npm run test:extraction:history` | **68 / 68** | Medical-history aggregation: positive and negative statements combined in dictated order, both orderings, all five retraction cues, restatement dedup, and the denials that must stay out of the field |
-| `npm run test:extraction:residue` | **39 / 39** | Dictated sentences that reach no field, their suggested field, publication only when the doctor keeps it — and the grounding invariant: no word the report prints was left undictated, now asserted over the whole read including promotion |
+| `npm run test:extraction:residue` | **43 / 43** | Dictated sentences that reach no field, their suggested field, publication only when the doctor keeps it — and the grounding invariant: no word the report prints was left undictated, now asserted over the whole read including promotion |
 | `npm run test:extraction:recall` | **119 / 119** | The 40-phrasing recall benchmark against two floors — markers alone (34) and the whole read (40) — every precision defect ever observed, the `auto` flag asserted both ways, and the invariant that no field holds a value its own evidence contradicts |
+| `npm run test:tts:prompt` | **26 / 26** | The spoken missing-field prompt: grammar at every count, the four-field cap and its overflow, and that a field VALUE never reaches the text |
+| `npm run test:tts:client` | **86 / 86** | The speech client: both transports, every response shape and failure path, a URL where base64 was expected refused, and the token in no result or error |
+| `npm run test:tts:service` | **10 / 10** | Prompt ordering: a stop issued during synthesis prevents playback, and the newer request wins — the guard against speaking into a live microphone |
 | `npm run lint` | **0 errors** | — |
 
 Those are **clean-text** numbers. Real dictation adds transcription loss on top — see the dropped-words limitation in §9.
@@ -662,8 +665,11 @@ MedScribe/
 │   │       ├── validators.js            #   reject implausible values
 │   │       └── resolveConflicts.js      #   repeats, self-correction, restatements
 │   ├── specs/
-│   │   ├── NativePdfExporter.ts     # TurboModule spec — codegen input, lint-ignored (§7)
-│   │   └── NativeAudioCue.ts        # TurboModule spec — cues + system-tone suppression
+│   │   ├── NativePdfExporter.ts     # TurboModule spec — codegen input, TypeScript (§7)
+│   │   ├── NativeAudioCue.ts        # TurboModule spec — cues, tone suppression, prompts
+│   │   ├── NativeSharedMic.ts       # TurboModule spec — shared mic + recording files
+│   │   ├── NativeAudioCapture.ts    # TurboModule spec — capture probe, debug only
+│   │   └── NativeAppConfig.ts       # TurboModule spec — build-time configuration
 │   ├── store/
 │   │   ├── useRecordingStore.js     # Zustand: status, segments, partial, duration, live fields
 │   │   └── useReportsStore.js       # Zustand: saved reports, load/save/finalize/remove
@@ -698,7 +704,7 @@ MedScribe/
 > Each item below cost real debugging time. Several look like defects and are not.
 
 ### File extensions
-`.jsx` for any file containing JSX, `.js` for everything else. The project is **100% JavaScript** — TypeScript was removed and `tsconfig.json` deleted. The TS devDependencies (`typescript`, `@types/*`, `@react-native/typescript-config`) remain in `package.json` but are inert; removing them requires an `npm install` and lockfile churn.
+`.jsx` for any file containing JSX, `.js` for everything else. Application code is **JavaScript** — TypeScript was removed and `tsconfig.json` deleted. The single exception is `src/specs/**`, which is TypeScript because React Native codegen requires a typed spec; those five files are codegen input, never application code, and there is still no `tsconfig.json`. The TS devDependencies (`typescript`, `@types/*`, `@react-native/typescript-config`) remain in `package.json` but are inert; removing them requires an `npm install` and lockfile churn.
 
 ### ESLint jest override
 `@react-native`'s ESLint config globs its jest environment as `*.{spec,test}.{js,ts,tsx}` — note the absent `jsx`. Renaming the test file to `.jsx` therefore broke `no-undef` on `test`/`expect`. `.eslintrc.js` carries a local override to restore it. Do not remove it.
