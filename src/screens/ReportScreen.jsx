@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   },
   missingList: {
     ...typography.body,
-    color: colors.warning,
+    color: colors.warningText,
     fontWeight: '600',
   },
   missingHint: {
@@ -664,7 +664,10 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: colors.primaryAccent,
-    height: 56,
+    // minHeight, not height: the label grows with the system font scale, and a
+    // fixed 56 clipped it rather than letting the button grow.
+    minHeight: 56,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xl,
     borderRadius: 999,
     minWidth: 220,

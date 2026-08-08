@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
+import IPCLogo from '../components/IPCLogo';
 import MicGlyph from '../components/MicGlyph';
 import ScreenContainer from '../components/ScreenContainer';
 import { REPORT_STATUS } from '../db/reportsRepository';
@@ -45,8 +46,10 @@ const RECENT_LIMIT = 3;
 const AVATAR_TINTS = [
   { fill: colors.accentSoft, text: colors.secondaryAccent },
   { fill: colors.violetSoft, text: colors.violet },
-  { fill: colors.warningSoft, text: colors.warning },
-  { fill: colors.successSoft, text: colors.success },
+  // The `text` here colours the initials drawn on `fill`, so it needs the
+  // readable tokens rather than the border/fill hues.
+  { fill: colors.warningSoft, text: colors.warningText },
+  { fill: colors.successSoft, text: colors.successText },
 ];
 
 function greetingFor(date) {
@@ -91,11 +94,17 @@ const MiniBarChart = ({ color }) => (
   </View>
 );
 
-const StatTile = ({ label, subLabel, value, tint, accent, iconName }) => (
+/**
+ * `accent` is the vivid hue, correct for borders and solid fills. `glyph` is
+ * what is drawn ON the soft `tint` and therefore needs contrast against it —
+ * the amber and green accents measure barely 2:1 on their own soft fills. It
+ * defaults to `accent`, so only the two palettes that need it pass one.
+ */
+const StatTile = ({ label, subLabel, value, tint, accent, glyph = accent, iconName }) => (
   <View style={styles.statTile}>
     <View style={styles.statTileHeader}>
       <View style={[styles.statChip, { backgroundColor: tint }]}>
-        <Icon name={iconName} size={16} color={accent} />
+        <Icon name={iconName} size={16} color={glyph} />
       </View>
       <Text style={styles.statTileLabel}>{label}</Text>
     </View>
@@ -109,7 +118,17 @@ const StatTile = ({ label, subLabel, value, tint, accent, iconName }) => (
   </View>
 );
 
-const QuickAction = ({ label, subLabel, iconName, accent, tint, active, onPress, style }) => (
+const QuickAction = ({
+  label,
+  subLabel,
+  iconName,
+  accent,
+  glyph = accent,
+  tint,
+  active,
+  onPress,
+  style,
+}) => (
   <Pressable
     style={({ pressed }) => [
       styles.quickAction,
@@ -123,7 +142,7 @@ const QuickAction = ({ label, subLabel, iconName, accent, tint, active, onPress,
     accessibilityState={{ selected: !!active }}
   >
     <View style={[styles.quickChip, { backgroundColor: tint, borderColor: accent }]}>
-      <Icon name={iconName} size={22} color={accent} />
+      <Icon name={iconName} size={22} color={glyph} />
     </View>
     <Text style={styles.quickLabel} numberOfLines={1}>{label}</Text>
     <Text style={styles.quickSubLabel} numberOfLines={1}>{subLabel}</Text>
@@ -363,8 +382,7 @@ const DashboardScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.logoBadge}>
-          <View style={styles.logoCrossVertical} />
-          <View style={styles.logoCrossHorizontal} />
+          <IPCLogo size={42} />
         </View>
       </View>
 
@@ -486,6 +504,7 @@ const DashboardScreen = ({ navigation }) => {
             iconName="edit-2"
             tint={colors.warningSoft}
             accent={colors.warning}
+            glyph={colors.warningText}
           />
           <StatTile
             label="Finalized"
@@ -494,13 +513,21 @@ const DashboardScreen = ({ navigation }) => {
             iconName="check"
             tint={colors.successSoft}
             accent={colors.success}
+            glyph={colors.successText}
           />
         </View>
       </View>
 
       <View style={styles.quickActionsHeader}>
         <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-        <Text style={styles.viewAllTextQuick}>View All ›</Text>
+        <Pressable
+          onPress={handleShowAll}
+          accessibilityRole="button"
+          accessibilityLabel={showAll ? 'Show recent reports only' : 'View all reports'}
+          hitSlop={8}
+        >
+          <Text style={styles.viewAllTextQuick}>View All ›</Text>
+        </Pressable>
       </View>
       
       <View style={styles.quickGrid}>
@@ -528,6 +555,7 @@ const DashboardScreen = ({ navigation }) => {
           iconName="alert-circle"
           tint={colors.warningSoft}
           accent={colors.warning}
+            glyph={colors.warningText}
           active={draftsOnly}
           onPress={handleToggleDrafts}
           style={styles.quickBorderRight}
@@ -539,6 +567,7 @@ const DashboardScreen = ({ navigation }) => {
             iconName="file-text"
             tint={colors.successSoft}
             accent={colors.success}
+            glyph={colors.successText}
             onPress={() => navigation.navigate('SttMeasure')}
           />
         ) : null}
@@ -549,6 +578,7 @@ const DashboardScreen = ({ navigation }) => {
             iconName="activity"
             tint={colors.warningSoft}
             accent={colors.warning}
+            glyph={colors.warningText}
             onPress={() => navigation.navigate('MicSpike')}
             style={styles.quickBorderRight}
           />
@@ -678,20 +708,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logoCrossVertical: {
-    position: 'absolute',
-    width: 6,
-    height: 24,
-    borderRadius: 3,
-    backgroundColor: colors.secondaryAccent,
-  },
-  logoCrossHorizontal: {
-    position: 'absolute',
-    width: 24,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.secondaryAccent,
+    padding: spacing.xs,
+    shadowColor: colors.primaryAccent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   readyLine: {
     ...typography.body,
@@ -1060,10 +1082,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   statusTextDraft: {
-    color: colors.warning,
+    color: colors.warningText,
   },
   statusTextFinal: {
-    color: colors.success,
+    color: colors.successText,
   },
 
   // --------------------------------------------------------------- states

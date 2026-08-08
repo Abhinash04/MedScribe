@@ -14,6 +14,9 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
+// Not react-native's own Clipboard: that one is deprecated and slated for
+// removal, which would turn Copy into a runtime crash rather than a build error.
+import Clipboard from '@react-native-clipboard/clipboard';
 import Icon from 'react-native-vector-icons/Feather';
 import RefiningOverlay from '../components/RefiningOverlay';
 import ScreenContainer from '../components/ScreenContainer';
@@ -86,6 +89,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const chosenRef = useRef(false);
   const [skippedRefinement, setSkippedRefinement] = useState(false);
   const [dismissedAt, setDismissedAt] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -303,6 +307,29 @@ const TranscriptReviewScreen = ({ navigation }) => {
     setViewedSource(TRANSCRIPT_SOURCE.ANUVADINI);
   }, [anuvadini, applySource]);
 
+  /**
+   * Copies whatever transcript is on screen.
+   *
+   * The tick replaces the icon for a moment because a clipboard write is
+   * otherwise completely silent — without it there is no way to tell a
+   * successful copy from a dead button, which is what this control used to be.
+   */
+  const handleCopyTranscript = useCallback(() => {
+    if (!editableText) {
+      return;
+    }
+    Clipboard.setString(editableText);
+    setCopied(true);
+  }, [editableText]);
+
+  useEffect(() => {
+    if (!copied) {
+      return undefined;
+    }
+    const timer = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
   const handleSkipRefinement = useCallback(() => {
     chosenRef.current = true;
     setSkippedRefinement(true);
@@ -366,6 +393,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
       case ANUVADINI_STATUS.PENDING:
         return 'Generating…';
       case ANUVADINI_STATUS.READY:
+        // Reachable: the AI draft is editable, so the doctor can empty it.
+        // "Same as original" would be a lie about a transcript they deleted.
+        if (!hasAiText) return 'Emptied — type here or use the original';
         return aiReady ? 'Ready' : 'Same as original';
       case ANUVADINI_STATUS.FAILED:
         if (anuvadini.error === ERROR_KIND.AUDIO_TOO_LARGE) {
@@ -389,7 +419,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
     <ScreenContainer style={styles.container}>
       {/* Top App Bar */}
       <View style={styles.appBar}>
-        <Pressable onPress={goBack} style={styles.backButton}>
+        <Pressable
+          onPress={goBack}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Icon name="arrow-left" size={20} color="#0F172A" />
         </Pressable>
         <Text style={styles.appBarTitle}>Transcript Review</Text>
@@ -416,7 +451,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
             </View>
             
             <View style={styles.heroRight}>
-              <Animated.View style={styles.illustrationContainer}>
+              <Animated.View
+                style={[
+                  styles.illustrationContainer,
+                  { transform: [{ translateY: floatAnim }] },
+                ]}
+              >
                 {/* Background Blobs */}
                 <View style={[styles.blob, styles.blobBlue]} />
                 <View style={[styles.blob, styles.blobLavender]} />
@@ -508,7 +548,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
             </View>
           ) : null}
 
-          {viewingAi && anuvadini.status !== ANUVADINI_STATUS.READY && (
+          {viewingAi && !aiReady && (
             <View style={styles.statusRow}>
               {anuvadini.status === ANUVADINI_STATUS.PENDING ? (
                 <ActivityIndicator size="small" color="#2F6BFF" />
@@ -538,7 +578,13 @@ const TranscriptReviewScreen = ({ navigation }) => {
               )}
             </View>
 
-            {viewingAi && !hasAiText ? (
+            {/*
+              The placeholder is for "no transcription exists" only. Once one has
+              arrived, the field stays editable even when empty — replacing it
+              with text would strand a doctor who cleared the draft, with no way
+              to type it back.
+            */}
+            {viewingAi && !hasAiText && anuvadini.status !== ANUVADINI_STATUS.READY ? (
               <Text style={styles.placeholder}>
                 {anuvadini.status === ANUVADINI_STATUS.PENDING
                   ? 'The AI transcription is still being generated. The original transcript is ready to use in the meantime.'
@@ -563,11 +609,20 @@ const TranscriptReviewScreen = ({ navigation }) => {
                 <Text style={styles.wordCount}>{wordCount} words</Text>
               </View>
               <View style={styles.toolbarRight}>
-                <Pressable style={styles.toolbarIcon}>
-                  <Icon name="copy" size={18} color="#2F6BFF" />
-                </Pressable>
-                <Pressable style={styles.toolbarIcon}>
-                  <Icon name="edit-2" size={18} color="#2F6BFF" />
+                <Pressable
+                  style={styles.toolbarIcon}
+                  onPress={handleCopyTranscript}
+                  disabled={!editableText}
+                  accessibilityRole="button"
+                  accessibilityLabel="Copy the transcript"
+                  accessibilityState={{ disabled: !editableText }}
+                  hitSlop={8}
+                >
+                  <Icon
+                    name={copied ? 'check' : 'copy'}
+                    size={18}
+                    color={editableText ? '#2F6BFF' : '#94A3B8'}
+                  />
                 </Pressable>
               </View>
             </View>
