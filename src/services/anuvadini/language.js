@@ -1,12 +1,3 @@
-/**
- * Language codes for the transcription request, in one place.
- *
- * The working integration appends "-IN", but that is a convention rather than a
- * rule, so the mapping is explicit: a language that turns out to need a
- * different region tag becomes a data change here instead of a string
- * concatenation scattered through the UI.
- */
-
 const LANGUAGES = {
   en: 'en-IN',
   hi: 'hi-IN',

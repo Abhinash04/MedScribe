@@ -1,19 +1,8 @@
 import { createServer } from 'node:http';
-import { transcribe, UPSTREAM_ERROR } from './anuvadini.mjs';
-
-/**
- * MedScribe transcription proxy.
- *
- * The phone sends Base64 audio and a language; this attaches the Anuvadini
- * credential and forwards it. The credential exists only here, so an APK on a
- * doctor's phone cannot leak it and does not have to be rebuilt to rotate it.
- *
- * Dependency-free on purpose — Node has the HTTP server and fetch it needs.
- */
+import { synthesize, transcribe, UPSTREAM_ERROR } from './anuvadini.mjs';
 
 export const PORT = Number(process.env.PORT || 8787);
 
-/** Base64 for the 120 s capture ceiling is ~5.1 MB; 8 MB leaves headroom. */
 export const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 export const REQUEST_ERROR = {
@@ -22,8 +11,13 @@ export const REQUEST_ERROR = {
   INVALID_JSON: 'invalid_json',
   MISSING_AUDIO: 'missing_audio',
   MISSING_LANGUAGE: 'missing_language',
+  MISSING_TEXT: 'missing_text',
+  MISSING_VOICE: 'missing_voice',
+  INVALID_GENDER: 'invalid_gender',
   TOO_LARGE: 'too_large',
 };
+
+export const MAX_SPEECH_CHARS = 600;
 
 const STATUS_FOR = {
   [UPSTREAM_ERROR.NOT_CONFIGURED]: 503,
@@ -34,6 +28,7 @@ const STATUS_FOR = {
   [UPSTREAM_ERROR.NETWORK]: 502,
   [UPSTREAM_ERROR.MALFORMED]: 502,
   [UPSTREAM_ERROR.EMPTY_TRANSCRIPTION]: 422,
+  [UPSTREAM_ERROR.EMPTY_SPEECH]: 422,
 };
 
 const json = (res, status, body) => {
@@ -45,11 +40,6 @@ const json = (res, status, body) => {
   res.end(payload);
 };
 
-/**
- * Reads the body, refusing anything over the cap without buffering it. A
- * request that is too large is a client bug or an attack; either way the
- * server should not hold it in memory to find out.
- */
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const declared = Number(req.headers['content-length'] || 0);
@@ -75,12 +65,6 @@ function readBody(req) {
   });
 }
 
-/**
- * The request handler, exported so the suite can drive it without a socket.
- *
- * Nothing here logs the audio, the transcript or the credential: the log line
- * is shape and timing only.
- */
 export async function handleVoiceToText(body, deps = {}) {
   if (typeof body?.audio_buffer !== 'string' || !body.audio_buffer) {
     return { status: 400, body: { success: false, error: REQUEST_ERROR.MISSING_AUDIO } };
@@ -105,6 +89,49 @@ export async function handleVoiceToText(body, deps = {}) {
   };
 }
 
+export async function handleTextToSpeech(body, deps = {}) {
+  if (typeof body?.text !== 'string' || !body.text.trim()) {
+    return { status: 400, body: { success: false, error: REQUEST_ERROR.MISSING_TEXT } };
+  }
+  if (body.text.length > MAX_SPEECH_CHARS) {
+    return { status: 413, body: { success: false, error: REQUEST_ERROR.TOO_LARGE } };
+  }
+  if (typeof body?.lang !== 'string' || !body.lang) {
+    return { status: 400, body: { success: false, error: REQUEST_ERROR.MISSING_LANGUAGE } };
+  }
+  if (typeof body?.language_voice !== 'string' || !body.language_voice) {
+    return { status: 400, body: { success: false, error: REQUEST_ERROR.MISSING_VOICE } };
+  }
+  if (body.gender !== undefined && typeof body.gender !== 'string') {
+    return { status: 400, body: { success: false, error: REQUEST_ERROR.INVALID_GENDER } };
+  }
+
+  const result = await synthesize(
+    {
+      text: body.text,
+      lang: body.lang,
+      languageVoice: body.language_voice,
+      gender: body.gender || 'Female',
+    },
+    deps,
+  );
+
+  if (result.ok) {
+    return { status: 200, body: { success: true, audio: result.audio }, ms: result.ms };
+  }
+
+  return {
+    status: STATUS_FOR[result.error] ?? 502,
+    body: { success: false, error: result.error },
+    ms: result.ms,
+  };
+}
+
+const ROUTES = {
+  '/voice-to-text': { handle: handleVoiceToText },
+  '/text-to-speech': { handle: handleTextToSpeech },
+};
+
 export function createProxyServer(deps = {}) {
   return createServer(async (req, res) => {
     const startedAt = Date.now();
@@ -115,7 +142,8 @@ export function createProxyServer(deps = {}) {
       return;
     }
 
-    if (url !== '/voice-to-text') {
+    const route = ROUTES[url];
+    if (!route) {
       json(res, 404, { success: false, error: REQUEST_ERROR.NOT_FOUND });
       return;
     }
@@ -145,11 +173,11 @@ export function createProxyServer(deps = {}) {
       return;
     }
 
-    const result = await handleVoiceToText(parsed, deps);
+    const result = await route.handle(parsed, deps);
     json(res, result.status, result.body);
 
     console.log(
-      `[proxy] POST /voice-to-text ${result.status} ${raw.length}B upstream=${result.ms ?? 0}ms total=${Date.now() - startedAt}ms`,
+      `[proxy] POST ${url} ${result.status} ${raw.length}B upstream=${result.ms ?? 0}ms total=${Date.now() - startedAt}ms`,
     );
   });
 }

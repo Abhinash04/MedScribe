@@ -1,21 +1,8 @@
-/**
- * The MedScribe app ↔ MedScribe proxy contract.
- *
- * Deliberately says nothing about Anuvadini itself: the proxy owns the
- * credential, the header and the upstream field names, and the phone must not
- * be able to reach that service directly.
- *
- *   POST /voice-to-text
- *   { "audio_buffer": "<base64>", "audio_language": "en-IN" }
- *   -> { "success": true, "transcription": "..." }
- */
-
 export const REQUEST_FIELDS = {
   AUDIO: 'audio_buffer',
   LANGUAGE: 'audio_language',
 };
 
-/** Anuvadini's own field names, used only when the app calls it directly. */
 export const DIRECT_REQUEST_FIELDS = {
   AUDIO: 'audioBuffer',
   LANGUAGE: 'audioLanguage',
@@ -33,6 +20,8 @@ export const ERROR_KIND = {
   SERVER_ERROR: 'server_error',
   MALFORMED: 'malformed',
   EMPTY_TRANSCRIPTION: 'empty_transcription',
+  NO_TEXT: 'no_text',
+  EMPTY_SPEECH: 'empty_speech',
 };
 
 export function buildRequestBody(audioBase64, normalizedLanguage) {
@@ -49,7 +38,6 @@ export function buildDirectRequestBody(audioBase64, normalizedLanguage) {
   };
 }
 
-/** Reads the transcript out of a proxy response, or says why it could not. */
 export function readTranscription(body) {
   if (!body || typeof body !== 'object') {
     return { ok: false, errorKind: ERROR_KIND.MALFORMED };

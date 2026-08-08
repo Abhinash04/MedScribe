@@ -40,21 +40,11 @@ export function isAvailable() {
     return false;
   }
 }
-
-/**
- * Render a draft to a PDF on device storage.
- *
- * @param {Object} draft  editable draft (see reportDraft.js)
- * @param {{createdAt?: number, status?: string}} [meta]
- * @returns {Promise<string>} absolute path of the written file
- */
 export async function exportReport(draft, meta = {}) {
   const data = draftValues(draft);
   const htmlContent = getIpcReportHtml(data);
   return nativeModule().exportReport(htmlContent);
 }
-
-/** Hand a written PDF to the system share sheet (print, mail, save). */
 export async function shareReport(path) {
   return nativeModule().shareReport(path);
 }

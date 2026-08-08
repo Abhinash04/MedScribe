@@ -32,7 +32,6 @@ export const AUDIO_SOURCES = {
   CAMCORDER: 'camcorder',
 };
 
-/** Where the WAV is written. Consultation audio is patient data. */
 export const CAPTURE_SCOPE = {
   SPIKE: 'spike',
   CONSULTATION: 'consultation',
@@ -50,8 +49,6 @@ export async function startCapture(
   if (!module) {
     throw new Error('AudioCapture module is not in this build. Rebuild natively.');
   }
-  // The native side falls back to MIC for anything it does not recognise, which
-  // would silently invalidate a spike phase measuring a different source.
   if (!SUPPORTED_SOURCES.has(source)) {
     throw new Error(`Unknown audio source: ${source}`);
   }

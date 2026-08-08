@@ -8,6 +8,7 @@ import {
   normalizeAnuvadini,
   emptyAnuvadini,
   markPending,
+  shouldAutoSelectAi,
   switchSource,
 } from '../src/services/consultationTranscripts.js';
 import { summarizeChanges } from '../src/services/transcriptDiff.js';
@@ -368,5 +369,60 @@ check('T14.8 and raw carries both', legacyContinued.raw, 'Pass one text.\nPass t
 
 check('T14.9 empty state has no passes', normalizeAnuvadini(null).passes, []);
 check('T14.10 and reports pass one next', nextPassIndex(null), 1);
+
+// The rule that replaces "only an explicit action changes the source". The
+// automatic switch is allowed exactly once, before the doctor can have touched
+// anything, and never after they have chosen for themselves.
+{
+  const NATIVE_TEXT = 'Patient has fever and caugh.';
+  const refined = applyResult(emptyAnuvadini(), {
+    ok: true,
+    text: 'Patient has fever and cough.',
+  });
+  const base = { nativeText: NATIVE_TEXT, anuvadini: refined, source: TRANSCRIPT_SOURCE.NATIVE };
+
+  check('T15.1 a ready, different transcript is taken automatically',
+    shouldAutoSelectAi({ ...base, chosen: false }), true);
+
+  check('T15.2 never while it is still being generated',
+    shouldAutoSelectAi({ ...base, anuvadini: markPending(emptyAnuvadini()), chosen: false }), false);
+
+  check('T15.3 never after a failure',
+    shouldAutoSelectAi({
+      ...base,
+      anuvadini: applyResult(markPending(emptyAnuvadini()), { ok: false, errorKind: ERROR_KIND.NETWORK }),
+      chosen: false,
+    }), false);
+
+  check('T15.4 never when the refinement is empty',
+    shouldAutoSelectAi({ ...base, anuvadini: emptyAnuvadini(), chosen: false }), false);
+
+  check('T15.5 never when it says the same as the recognizer',
+    shouldAutoSelectAi({
+      ...base,
+      anuvadini: applyResult(emptyAnuvadini(), { ok: true, text: NATIVE_TEXT }),
+      chosen: false,
+    }), false);
+
+  // The load-bearing pair: an explicit choice, either way, ends the automation.
+  check('T15.6 never once the doctor has chosen',
+    shouldAutoSelectAi({ ...base, chosen: true }), false);
+
+  check('T15.7 including when they chose to stay on the original',
+    shouldAutoSelectAi({ ...base, chosen: true, source: TRANSCRIPT_SOURCE.NATIVE }), false);
+
+  // No latch is needed: acting on it moves the source, which closes the rule.
+  check('T15.8 does not fire again once AI is already active',
+    shouldAutoSelectAi({ ...base, source: TRANSCRIPT_SOURCE.ANUVADINI, chosen: false }), false);
+
+  // A continuation lands a second pass. It must not re-open the decision.
+  const continued = applyResult(markPending(refined), { ok: true, text: 'And a headache.' }, { passIndex: 2 });
+  check('T15.9 a later pass cannot override an explicit choice',
+    shouldAutoSelectAi({ nativeText: NATIVE_TEXT, anuvadini: continued, source: TRANSCRIPT_SOURCE.NATIVE, chosen: true }),
+    false);
+  check('T15.10 but still applies if nothing was ever chosen',
+    shouldAutoSelectAi({ nativeText: NATIVE_TEXT, anuvadini: continued, source: TRANSCRIPT_SOURCE.NATIVE, chosen: false }),
+    true);
+}
 
 report();

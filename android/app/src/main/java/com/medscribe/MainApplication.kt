@@ -19,21 +19,10 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // App-local modules are never autolinked — this one renders patient reports to PDF. See android/app/src/main/java/com/medscribe/pdf.
           add(PdfExporterPackage())
-          // Plays the one dictation cue and mutes the system recognizer's
-          // per-utterance tones. See android/app/src/main/java/com/medscribe/audio.
           add(AudioCuePackage())
-          // Owns the microphone for a consultation and feeds the recognizer
-          // through a pipe, so one dictation yields both a live transcript and
-          // the recording the second transcription needs.
           add(SharedMicPackage())
-          // Build-time configuration the app must not carry in committed
-          // JavaScript. See android/app/build.gradle.
           add(AppConfigPackage())
-          // Phase 1 spike: concurrent PCM capture probe. Debug only — a
-          // microphone-capture module has no business in a build handed to a
-          // doctor, and the screens that drive it are already __DEV__ gated.
           if (BuildConfig.DEBUG) {
             add(AudioCapturePackage())
           }

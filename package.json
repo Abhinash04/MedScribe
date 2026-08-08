@@ -26,6 +26,9 @@
     "test:chunks": "node scripts/test-chunked-upload.mjs",
     "test:diff": "node scripts/test-transcript-diff.mjs",
     "test:proxy": "node scripts/test-proxy.mjs",
+    "test:tts:prompt": "node scripts/test-tts-prompt.mjs",
+    "test:tts:client": "node scripts/test-tts-client.mjs",
+    "test:tts:service": "node scripts/test-tts-prompt-service.mjs",
     "proxy": "node --env-file=server/.env server/index.mjs",
     "start": "react-native start",
     "test": "jest"
@@ -81,6 +84,6 @@
     }
   },
   "engines": {
-    "node": ">= 22.11.0"
+    "node": ">= 22.12.0"
   }
 }

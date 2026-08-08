@@ -1,24 +1,11 @@
 import { summaryFrom } from '../services/reportDraft';
 import { getDb } from './database';
 
-/**
- * The only module in the app that writes SQL.
- *
- * Callers pass and receive plain objects — no stringified columns, no row
- * shapes, no `snake_case` leaking upward. Replacing SQLite with a cloud or EHR
- * backend later means rewriting this file and nothing else.
- */
-
 export const REPORT_STATUS = {
   DRAFT: 'draft',
   FINAL: 'final',
 };
 
-/**
- * Report ids are generated here rather than by AUTOINCREMENT so they stay
- * unique across devices — a prerequisite for the cloud sync in SRS §8.
- * `crypto.randomUUID` is deliberately not used: it is not guaranteed on Hermes.
- */
 function makeId() {
   const random = Math.random().toString(36).slice(2, 10);
   return `rpt_${Date.now().toString(36)}_${random}`;
@@ -36,7 +23,6 @@ function parseJson(raw, fallback, contextName) {
   }
 }
 
-/** Row -> the summary the dashboard lists. No JSON parsing. */
 function toSummary(row) {
   return {
     id: row.id,
@@ -48,7 +34,6 @@ function toSummary(row) {
   };
 }
 
-/** Row -> the full report the report screen edits. */
 function toReport(row) {
   return {
     ...toSummary(row),
@@ -58,7 +43,6 @@ function toReport(row) {
   };
 }
 
-/** All saved reports, newest first. */
 export async function listReports() {
   const db = getDb();
   const { rows } = await db.execute(
@@ -69,20 +53,12 @@ export async function listReports() {
   return (rows ?? []).map(toSummary);
 }
 
-/** One report with its transcript and both value sets, or null. */
 export async function getReport(id) {
   const db = getDb();
   const { rows } = await db.execute('SELECT * FROM reports WHERE id = ?;', [id]);
   const row = rows?.[0];
   return row ? toReport(row) : null;
 }
-
-/**
- * Insert a new report.
- *
- * @param {{transcript: string, extracted: Object, edited: Object, status?: string}} report
- * @returns {Promise<string>} the new report id
- */
 export async function createReport({
   transcript,
   extracted,
@@ -115,12 +91,6 @@ export async function createReport({
   return id;
 }
 
-/**
- * Update the doctor's values, and optionally the status, on an existing report.
- *
- * The extraction and the transcript are never rewritten — they are the record
- * of what was actually dictated.
- */
 export async function updateReport(id, { edited, status }) {
   const db = getDb();
   const now = Date.now();
@@ -153,7 +123,6 @@ export async function updateReport(id, { edited, status }) {
   return now;
 }
 
-/** Move a report between draft and final without touching its values. */
 export async function setStatus(id, status) {
   const db = getDb();
   const now = Date.now();
@@ -172,7 +141,6 @@ export async function deleteReport(id) {
   await db.execute('DELETE FROM reports WHERE id = ?;', [id]);
 }
 
-/** Used by the dashboard's empty state to tell "none yet" from "not loaded". */
 export async function countReports() {
   const db = getDb();
   const { rows } = await db.execute('SELECT COUNT(*) AS total FROM reports;');

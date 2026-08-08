@@ -4,7 +4,9 @@ import path from 'node:path';
 import {
   CAPTURE_OUTCOME,
   decideCaptureOutcome,
+  isRetryableFailure,
 } from '../src/services/captureOutcome.js';
+import { ERROR_KIND } from '../src/services/anuvadini/proxyContract.js';
 
 import { check, report } from './lib/fixture-harness.mjs';
 
@@ -99,5 +101,32 @@ check('O2.1 every colour token referenced by a style exists', missing, []);
 check('O2.2 the palette was actually read', COLORS.has('primaryAccent'), true);
 check('O2.3 and the type scale', TYPOGRAPHY.has('largeHeading'), true);
 check('O2.4 a wrong name is not in the palette', COLORS.has('primary'), false);
+check(
+  'O3.1 no audio is not retryable',
+  isRetryableFailure(ERROR_KIND.NO_AUDIO),
+  false,
+);
+check(
+  'O3.2 an unconfigured build is not retryable',
+  isRetryableFailure(ERROR_KIND.NOT_CONFIGURED),
+  false,
+);
+for (const kind of [
+  ERROR_KIND.NETWORK,
+  ERROR_KIND.TIMEOUT,
+  ERROR_KIND.SERVER_ERROR,
+  ERROR_KIND.CLIENT_ERROR,
+  ERROR_KIND.MALFORMED,
+  ERROR_KIND.EMPTY_TRANSCRIPTION,
+]) {
+  check(`O3.3 ${kind} is worth retrying`, isRetryableFailure(kind), true);
+}
+check(
+  'O3.3b oversized audio is not retryable either',
+  isRetryableFailure(ERROR_KIND.AUDIO_TOO_LARGE),
+  false,
+);
+check('O3.4 no failure means no retry offered', isRetryableFailure(null), false);
+check('O3.5 nor does an empty kind', isRetryableFailure(''), false);
 
 report();

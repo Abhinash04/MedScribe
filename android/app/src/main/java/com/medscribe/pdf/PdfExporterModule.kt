@@ -19,34 +19,19 @@ import org.json.JSONObject
 
 const val PDF_EXPORTER_NAME = "PdfExporter"
 
-/**
- * Renders a patient report to a PDF using the platform's own PdfDocument.
- *
- * Written in-app rather than pulled from a library on purpose: no maintained
- * React Native PDF *generator* currently supports the New Architecture, and an
- * abandoned dependency in the export path of a medical record is a liability.
- *
- * The module knows nothing about patient fields. It draws whatever labelled
- * blocks the JSON payload contains, in order, so adding a report field is a
- * JavaScript change only (see `reportDocument.js`).
- */
 class PdfExporterModule(reactContext: ReactApplicationContext) :
   NativePdfExporterSpec(reactContext) {
 
   private companion object {
-    // A4 at 72 dpi, the unit PdfDocument works in.
     const val PAGE_WIDTH = 595
     const val PAGE_HEIGHT = 842
     const val MARGIN = 44f
     const val FOOTER_HEIGHT = 56f
     const val LABEL_COLUMN = 150f
-
     const val REPORTS_DIR = "MedScribe"
   }
 
   private val contentWidth = PAGE_WIDTH - (MARGIN * 2)
-
-  // ---------------------------------------------------------------- paints
 
   private val titlePaint = TextPaint().apply {
     isAntiAlias = true
@@ -91,18 +76,11 @@ class PdfExporterModule(reactContext: ReactApplicationContext) :
     textSize = 8f
   }
 
-  // ---------------------------------------------------------------- layout
-
-  /**
-   * One drawable run of text. Pagination walks these, so a long address or a
-   * twelve-item symptom list flows onto the next page instead of being clipped.
-   */
   private class Block(
     val layout: StaticLayout,
     val x: Float,
     val spaceBefore: Float,
     val spaceAfter: Float,
-    /** A heading must not be stranded at the foot of a page. */
     val keepWithNext: Boolean = false,
     val rowLabel: StaticLayout? = null,
   ) {
@@ -196,7 +174,6 @@ class PdfExporterModule(reactContext: ReactApplicationContext) :
     return blocks
   }
 
-  /** Split the blocks into pages before drawing, so footers can say "of N". */
   private fun paginate(blocks: List<Block>): List<List<Block>> {
     val pages = mutableListOf<List<Block>>()
     var page = mutableListOf<Block>()
@@ -319,8 +296,6 @@ class PdfExporterModule(reactContext: ReactApplicationContext) :
       if (activity != null) {
         activity.startActivity(chooser)
       } else {
-        // No activity when the app is backgrounded mid-export; the chooser
-        // still needs a task of its own in that case.
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)
       }

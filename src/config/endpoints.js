@@ -27,6 +27,16 @@ export const ANUVADINI_STT_URL =
   'https://anuvadini-services.aicte-india.org/api/voice-to-text';
 
 /**
+ * Speech synthesis, on the same host and behind the same credential.
+ *
+ * Sharing `resolveTransport` with transcription is deliberate: a build that
+ * cannot transcribe cannot speak either, and one switch moves both to the
+ * proxy.
+ */
+export const ANUVADINI_TTS_URL =
+  'https://anuvadini-services.aicte-india.org/api/text-to-speech';
+
+/**
  * Our own proxy, for local development and a future production deployment.
  * Only consulted when the transport is PROXY, so this can hold a localhost
  * default without ever affecting a direct-mode build.
@@ -37,8 +47,16 @@ export const MEDSCRIBE_PROXY_BASE_URL = isDevBuild ? 'http://localhost:8787' : '
 
 export const VOICE_TO_TEXT_PATH = '/voice-to-text';
 
+export const TEXT_TO_SPEECH_PATH = '/text-to-speech';
+
+const proxyUrl = path => `${MEDSCRIBE_PROXY_BASE_URL.replace(/\/+$/, '')}${path}`;
+
 export function proxyVoiceToTextUrl() {
-  return `${MEDSCRIBE_PROXY_BASE_URL.replace(/\/+$/, '')}${VOICE_TO_TEXT_PATH}`;
+  return proxyUrl(VOICE_TO_TEXT_PATH);
+}
+
+export function proxyTextToSpeechUrl() {
+  return proxyUrl(TEXT_TO_SPEECH_PATH);
 }
 
 /**
