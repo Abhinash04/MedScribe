@@ -1,21 +1,25 @@
 module.exports = {
   root: true,
   extends: '@react-native',
-  ignorePatterns: [
-    // Node-only test harness — not React Native app code, and the RN parser
-    // preset cannot parse plain ESM .mjs. Verified by `npm run test:extraction`.
-    'scripts/**/*.mjs',
-    // Flow TurboModule specs, validated by React Native codegen at build time
-    // (see the generated NativePdfExporterSpec.java). hermes-eslint is not
-    // installed, so .js falls back to @babel/eslint-parser, whose scope
-    // analysis has no visitor keys for the Flow `interface` node and dies with
-    // "Cannot read properties of undefined (reading 'forEach')".
-    'src/specs/**',
-  ],
   overrides: [
     {
-      // @react-native's jest override only globs {js,ts,tsx}; this project
-      // uses .jsx for JSX files, so test globals need declaring here.
+      // @react-native's config globs *.js, *.jsx, *.ts and *.tsx — never *.mjs —
+      // so none of its parser settings reach the proxy or the fixture suites.
+      // ESLint then falls back to espree at the ES2015 default, which parses
+      // arrow functions but rejects `async function` with a bare
+      // "Unexpected token function". Declaring the parser options here is what
+      // makes plain ESM linted rather than merely skipped.
+      files: ['**/*.mjs'],
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+      env: {
+        node: true,
+        es2022: true,
+      },
+    },
+    {
       files: ['**/__tests__/**/*.jsx', '*.{spec,test}.jsx'],
       env: {
         jest: true,

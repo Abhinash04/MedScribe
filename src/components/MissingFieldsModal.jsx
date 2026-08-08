@@ -2,12 +2,19 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
+/**
+ * `onReplay` is optional on purpose. The spoken prompt belongs to the point
+ * where a dictation has just been processed, so only the transcript-review
+ * instance passes it; the Finalize/Export instance stays silent and renders no
+ * control for it.
+ */
 const MissingFieldsModal = ({
   visible,
   missing = [],
   invalid = [],
   onAddSpeech,
   onReviewFields,
+  onReplay,
   onDismiss,
 }) => {
   const total = missing.length + invalid.length;
@@ -65,6 +72,18 @@ const MissingFieldsModal = ({
             >
               <Text style={styles.secondaryText}>Review Fields</Text>
             </Pressable>
+
+            {onReplay ? (
+              <Pressable
+                style={({ pressed }) => [styles.replay, pressed && styles.pressed]}
+                onPress={onReplay}
+                accessibilityRole="button"
+                accessibilityLabel="Read the missing details aloud again"
+                hitSlop={8}
+              >
+                <Text style={styles.replayText}>🔊 Read aloud again</Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
       </View>
@@ -148,6 +167,16 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
+  },
+  replay: {
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  replayText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.secondaryAccent,
   },
   primaryText: {
     fontSize: 15,

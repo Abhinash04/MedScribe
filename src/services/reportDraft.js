@@ -6,14 +6,6 @@ const LIST_FIELDS = new Set(
 
 export const NOTES_KEY = 'additionalNotes';
 
-/**
- * A note's identity is the span it came from, never its text.
- *
- * Text is not unique — a dictation can repeat a sentence — and it is editable,
- * so matching on it lost the doctor's decision twice over: keeping one of two
- * identical notes applied to neither after re-extraction, and editing a kept
- * note silently un-kept it. Offsets survive a continuation, which only appends.
- */
 const noteId = (start, end, text) =>
   Number.isFinite(start) && Number.isFinite(end) ? `${start}-${end}` : `t:${text}`;
 
@@ -50,8 +42,6 @@ function mergeNotes(existing, incoming) {
   const edited = new Map(existing.map(note => [note.id, note.text]));
   return incoming.map(note => ({
     ...note,
-    // An edited note keeps the doctor's wording; re-extraction re-reads the
-    // transcript, which still holds the original.
     text: edited.get(note.id) ?? note.text,
     kept: decided.get(note.id) ?? note.kept,
   }));
@@ -199,8 +189,6 @@ export function fromStored(stored) {
     [NOTES_KEY]: draftNotes(stored).map(note => {
       const text = String(note?.text ?? '');
       return {
-        // Rows saved before notes carried an id fall back to text matching,
-        // which is what they were persisted under.
         id: note?.id ?? noteId(note?.start, note?.end, text),
         text,
         suggestedField: note?.suggestedField ?? null,
@@ -245,8 +233,6 @@ export function applyEdit(draft, key, value) {
       ...entry,
       value: next,
       edited,
-      // Once the doctor has typed over it the value is theirs, not the
-      // classifier's, and must stop claiming otherwise.
       auto: !!entry.auto && !edited,
     },
   };

@@ -70,11 +70,6 @@ export function extractPatientFields(transcript) {
       }
       continue;
     }
-
-    // The marker chose the field; this is the first thing to ask whether the
-    // VALUE can be what it was filed as. Without it a condition landed in the
-    // prescription, a dosed drug in the remarks, and a connective fragment in
-    // the symptom list.
     candidates.push(...routeByEvidence(segment, value));
   }
 
@@ -135,28 +130,6 @@ export function extractPatientFields(transcript) {
 
   return record;
 }
-
-/**
- * Fills fields from dictation no marker claimed.
- *
- * Recall is bounded by a closed phrasebook, so ordinary clinical speech —
- * "Examination suggests a viral respiratory infection" — reaches no field and
- * the report prints Not Available for something the doctor plainly said.
- *
- * A residue sentence is promoted only when the evidence names one field
- * decisively, and the result is marked `auto: true` so the doctor can see it
- * came from classification rather than an explicit marker. Everything below the
- * bar stays a reviewable note, which is the safe direction: a missing value is
- * visible in the notes card, whereas a confident wrong one is not.
- *
- * A field that already holds something is never overwritten — an explicit
- * marker always outranks a score.
- *
- * @param {Object} record output of `extractPatientFields`
- * @param {Array} residue output of `collectResidue`
- * @returns {{record: Object, claimed: Array}} the filled record, and the
- *   residue entries that were consumed
- */
 export function applyClassifiedResidue(record, residue) {
   const filled = { ...record };
   const claimed = [];
@@ -186,15 +159,6 @@ export function applyClassifiedResidue(record, residue) {
 
   return { record: filled, claimed };
 }
-
-/**
- * The whole read of one transcript: fields, then whatever is still unaccounted
- * for.
- *
- * Every screen that builds a report draft needs both halves and must apply them
- * in the same order, so they ask for both together rather than each repeating
- * the sequence.
- */
 export function extractForReport(transcript) {
   const extracted = extractPatientFields(transcript);
   const residue = collectResidue(transcript, extracted);
@@ -205,16 +169,6 @@ export function extractForReport(transcript) {
     residue: residue.filter(item => !claimed.includes(item)),
   };
 }
-
-/**
- * Splits one segment into the candidates its evidence actually supports.
- *
- * A list is routed ENTRY BY ENTRY, the way `suppressNegated` filters cancelled
- * drugs: "Symptoms are fever. He has diabetes." merges into one symptoms
- * segment, and judging the joined value would see "fever" and keep diabetes as
- * a symptom. Each finding is asked separately, so one misfiled entry moves
- * without disturbing the rest.
- */
 function routeByEvidence(segment, value) {
   const asCandidate = (field, fieldValue) => {
     if (!isValid(FIELD_MARKERS[field].validator, fieldValue)) {

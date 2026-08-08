@@ -110,7 +110,7 @@ Single doctor, no login. Multi-doctor and authentication are Roadmap items, not 
 | Framework | React Native **0.86.0** (New Architecture — Fabric + TurboModules) |
 | UI runtime | React **19.2.3** |
 | JS engine | Hermes |
-| Language | **JavaScript only** — no TypeScript |
+| Language | **JavaScript**, except `src/specs/**` — TypeScript, because codegen requires it |
 | Navigation | React Navigation 7 (native stack) |
 | State | Zustand 5 |
 | Animation | Reanimated 4 + Worklets |
@@ -121,7 +121,7 @@ Single doctor, no login. Multi-doctor and authentication are Roadmap items, not 
 | PDF | In-app Kotlin TurboModule over `android.graphics.pdf.PdfDocument` — no third-party generator |
 | Build | Gradle 9.3.1, Kotlin 2.1.20 |
 
-**File-extension convention:** `.jsx` for files containing JSX, `.js` for everything else.
+**File-extension convention:** `.jsx` for files containing JSX, `.js` for everything else, and `.ts` only for the TurboModule specs in `src/specs/**`.
 
 ---
 
@@ -129,7 +129,7 @@ Single doctor, no login. Multi-doctor and authentication are Roadmap items, not 
 
 | Tool | Required | Verified working |
 | :-- | :-- | :-- |
-| **Node.js** | ≥ 22.11.0 (enforced by `engines`) | v24.18.0 |
+| **Node.js** | ≥ 22.12.0 (enforced by `engines`) | v24.18.0 |
 | **npm** | Bundled with Node | — |
 | **JDK** | 17 | OpenJDK 17.0.9 |
 | **Android Studio** | Latest stable (for SDK + AVD tooling) | — |
@@ -183,7 +183,7 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator
 
 Restart your terminal, then verify:
 ```bash
-node --version      # ≥ v22.11.0
+node --version      # ≥ v22.12.0
 java -version       # 17.x
 adb --version
 ```
@@ -418,11 +418,11 @@ MedScribe/
 │   │       ├── validators.js
 │   │       └── resolveConflicts.js
 │   ├── specs/                       # TurboModule specs (React Native codegen input)
-│   │   ├── NativePdfExporter.js     #   PDF rendering
-│   │   ├── NativeAudioCue.js        #   Cues + system-tone suppression
-│   │   ├── NativeSharedMic.js       #   Shared microphone + consultation recording files
-│   │   ├── NativeAudioCapture.js    #   Contention spike probe (debug builds only)
-│   │   └── NativeAppConfig.js       #   Build-time configuration
+│   │   ├── NativePdfExporter.ts     #   PDF rendering
+│   │   ├── NativeAudioCue.ts        #   Cues, tone suppression, spoken prompts
+│   │   ├── NativeSharedMic.ts       #   Shared microphone + consultation recording files
+│   │   ├── NativeAudioCapture.ts    #   Contention spike probe (debug builds only)
+│   │   └── NativeAppConfig.ts       #   Build-time configuration
 │   ├── store/
 │   │   ├── useRecordingStore.js     # Zustand recording state
 │   │   └── useReportsStore.js       # Zustand saved-report state
@@ -510,18 +510,21 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run test:extraction:recall` | 119 assertions — the 40-phrasing coverage benchmark against two floors (markers alone, and the whole read), every wrong-field defect ever observed, and the invariant that no field holds a value its own evidence contradicts. |
 | `npm run test:report` | 81 assertions over the editable draft, the PDF payload and the dashboard timestamps. Also plain Node. |
 | `npm run test:completeness` | 63 assertions over the mandatory-field gate, explicit-none statements and the Add-More-Speech merge. |
-| `npm run test:capture` | 12 assertions that every recording pass ends with an explicit verdict — no input combination returns silence. |
+| `npm run test:capture` | 23 assertions that every recording pass ends with an explicit verdict — no input combination returns silence — and that a failure with nothing to resend does not offer Retry. |
 | `npm run test:transcripts` | 86 assertions over the dual-transcript state: raw baselines, editable drafts, the continuation base, and manual edits surviving a multi-pass sequence. |
 | `npm run test:diff` | 30 assertions over "What AI changed": word-level diff, punctuation and casing normalization, medical substitutions. |
 | `npm run test:anuvadini` | 78 assertions over the transcription client: both transports, request assembly, language normalization, every failure path, and that the token never reaches a result or an error. |
 | `npm run test:audio` | 89 assertions over the capture upload budget: WAV sizing, Base64 growth, the per-request and per-recording ceilings, and chunk plans that are contiguous and disjoint. |
 | `npm run test:chunks` | 46 assertions over chunked upload: sequential order, the ordered join, a mid-pass failure keeping earlier chunks, and retry re-sending only what is missing. |
-| `npm run test:proxy` | 77 assertions over the transcription proxy: field translation, credential containment and every error mapping. |
+| `npm run test:proxy` | 97 assertions over the transcription and synthesis proxy: field translation, credential containment, every error mapping, and that a URL where base64 was expected is refused. |
+| `npm run test:tts:prompt` | 26 assertions over the spoken missing-field prompt: grammar at every count, the four-field cap and its overflow, and that a field VALUE never reaches the text. |
+| `npm run test:tts:client` | 86 assertions over the speech client: both transports, every response shape and failure path, and that the token appears in no result or error. |
+| `npm run test:tts:service` | 10 assertions over prompt ordering: a stop issued during synthesis prevents playback, and the newer request wins. |
 | `npm run proxy` | Runs the local transcription proxy. Needs `server/.env` — see [server/README.md](server/README.md). |
 | `npm run lint` | ESLint across the project. |
 | `npm test` | Jest. **Currently broken** — see below. |
 
-The nineteen fixture suites total **1557 assertions** and are the project's real gate — the extraction, report and transcript layers are pure and RN-free, so they run under plain Node with no framework and no device. `npm test` (Jest) is a separate, currently broken path; it is not what guards this codebase.
+The twenty-two fixture suites total **1731 assertions** and are the project's real gate — the extraction, report and transcript layers are pure and RN-free, so they run under plain Node with no framework and no device. `npm test` (Jest) is a separate, currently broken path; it is not what guards this codebase.
 
 Useful direct commands:
 
@@ -815,7 +818,7 @@ npm start -- --reset-cache
 
 **Next up**, in priority order:
 
-1. **Dictate Phase 9 on hardware.** It passes 1557 fixture assertions and has not been spoken to a phone. The fixtures are clean text by construction, so they cannot see transcription loss at all — every other phase here was signed off on a device before being called done.
+1. **Dictate Phase 9 on hardware.** It passes 1731 fixture assertions and has not been spoken to a phone. The fixtures are clean text by construction, so they cannot see transcription loss at all — every other phase here was signed off on a device before being called done.
 2. **Deploy `server/` and switch `TRANSCRIPTION_TRANSPORT` to `proxy`.** The Bearer token is currently compiled into the APK, which is acceptable for internal testing and not for distribution. The proxy is written, tested (77 assertions) and dependency-free; deploying it behind HTTPS removes the credential from every device and changes no feature code. See [`server/README.md`](server/README.md#deploying).
 3. **Improve `en-IN` recognition accuracy**, still bounded by the recognizer rather than by this codebase.
 

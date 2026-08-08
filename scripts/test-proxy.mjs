@@ -1,15 +1,10 @@
-/**
- * Transcription proxy fixtures.
- *
- *   node scripts/test-proxy.mjs
- *
- * The proxy exists so the Anuvadini credential is never on a phone. Most of
- * these assertions are therefore negative: the key must not appear in any
- * response, the audio must not appear in any error, and a malformed or oversized
- * request must be refused before it costs an upstream call.
- */
-import { handleVoiceToText, MAX_BODY_BYTES, REQUEST_ERROR } from '../server/index.mjs';
-import { UPSTREAM_ERROR, readConfig, transcribe } from '../server/anuvadini.mjs';
+import {
+  handleTextToSpeech,
+  handleVoiceToText,
+  MAX_BODY_BYTES,
+  REQUEST_ERROR,
+} from '../server/index.mjs';
+import { UPSTREAM_ERROR, readConfig, synthesize, transcribe } from '../server/anuvadini.mjs';
 
 import { check, report } from './lib/fixture-harness.mjs';
 
@@ -44,7 +39,6 @@ const call = (body, fetchImpl) =>
 
 const REQUEST = { audio_buffer: AUDIO, audio_language: 'en-IN' };
 
-// ── 1. Field translation ────────────────────────────────────────────────────
 const ok = fakeFetch(200, { transcription: '  Patient name is Nisha Verma.  ' });
 const success = await call(REQUEST, ok);
 
@@ -62,7 +56,6 @@ check('P1.6 no other fields forwarded', Object.keys(sent).sort(), [
 check('P1.7 posted to the configured upstream', ok.calls[0].url, CONFIG.url);
 check('P1.8 method is POST', ok.calls[0].init.method, 'POST');
 
-// ── 2. The credential ───────────────────────────────────────────────────────
 check(
   'P2.1 bearer attached upstream',
   ok.calls[0].init.headers.Authorization,
@@ -74,8 +67,6 @@ check(
   false,
 );
 
-// Every failure envelope is checked for the key as well — an error path is the
-// easiest place for a secret to escape.
 const failures = [
   ['P2.3 unauthorized', fakeFetch(401, {}), UPSTREAM_ERROR.UNAUTHORIZED, 502],
   ['P2.4 forbidden', fakeFetch(403, {}), UPSTREAM_ERROR.UNAUTHORIZED, 502],
@@ -101,7 +92,6 @@ for (const [label, impl, kind, status] of failures) {
   check(`${label} → no audio echoed`, JSON.stringify(result.body).includes(AUDIO), false);
 }
 
-// ── 3. Rejected before any upstream call ────────────────────────────────────
 const guards = [
   ['P3.1 missing audio', { audio_language: 'en-IN' }, REQUEST_ERROR.MISSING_AUDIO],
   ['P3.2 empty audio', { audio_buffer: '', audio_language: 'en-IN' }, REQUEST_ERROR.MISSING_AUDIO],
@@ -119,7 +109,6 @@ for (const [label, body, kind] of guards) {
   check(`${label} → upstream untouched`, impl.calls.length, 0);
 }
 
-// ── 4. Timeout ──────────────────────────────────────────────────────────────
 const hang = async (url, init) => {
   await new Promise((resolve, reject) => {
     init.signal.addEventListener('abort', () => reject(new Error('aborted')));
@@ -133,7 +122,6 @@ const timedOut = await handleVoiceToText(REQUEST, {
 check('P4.1 timeout maps to 504', timedOut.status, 504);
 check('P4.2 timeout kind', timedOut.body.error, UPSTREAM_ERROR.TIMEOUT);
 
-// ── 5. Not configured ───────────────────────────────────────────────────────
 const unconfigured = fakeFetch(200, { transcription: 'x' });
 const noKey = await handleVoiceToText(REQUEST, {
   config: { url: CONFIG.url, key: '' },
@@ -148,13 +136,21 @@ const noUrl = await transcribe(
   { config: { url: '', key: KEY }, fetchImpl: fakeFetch(200, {}) },
 );
 check('P5.4 missing url → not_configured', noUrl.error, UPSTREAM_ERROR.NOT_CONFIGURED);
-
 check('P5.5 config reads the documented variables', readConfig({
   VOICE_TO_TEXT_API_URL: 'u',
   VOICE_TO_TEXT_API_KEY: 'k',
-}), { url: 'u', key: 'k' });
+}), {
+  url: 'u',
+  key: 'k',
+  ttsUrl: 'https://anuvadini-services.aicte-india.org/api/text-to-speech',
+});
 
-// ── 6. The body cap matches the capture ceiling ─────────────────────────────
+check('P5.6 the speech endpoint is overridable', readConfig({
+  VOICE_TO_TEXT_API_URL: 'u',
+  VOICE_TO_TEXT_API_KEY: 'k',
+  TEXT_TO_SPEECH_API_URL: 'tts',
+}).ttsUrl, 'tts');
+
 const { MAX_UPLOAD_BYTES } = await import('../src/services/audioBudget.js');
 const { base64CharsFor } = await import('../src/services/audioBudget.js');
 check(
@@ -163,5 +159,62 @@ check(
   true,
 );
 check('P6.2 the cap is 8 MB', MAX_BODY_BYTES, 8 * 1024 * 1024);
+
+const TTS_CONFIG = { ...CONFIG, ttsUrl: 'https://upstream.test/api/text-to-speech' };
+const SPEECH = { text: 'The patient name is still missing.', lang: 'en-IN', language_voice: 'v' };
+const speak = (body, fetchImpl) =>
+  handleTextToSpeech(body, { config: TTS_CONFIG, fetchImpl });
+
+{
+  const impl = fakeFetch(200, { audio: AUDIO });
+  const spoken = await speak(SPEECH, impl);
+  check('P7.1 synthesis succeeds', spoken.body.audio, AUDIO);
+  check('P7.2 bearer attached upstream', impl.calls[0].init.headers.Authorization, `Bearer ${KEY}`);
+  check('P7.3 the key never reaches the client', JSON.stringify(spoken.body).includes(KEY), false);
+  const forwarded = JSON.parse(impl.calls[0].init.body);
+  check('P7.4 language_voice becomes languageVoice', forwarded.languageVoice, 'v');
+  check('P7.5 gender defaults to Female', forwarded.gender, 'Female');
+}
+
+for (const bad of [42, {}, [], true]) {
+  const impl = fakeFetch(200, { audio: AUDIO });
+  const result = await speak({ ...SPEECH, gender: bad }, impl);
+  check(`P7.6 gender ${JSON.stringify(bad)} is rejected`, result.body.error, REQUEST_ERROR.INVALID_GENDER);
+  check(`P7.6 gender ${JSON.stringify(bad)} sends nothing`, impl.calls.length, 0);
+}
+
+for (const value of ['https://cdn.example.com/a.wav', 'HTTP://X/Y.WAV']) {
+  const result = await synthesize(
+    { text: 't', lang: 'en-IN', languageVoice: 'v', gender: 'Female' },
+    { config: TTS_CONFIG, fetchImpl: fakeFetch(200, { audio_url: value }) },
+  );
+  check(`P7.7 URL "${value}" is refused`, result.error, UPSTREAM_ERROR.MALFORMED);
+  check(`P7.7 URL "${value}" returns no audio`, result.audio, undefined);
+}
+
+check(
+  'P7.8 a data URI is still accepted',
+  (
+    await synthesize(
+      { text: 't', lang: 'en-IN', languageVoice: 'v', gender: 'Female' },
+      {
+        config: TTS_CONFIG,
+        fetchImpl: fakeFetch(200, { audio_url: `data:audio/wav;base64,${AUDIO}` }),
+      },
+    )
+  ).audio,
+  AUDIO,
+);
+
+check(
+  'P7.9 whitespace-only audio is empty, not malformed',
+  (
+    await synthesize(
+      { text: 't', lang: 'en-IN', languageVoice: 'v', gender: 'Female' },
+      { config: TTS_CONFIG, fetchImpl: fakeFetch(200, { audio: '   ' }) },
+    )
+  ).error,
+  UPSTREAM_ERROR.EMPTY_SPEECH,
+);
 
 report();

@@ -1,13 +1,3 @@
-/**
- * Two candidate transcripts for one consultation, and the rules for moving
- * between them.
- *
- * The native recognizer and Anuvadini transcribe the same dictation into two
- * independent texts. Neither may overwrite the other: the doctor picks which
- * one the report is derived from, and can go back. Pure and free of React
- * Native imports so the rules are testable under plain Node.
- */
-
 export const TRANSCRIPT_SOURCE = {
   NATIVE: 'native',
   ANUVADINI: 'anuvadini',
@@ -23,28 +13,8 @@ export const ANUVADINI_STATUS = {
 export function emptyAnuvadini() {
   return {
     text: '',
-    // What the service returned, frozen. `text` is the editable draft; this is
-    // the comparison baseline, so a doctor's edit can never rewrite what the
-    // diff says the AI changed.
     raw: '',
-    /**
-     * One entry per recording pass, in dictation order: `{ index, text }`.
-     *
-     * This is the stored truth, and `raw` is derived from it. The previous
-     * design rebuilt the combined transcript by arithmetic on a snapshot held
-     * in a module-level global, which meant a continuation whose snapshot was
-     * missing REPLACED the whole transcript instead of extending it, and a
-     * pass that never ran left no trace at all.
-     */
     passes: [],
-    /**
-     * The editable draft as it stood before the newest pass contributed.
-     *
-     * Retrying that pass rebuilds `text` from here, so a replay appends its
-     * speech exactly once while every earlier correction the doctor made
-     * survives. It lives in state rather than in a global so it cannot go
-     * missing between the pass starting and its result landing.
-     */
     textBase: '',
     status: ANUVADINI_STATUS.IDLE,
     error: null,
@@ -52,12 +22,6 @@ export function emptyAnuvadini() {
   };
 }
 
-/**
- * Fills in the pass list for state saved before it existed.
- *
- * An older consultation carries `raw` but no passes; it reads as a single
- * completed pass, so a continuation on top of it appends rather than replacing.
- */
 export function normalizeAnuvadini(anuvadini) {
   const current = { ...emptyAnuvadini(), ...anuvadini };
   if (Array.isArray(current.passes) && current.passes.length) {
@@ -69,7 +33,6 @@ export function normalizeAnuvadini(anuvadini) {
   return { ...current, passes: [{ index: 1, text: current.raw }], textBase: '' };
 }
 
-/** The text extraction and the report must read. */
 export function activeText({ nativeText, anuvadini, source }) {
   if (source === TRANSCRIPT_SOURCE.ANUVADINI && anuvadini?.text) {
     return anuvadini.text;
@@ -86,27 +49,11 @@ export function markPending(anuvadini) {
   };
 }
 
-/** Continuation passes read as separate lines rather than one running block. */
 const JOIN = '\n';
 
 const joined = (before, addition) =>
   before?.trim() ? `${before.trim()}${JOIN}${addition}` : addition;
 
-/**
- * Folds a transcription result into the Anuvadini slot.
- *
- * A failure keeps whatever text was already there — a doctor who retries after
- * accepting a result must not lose it — and never touches the native side.
- *
- * A continuation appends to `base`, a snapshot taken when that continuation was
- * recorded, rather than to live state:
- *
- *   raw  = base.raw  + new    only what the service actually produced
- *   text = base.text + new    the doctor's corrections survive
- *
- * Appending to the snapshot is what makes Retry idempotent — replaying the same
- * continuation any number of times yields exactly one appended chunk.
- */
 const upsertPass = (passes, index, text) =>
   [...passes.filter(pass => pass.index !== index), { index, text }].sort(
     (a, b) => a.index - b.index,
@@ -128,21 +75,9 @@ export function applyResult(anuvadini, result, options = {}) {
   const highest = current.passes.reduce((max, pass) => Math.max(max, pass.index), 0);
   const requested = Number(options.passIndex);
   const index = Number.isFinite(requested) && requested > 0 ? requested : highest + 1;
-
-  // Only a genuinely new pass moves the base. A replay of the newest one must
-  // rebuild from the same place or its speech would append a second time.
   const textBase = index > highest ? current.text : current.textBase ?? '';
   const passes = upsertPass(current.passes, index, result.text);
   const newest = passes[passes.length - 1];
-
-  // Only one base is stored — the text before the NEWEST pass — so an older
-  // pass being replaced has nothing to rebuild against. Appending it to that
-  // base would drop every later pass and repeat its own earlier text, and
-  // keeping the newest pass would leave `text` without the result that was just
-  // applied while `raw` carried it. Rebuilding from the passes is the only
-  // outcome that holds every pass exactly once; the doctor's edits are the
-  // unavoidable cost, and this cannot be reached from the app today — a pass
-  // number is claimed as highest + 1 and released only once it succeeds.
   const rebuilt = index < newest.index;
 
   return {
@@ -156,7 +91,6 @@ export function applyResult(anuvadini, result, options = {}) {
   };
 }
 
-/** The pass number the next continuation recording will land under. */
 export function nextPassIndex(anuvadini) {
   return (
     normalizeAnuvadini(anuvadini).passes.reduce(
@@ -166,12 +100,6 @@ export function nextPassIndex(anuvadini) {
   );
 }
 
-/**
- * True when the doctor may be offered the alternative transcript.
- *
- * An empty or identical result is not an alternative, and offering one would
- * ask the doctor to make a decision with no content behind it.
- */
 export function canOffer({ nativeText, anuvadini }) {
   return (
     anuvadini?.status === ANUVADINI_STATUS.READY &&
@@ -180,7 +108,13 @@ export function canOffer({ nativeText, anuvadini }) {
   );
 }
 
-/** Refuses a switch to a source that has nothing behind it. */
+export function shouldAutoSelectAi({ nativeText, anuvadini, source, chosen }) {
+  if (chosen || source !== TRANSCRIPT_SOURCE.NATIVE) {
+    return false;
+  }
+  return canOffer({ nativeText, anuvadini });
+}
+
 export function switchSource({ nativeText, anuvadini, source }, next) {
   if (next === TRANSCRIPT_SOURCE.ANUVADINI) {
     return canOffer({ nativeText, anuvadini }) ? next : source;

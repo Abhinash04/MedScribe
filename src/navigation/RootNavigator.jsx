@@ -9,11 +9,6 @@ import SttBaselineScreen from '../screens/SttBaselineScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
-
-/**
- * Dashboard -> Recording -> TranscriptReview -> Report for a new consultation, and
- * Dashboard -> Report({ reportId }) to reopen a saved one.
- */
 const RootNavigator = () => {
   return (
     <Stack.Navigator

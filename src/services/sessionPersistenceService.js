@@ -1,23 +1,8 @@
 import { getDb, runMigrations } from '../db/database';
 
-/**
- * Session Persistence Service.
- *
- * Saves and restores the active consultation using debounced SQLite writes.
- * A partial speech result never reaches this module — only a finalised
- * utterance, a committed transcript edit or a report-draft change does — so the
- * debounce below is the only write throttling the app needs.
- */
-
 let saveTimeout = null;
 let pending = null;
 const DEBOUNCE_MS = 2000;
-
-/**
- * `active_sessions` arrives in migration 2, and dictation can be the first
- * thing that touches the database on a fresh install. `runMigrations` latches
- * internally, so calling it per query costs nothing after the first.
- */
 function openSessionDb() {
   runMigrations();
   return getDb();
@@ -39,13 +24,6 @@ export async function saveSessionDebounced(sessionData) {
     });
   }, DEBOUNCE_MS);
 }
-
-/**
- * Writes whatever the debounce is still holding.
- *
- * Called when the app goes to the background: a two-second window is exactly
- * long enough to lose the last edit to a process the OS decides to kill.
- */
 export async function flushPendingSave() {
   if (saveTimeout) {
     clearTimeout(saveTimeout);
@@ -57,7 +35,6 @@ export async function flushPendingSave() {
     await saveSessionImmediate(data);
   }
 }
-
 export async function saveSessionImmediate({
   id,
   segments,
@@ -105,10 +82,6 @@ export async function saveSessionImmediate({
         createdAt ?? now,
       ],
     );
-
-    // Only the live session may exist. Without this, a session that was never
-    // cleared (a crash the doctor then discarded from a different device state)
-    // could outlive its successor and be offered for recovery later.
     await db.execute('DELETE FROM active_sessions WHERE id <> ?;', [id]);
   } catch (error) {
     console.warn('[sessionPersistenceService] Save error:', error);

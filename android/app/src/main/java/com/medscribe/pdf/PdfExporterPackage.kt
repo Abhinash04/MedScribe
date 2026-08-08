@@ -6,10 +6,6 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.module.model.ReactModuleInfo
 import com.facebook.react.module.model.ReactModuleInfoProvider
 
-/**
- * Registers the PDF exporter with the New Architecture module registry.
- * App-local modules are not autolinked, so this package is added explicitly in `MainApplication.kt`.
- */
 class PdfExporterPackage : BaseReactPackage() {
 
   override fun getModule(
@@ -24,10 +20,10 @@ class PdfExporterPackage : BaseReactPackage() {
         ReactModuleInfo(
           PDF_EXPORTER_NAME,
           PdfExporterModule::class.java.name,
-          false, // canOverrideExistingModule
-          false, // needsEagerInit
-          false, // isCxxModule
-          true, // isTurboModule
+          false,
+          false,
+          false,
+          true, 
         )
     )
   }

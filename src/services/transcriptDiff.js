@@ -1,15 +1,3 @@
-/**
- * What the alternative transcription changed.
- *
- * Word-level LCS over a normalized key: comparison ignores casing and edge
- * punctuation while the original tokens are what get displayed. A recogniser
- * that only added a comma or a capital letter has not corrected anything
- * clinically, and surfacing that alongside "so thought → sore throat" would
- * bury the correction that matters.
- *
- * Pure — no React Native imports — so the rules are testable under plain Node.
- */
-
 export const CHANGE = {
   EQUAL: 'equal',
   REMOVED: 'removed',
@@ -21,14 +9,12 @@ const tokenize = text =>
     .split(/\s+/)
     .filter(Boolean);
 
-/** Casing and surrounding punctuation are formatting, not content. */
 export const normalizeToken = token =>
   String(token || '')
     .toLowerCase()
     .replace(/^[^\p{L}\p{N}]+/u, '')
     .replace(/[^\p{L}\p{N}]+$/u, '');
 
-/** Classic LCS table. Transcripts are short enough that O(n·m) is fine. */
 function longestCommonSubsequence(left, right) {
   const rows = left.length;
   const columns = right.length;
@@ -46,9 +32,6 @@ function longestCommonSubsequence(left, right) {
   return table;
 }
 
-/**
- * @returns {Array<{type: string, tokens: string[]}>} runs in reading order
- */
 export function diffTranscripts(original, revised) {
   const originalTokens = tokenize(original);
   const revisedTokens = tokenize(revised);
@@ -71,7 +54,6 @@ export function diffTranscripts(original, revised) {
   let column = 0;
   while (row < left.length && column < right.length) {
     if (left[row] === right[column]) {
-      // Displayed from the revised side so formatting improvements survive.
       push(CHANGE.EQUAL, revisedTokens[column]);
       row += 1;
       column += 1;
@@ -95,10 +77,6 @@ export function diffTranscripts(original, revised) {
   return runs;
 }
 
-/**
- * Adjacent removed/added runs read as one correction — "so thought" becoming
- * "sore throat" is a single thing the doctor needs to judge, not two.
- */
 export function summarizeChanges(original, revised) {
   const runs = diffTranscripts(original, revised);
   const changes = [];

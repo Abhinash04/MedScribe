@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AppHeader from '../components/AppHeader';
 import MissingFieldsModal from '../components/MissingFieldsModal';
+import RefiningOverlay from '../components/RefiningOverlay';
 import ScreenContainer from '../components/ScreenContainer';
 import SectionTitle from '../components/SectionTitle';
 import TranscriptDiffView from '../components/TranscriptDiffView';
@@ -20,6 +21,7 @@ import { ERROR_KIND } from '../services/anuvadini/proxyContract';
 import {
   ANUVADINI_STATUS,
   TRANSCRIPT_SOURCE,
+  shouldAutoSelectAi,
 } from '../services/consultationTranscripts';
 import useRecordingStore, {
   CONSULTATION_STAGE,
@@ -28,9 +30,14 @@ import useRecordingStore, {
 } from '../store/useRecordingStore';
 import { colors, spacing, typography } from '../theme';
 import dictationSessionManager from '../services/dictationSessionManager';
+import { isRetryableFailure } from '../services/captureOutcome';
 import { extractForReport } from '../services/extractionService';
-import { validateReportCompleteness } from '../services/reportCompleteness';
+import {
+  blockingFields,
+  validateReportCompleteness,
+} from '../services/reportCompleteness';
 import { mergeExtraction, toDraft } from '../services/reportDraft';
+import { speakMissingFields, stopPrompt } from '../services/speechPromptService';
 
 function formatDuration(totalSeconds = 0) {
   const mins = Math.floor(totalSeconds / 60);
@@ -42,6 +49,7 @@ const LABEL = {
   [TRANSCRIPT_SOURCE.NATIVE]: 'Original',
   [TRANSCRIPT_SOURCE.ANUVADINI]: 'AI Transcription',
 };
+
 
 const TranscriptReviewScreen = ({ navigation }) => {
   const fullTranscript = useRecordingStore(selectFullTranscript);
@@ -59,6 +67,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const [blocked, setBlocked] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const chosenRef = useRef(false);
+  const [skippedRefinement, setSkippedRefinement] = useState(false);
+  const [dismissedAt, setDismissedAt] = useState(0);
 
   const beginSubmit = useCallback(() => {
     if (submittingRef.current) {
@@ -68,6 +79,8 @@ const TranscriptReviewScreen = ({ navigation }) => {
     setSubmitting(true);
     return true;
   }, []);
+
+  useEffect(() => () => { stopPrompt(); }, []);
 
   const endSubmit = useCallback(() => {
     submittingRef.current = false;
@@ -117,7 +130,8 @@ const TranscriptReviewScreen = ({ navigation }) => {
   );
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
-  const handleResumeRecording = useCallback(() => {
+  const handleResumeRecording = useCallback(async () => {
+    await stopPrompt();
     commitEditor(editableText);
     setStage(CONSULTATION_STAGE.RECORDING);
     dictationSessionManager.persistCurrentSession();
@@ -139,6 +153,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
       const result = validateReportCompleteness(draft);
       if (!result.isComplete) {
         setBlocked(result);
+        speakMissingFields(blockingFields(result));
         return;
       }
       setStage(CONSULTATION_STAGE.REPORT);
@@ -166,8 +181,8 @@ const TranscriptReviewScreen = ({ navigation }) => {
     endSubmit,
   ]);
 
-  const selectForReport = useCallback(
-    source => {
+  const applySource = useCallback(
+    (source, { announce }) => {
       commitEditor(editableText);
       setTranscriptSource(source);
 
@@ -182,6 +197,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
       );
       dictationSessionManager.persistCurrentSession();
 
+      if (!announce) {
+        return;
+      }
+
       Alert.alert(
         'Report source changed',
         `The report will be built from the ${LABEL[source]} transcript.` +
@@ -193,6 +212,35 @@ const TranscriptReviewScreen = ({ navigation }) => {
     [commitEditor, editableText, setTranscriptSource, setReportDraft],
   );
 
+  const selectForReport = useCallback(
+    source => {
+      chosenRef.current = true;
+      applySource(source, { announce: true });
+    },
+    [applySource],
+  );
+
+  useEffect(() => {
+    const state = useRecordingStore.getState();
+    if (
+      !shouldAutoSelectAi({
+        nativeText: selectFullTranscript(state),
+        anuvadini: state.anuvadini,
+        source: state.transcriptSource,
+        chosen: chosenRef.current,
+      })
+    ) {
+      return;
+    }
+    applySource(TRANSCRIPT_SOURCE.ANUVADINI, { announce: false });
+    setViewedSource(TRANSCRIPT_SOURCE.ANUVADINI);
+  }, [anuvadini, applySource]);
+
+  const handleSkipRefinement = useCallback(() => {
+    chosenRef.current = true;
+    setSkippedRefinement(true);
+  }, []);
+
   const handleRetryRefinement = useCallback(() => {
     refineTranscript().catch(() => {});
   }, []);
@@ -202,12 +250,35 @@ const TranscriptReviewScreen = ({ navigation }) => {
     handleResumeRecording();
   }, [handleResumeRecording]);
 
+  const canRetryRefinement = isRetryableFailure(anuvadini.error);
+
+  const refining =
+    isTranscriptionAvailable() &&
+    anuvadini.status === ANUVADINI_STATUS.PENDING &&
+    !skippedRefinement;
+
+  const showFailureNotice =
+    anuvadini.status === ANUVADINI_STATUS.FAILED &&
+    anuvadini.updatedAt !== dismissedAt;
+
+  const handleDismissBlocked = useCallback(() => {
+    setBlocked(null);
+    stopPrompt();
+  }, []);
+
+  const handleReplayPrompt = useCallback(() => {
+    if (blocked) {
+      speakMissingFields(blockingFields(blocked));
+    }
+  }, [blocked]);
+
   const handleReviewFields = useCallback(async () => {
     if (!beginSubmit()) {
       return;
     }
     try {
       setBlocked(null);
+      await stopPrompt();
       setStage(CONSULTATION_STAGE.REPORT);
       await dictationSessionManager.persistNow();
       endSubmit();
@@ -234,9 +305,13 @@ const TranscriptReviewScreen = ({ navigation }) => {
       case ANUVADINI_STATUS.READY:
         return aiReady ? 'Ready' : 'Same as original';
       case ANUVADINI_STATUS.FAILED:
-        return anuvadini.error === ERROR_KIND.AUDIO_TOO_LARGE
-          ? 'Recording too long to process'
-          : 'Unable to generate';
+        if (anuvadini.error === ERROR_KIND.AUDIO_TOO_LARGE) {
+          return 'Recording too long to process';
+        }
+        if (anuvadini.error === ERROR_KIND.NO_AUDIO) {
+          return 'No audio was recorded for this pass — dictate again';
+        }
+        return 'Unable to generate';
       default:
         return 'Not available for this dictation';
     }
@@ -291,13 +366,30 @@ const TranscriptReviewScreen = ({ navigation }) => {
           })}
         </View>
 
+        {showFailureNotice ? (
+          <View style={styles.fallbackNotice}>
+            <Text style={styles.fallbackText}>
+              AI refinement could not be completed — continuing with the original
+              transcription.
+            </Text>
+            <Pressable
+              onPress={() => setDismissedAt(anuvadini.updatedAt)}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss"
+              hitSlop={8}
+            >
+              <Text style={styles.fallbackDismiss}>✕</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {viewingAi ? (
           <View style={styles.statusRow}>
             {anuvadini.status === ANUVADINI_STATUS.PENDING ? (
               <ActivityIndicator size="small" color={colors.secondaryAccent} />
             ) : null}
             <Text style={styles.statusText}>{aiStatusLine()}</Text>
-            {anuvadini.status === ANUVADINI_STATUS.FAILED ? (
+            {anuvadini.status === ANUVADINI_STATUS.FAILED && canRetryRefinement ? (
               <Pressable onPress={handleRetryRefinement} accessibilityRole="button">
                 <Text style={styles.retry}>Retry</Text>
               </Pressable>
@@ -370,13 +462,16 @@ const TranscriptReviewScreen = ({ navigation }) => {
         </Pressable>
       </View>
 
+      <RefiningOverlay visible={refining} onSkip={handleSkipRefinement} />
+
       <MissingFieldsModal
         visible={!!blocked}
         missing={blocked?.missingFields ?? []}
         invalid={blocked?.invalidFields ?? []}
         onAddSpeech={handleAddMoreSpeech}
         onReviewFields={handleReviewFields}
-        onDismiss={() => setBlocked(null)}
+        onReplay={handleReplayPrompt}
+        onDismiss={handleDismissBlocked}
       />
     </ScreenContainer>
   );
@@ -450,6 +545,30 @@ const styles = StyleSheet.create({
   },
   inUseActive: {
     color: colors.onPrimary,
+  },
+  fallbackNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.secondaryAccent,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.sm,
+  },
+  fallbackText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textPrimary,
+  },
+  fallbackDismiss: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textMuted,
+    paddingHorizontal: spacing.xs,
   },
   statusRow: {
     flexDirection: 'row',

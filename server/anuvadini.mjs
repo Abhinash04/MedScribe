@@ -1,12 +1,3 @@
-/**
- * The upstream Anuvadini call, isolated so the request handler can be tested
- * against a fake and so the credential lives in exactly one function.
- *
- * The token is read from the environment and never returned, logged or placed
- * in an error. The phone must not be able to obtain it, and neither should a
- * stack trace.
- */
-
 export const UPSTREAM_TIMEOUT_MS = 60000;
 
 export const UPSTREAM_ERROR = {
@@ -18,26 +9,24 @@ export const UPSTREAM_ERROR = {
   NETWORK: 'network',
   MALFORMED: 'malformed',
   EMPTY_TRANSCRIPTION: 'empty_transcription',
+  EMPTY_SPEECH: 'empty_speech',
 };
 
 export function readConfig(env = process.env) {
   return {
     url: env.VOICE_TO_TEXT_API_URL || '',
     key: env.VOICE_TO_TEXT_API_KEY || '',
+    ttsUrl:
+      env.TEXT_TO_SPEECH_API_URL ||
+      'https://anuvadini-services.aicte-india.org/api/text-to-speech',
   };
 }
 
-/**
- * @returns {Promise<{ok: boolean, text?: string, error?: string, status?: number, ms: number}>}
- */
-export async function transcribe(
-  { audioBuffer, audioLanguage },
-  { config = readConfig(), fetchImpl = fetch, timeoutMs = UPSTREAM_TIMEOUT_MS } = {},
-) {
+async function callUpstream({ url, key, payload, read }, { fetchImpl, timeoutMs }) {
   const startedAt = Date.now();
   const done = extra => ({ ms: Date.now() - startedAt, ...extra });
 
-  if (!config.url || !config.key) {
+  if (!url || !key) {
     return done({ ok: false, error: UPSTREAM_ERROR.NOT_CONFIGURED });
   }
 
@@ -46,16 +35,17 @@ export async function transcribe(
 
   let response;
   try {
-    response = await fetchImpl(config.url, {
+    response = await fetchImpl(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.key}`,
+        Accept: '*/*',
+        Authorization: `Bearer ${key}`,
       },
-      body: JSON.stringify({ audioBuffer, audioLanguage }),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
-  } catch (error) {
+  } catch {
     const aborted = controller.signal.aborted;
     return done({
       ok: false,
@@ -65,31 +55,89 @@ export async function transcribe(
     clearTimeout(timer);
   }
 
-  if (response.status === 401 || response.status === 403) {
-    return done({ ok: false, error: UPSTREAM_ERROR.UNAUTHORIZED, status: response.status });
+  const status = response.status;
+  if (status === 401 || status === 403) {
+    return done({ ok: false, error: UPSTREAM_ERROR.UNAUTHORIZED, status });
   }
-  if (response.status === 429) {
-    return done({ ok: false, error: UPSTREAM_ERROR.RATE_LIMITED, status: response.status });
+  if (status === 429) {
+    return done({ ok: false, error: UPSTREAM_ERROR.RATE_LIMITED, status });
   }
   if (!response.ok) {
-    return done({ ok: false, error: UPSTREAM_ERROR.UPSTREAM_ERROR, status: response.status });
+    return done({ ok: false, error: UPSTREAM_ERROR.UPSTREAM_ERROR, status });
   }
 
   let body;
   try {
     body = await response.json();
   } catch {
-    return done({ ok: false, error: UPSTREAM_ERROR.MALFORMED, status: response.status });
+    return done({ ok: false, error: UPSTREAM_ERROR.MALFORMED, status });
   }
 
-  if (!body || typeof body.transcription !== 'string') {
-    return done({ ok: false, error: UPSTREAM_ERROR.MALFORMED, status: response.status });
+  return done({ ...read(body), status });
+}
+
+export function transcribe(
+  { audioBuffer, audioLanguage },
+  { config = readConfig(), fetchImpl = fetch, timeoutMs = UPSTREAM_TIMEOUT_MS } = {},
+) {
+  return callUpstream(
+    {
+      url: config.url,
+      key: config.key,
+      payload: { audioBuffer, audioLanguage },
+      read: body => {
+        if (!body || typeof body.transcription !== 'string') {
+          return { ok: false, error: UPSTREAM_ERROR.MALFORMED };
+        }
+        const text = body.transcription.trim();
+        if (!text) {
+          return { ok: false, error: UPSTREAM_ERROR.EMPTY_TRANSCRIPTION };
+        }
+        return { ok: true, text };
+      },
+    },
+    { fetchImpl, timeoutMs },
+  );
+}
+
+const AUDIO_KEYS = ['audio', 'audio_url', 'audioFile'];
+const LOOKS_LIKE_URL = /^https?:\/\//i;
+
+export function synthesize(
+  { text, lang, languageVoice, gender },
+  { config = readConfig(), fetchImpl = fetch, timeoutMs = UPSTREAM_TIMEOUT_MS } = {},
+) {
+  return callUpstream(
+    {
+      url: config.ttsUrl,
+      key: config.key,
+      payload: { text, lang, languageVoice, gender },
+      read: readSpeechBody,
+    },
+    { fetchImpl, timeoutMs },
+  );
+}
+
+function readSpeechBody(body) {
+  const candidates = [
+    ...AUDIO_KEYS.map(key => body?.[key]),
+    ...AUDIO_KEYS.map(key => body?.data?.[key]),
+  ];
+  const found =
+    candidates.find(value => typeof value === 'string' && value.trim()) ??
+    candidates.find(value => typeof value === 'string');
+
+  if (found === undefined) {
+    return { ok: false, error: UPSTREAM_ERROR.MALFORMED };
   }
 
-  const text = body.transcription.trim();
-  if (!text) {
-    return done({ ok: false, error: UPSTREAM_ERROR.EMPTY_TRANSCRIPTION, status: response.status });
+  const audio = found.trim().replace(/^data:[^,]*,/, '');
+  if (!audio) {
+    return { ok: false, error: UPSTREAM_ERROR.EMPTY_SPEECH };
+  }
+  if (LOOKS_LIKE_URL.test(audio)) {
+    return { ok: false, error: UPSTREAM_ERROR.MALFORMED };
   }
 
-  return done({ ok: true, text, status: response.status });
+  return { ok: true, audio };
 }

@@ -1,20 +1,21 @@
 import {
-  ANUVADINI_STT_URL,
+  ANUVADINI_TTS_URL,
   TRANSPORT,
-  proxyVoiceToTextUrl,
+  proxyTextToSpeechUrl,
   resolveTransport,
 } from '../../config/endpoints.js';
-import { MAX_UPLOAD_BYTES, base64CharsFor } from '../audioBudget.js';
 import { normalizeAnuvadiniLanguage } from './language.js';
+import { ERROR_KIND } from './proxyContract.js';
 import {
-  buildDirectRequestBody,
-  buildRequestBody,
-  ERROR_KIND,
-  readTranscription,
-} from './proxyContract.js';
+  buildDirectSpeechRequestBody,
+  buildSpeechRequestBody,
+  readAudio,
+  voiceFor,
+} from './speechContract.js';
 
-export const REQUEST_TIMEOUT_MS = 75000;
-export const MAX_AUDIO_BASE64_CHARS = base64CharsFor(MAX_UPLOAD_BYTES);
+export const SPEECH_TIMEOUT_MS = 15000;
+
+export const MAX_SPEECH_CHARS = 600;
 
 async function fetchTransport({ url, body, headers, signal, timeoutMs }) {
   const controller = new AbortController();
@@ -26,7 +27,7 @@ async function fetchTransport({ url, body, headers, signal, timeoutMs }) {
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: { 'Content-Type': 'application/json', Accept: '*/*', ...headers },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -45,26 +46,35 @@ async function fetchTransport({ url, body, headers, signal, timeoutMs }) {
   }
 }
 
-const failed = errorKind => ({ ok: false, text: '', errorKind });
+const failed = errorKind => ({ ok: false, audioBase64: '', errorKind });
 
-export async function transcribe({
-  audioBase64,
+export async function synthesize({
+  text,
   language,
   signal,
   transport = fetchTransport,
   url,
   token = '',
-  timeoutMs = REQUEST_TIMEOUT_MS,
+  timeoutMs = SPEECH_TIMEOUT_MS,
 }) {
-  if (!audioBase64) {
-    return failed(ERROR_KIND.NO_AUDIO);
+  const spoken = String(text ?? '').trim();
+  if (!spoken) {
+    return failed(ERROR_KIND.NO_TEXT);
   }
-  if (audioBase64.length > MAX_AUDIO_BASE64_CHARS) {
-    return failed(ERROR_KIND.AUDIO_TOO_LARGE);
+  if (spoken.length > MAX_SPEECH_CHARS) {
+    return failed(ERROR_KIND.NO_TEXT);
+  }
+
+  // Already cancelled before we started — the caller has moved on, so there is
+  // nothing worth sending. Without this the request goes out and is only then
+  // aborted, which costs a round trip nobody is waiting for.
+  if (signal?.aborted) {
+    return failed(ERROR_KIND.CANCELLED);
   }
 
   const normalized = normalizeAnuvadiniLanguage(language);
-  if (!normalized) {
+  const config = normalized ? voiceFor(normalized) : null;
+  if (!config) {
     return failed(ERROR_KIND.UNSUPPORTED_LANGUAGE);
   }
 
@@ -74,7 +84,7 @@ export async function transcribe({
   }
 
   const direct = mode === TRANSPORT.DIRECT;
-  const endpoint = url || (direct ? ANUVADINI_STT_URL : proxyVoiceToTextUrl());
+  const endpoint = url || (direct ? ANUVADINI_TTS_URL : proxyTextToSpeechUrl());
   if (!endpoint) {
     return failed(ERROR_KIND.NOT_CONFIGURED);
   }
@@ -84,8 +94,8 @@ export async function transcribe({
     response = await transport({
       url: endpoint,
       body: direct
-        ? buildDirectRequestBody(audioBase64, normalized)
-        : buildRequestBody(audioBase64, normalized),
+        ? buildDirectSpeechRequestBody(spoken, normalized, config)
+        : buildSpeechRequestBody(spoken, normalized, config),
       headers: direct ? { Authorization: `Bearer ${token}` } : undefined,
       signal,
       timeoutMs,
@@ -102,8 +112,10 @@ export async function transcribe({
     return failed(ERROR_KIND.CLIENT_ERROR);
   }
 
-  const read = readTranscription(response?.body);
-  return read.ok ? { ok: true, text: read.text, errorKind: null } : failed(read.errorKind);
+  const read = readAudio(response?.body);
+  return read.ok
+    ? { ok: true, audioBase64: read.audioBase64, errorKind: null }
+    : failed(read.errorKind);
 }
 
 function classifyThrown(error, signal) {
