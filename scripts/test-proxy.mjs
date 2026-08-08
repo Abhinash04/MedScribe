@@ -149,10 +149,22 @@ const noUrl = await transcribe(
 );
 check('P5.4 missing url → not_configured', noUrl.error, UPSTREAM_ERROR.NOT_CONFIGURED);
 
+// Synthesis shares the credential and defaults to the published endpoint, so a
+// deployment that only sets the two transcription variables still speaks.
 check('P5.5 config reads the documented variables', readConfig({
   VOICE_TO_TEXT_API_URL: 'u',
   VOICE_TO_TEXT_API_KEY: 'k',
-}), { url: 'u', key: 'k' });
+}), {
+  url: 'u',
+  key: 'k',
+  ttsUrl: 'https://anuvadini-services.aicte-india.org/api/text-to-speech',
+});
+
+check('P5.6 the speech endpoint is overridable', readConfig({
+  VOICE_TO_TEXT_API_URL: 'u',
+  VOICE_TO_TEXT_API_KEY: 'k',
+  TEXT_TO_SPEECH_API_URL: 'tts',
+}).ttsUrl, 'tts');
 
 // ── 6. The body cap matches the capture ceiling ─────────────────────────────
 const { MAX_UPLOAD_BYTES } = await import('../src/services/audioBudget.js');

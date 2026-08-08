@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { transcribe, UPSTREAM_ERROR } from './anuvadini.mjs';
+import { synthesize, transcribe, UPSTREAM_ERROR } from './anuvadini.mjs';
 
 /**
  * MedScribe transcription proxy.
@@ -22,8 +22,13 @@ export const REQUEST_ERROR = {
   INVALID_JSON: 'invalid_json',
   MISSING_AUDIO: 'missing_audio',
   MISSING_LANGUAGE: 'missing_language',
+  MISSING_TEXT: 'missing_text',
+  MISSING_VOICE: 'missing_voice',
   TOO_LARGE: 'too_large',
 };
+
+/** A prompt is a sentence; anything larger is a caller bug, not a request. */
+export const MAX_SPEECH_CHARS = 600;
 
 const STATUS_FOR = {
   [UPSTREAM_ERROR.NOT_CONFIGURED]: 503,
@@ -34,6 +39,7 @@ const STATUS_FOR = {
   [UPSTREAM_ERROR.NETWORK]: 502,
   [UPSTREAM_ERROR.MALFORMED]: 502,
   [UPSTREAM_ERROR.EMPTY_TRANSCRIPTION]: 422,
+  [UPSTREAM_ERROR.EMPTY_SPEECH]: 422,
 };
 
 const json = (res, status, body) => {
@@ -105,6 +111,55 @@ export async function handleVoiceToText(body, deps = {}) {
   };
 }
 
+/**
+ * Speech synthesis, exported for the same reason as `handleVoiceToText`: the
+ * suite drives it without opening a socket.
+ *
+ * The prompt names absent fields and never carries a field value, so this route
+ * logs shape and timing only - the same discipline as the audio route, for the
+ * same reason.
+ */
+export async function handleTextToSpeech(body, deps = {}) {
+  if (typeof body?.text !== 'string' || !body.text.trim()) {
+    return { status: 400, body: { success: false, error: REQUEST_ERROR.MISSING_TEXT } };
+  }
+  if (body.text.length > MAX_SPEECH_CHARS) {
+    return { status: 413, body: { success: false, error: REQUEST_ERROR.TOO_LARGE } };
+  }
+  if (typeof body?.lang !== 'string' || !body.lang) {
+    return { status: 400, body: { success: false, error: REQUEST_ERROR.MISSING_LANGUAGE } };
+  }
+  if (typeof body?.language_voice !== 'string' || !body.language_voice) {
+    return { status: 400, body: { success: false, error: REQUEST_ERROR.MISSING_VOICE } };
+  }
+
+  const result = await synthesize(
+    {
+      text: body.text,
+      lang: body.lang,
+      languageVoice: body.language_voice,
+      gender: body.gender || 'Female',
+    },
+    deps,
+  );
+
+  if (result.ok) {
+    return { status: 200, body: { success: true, audio: result.audio }, ms: result.ms };
+  }
+
+  return {
+    status: STATUS_FOR[result.error] ?? 502,
+    body: { success: false, error: result.error },
+    ms: result.ms,
+  };
+}
+
+/** The two routes, so adding a third is a row rather than another branch. */
+const ROUTES = {
+  '/voice-to-text': { handle: handleVoiceToText },
+  '/text-to-speech': { handle: handleTextToSpeech },
+};
+
 export function createProxyServer(deps = {}) {
   return createServer(async (req, res) => {
     const startedAt = Date.now();
@@ -115,7 +170,8 @@ export function createProxyServer(deps = {}) {
       return;
     }
 
-    if (url !== '/voice-to-text') {
+    const route = ROUTES[url];
+    if (!route) {
       json(res, 404, { success: false, error: REQUEST_ERROR.NOT_FOUND });
       return;
     }
@@ -145,11 +201,11 @@ export function createProxyServer(deps = {}) {
       return;
     }
 
-    const result = await handleVoiceToText(parsed, deps);
+    const result = await route.handle(parsed, deps);
     json(res, result.status, result.body);
 
     console.log(
-      `[proxy] POST /voice-to-text ${result.status} ${raw.length}B upstream=${result.ms ?? 0}ms total=${Date.now() - startedAt}ms`,
+      `[proxy] POST ${url} ${result.status} ${raw.length}B upstream=${result.ms ?? 0}ms total=${Date.now() - startedAt}ms`,
     );
   });
 }
