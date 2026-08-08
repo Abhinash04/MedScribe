@@ -43,11 +43,6 @@ import {
 import { mergeExtraction, toDraft } from '../services/reportDraft';
 import { speakMissingFields, stopPrompt } from '../services/speechPromptService';
 
-// No opt-in call here on purpose. LayoutAnimation is always enabled under the
-// New Architecture, which this app runs (newArchEnabled=true), so
-// setLayoutAnimationEnabledExperimental is a no-op that only logs a warning.
-// `LayoutAnimation.configureNext` below still works.
-
 function formatDuration(totalSeconds = 0) {
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;

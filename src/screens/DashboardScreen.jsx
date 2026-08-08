@@ -29,25 +29,11 @@ import useReportsStore from '../store/useReportsStore';
 import { colors, spacing, typography } from '../theme';
 import { formatRelativeDateTime } from '../utils/datetime';
 
-/**
- * Doctor dashboard — the launch screen (SRS FR-1).
- *
- * Single doctor, no authentication (deliberate for this phase). Every number on
- * this screen is derived from saved reports; nothing is estimated or invented,
- * because a metric a doctor cannot trace back to a record is worse than no
- * metric at all.
- *
- * The list reads through `useReportsStore`, so no screen touches SQL.
- */
-
 const RECENT_LIMIT = 3;
 
-/** Avatar tints, picked per report so a patient keeps the same colour. */
 const AVATAR_TINTS = [
   { fill: colors.accentSoft, text: colors.secondaryAccent },
   { fill: colors.violetSoft, text: colors.violet },
-  // The `text` here colours the initials drawn on `fill`, so it needs the
-  // readable tokens rather than the border/fill hues.
   { fill: colors.warningSoft, text: colors.warningText },
   { fill: colors.successSoft, text: colors.successText },
 ];
@@ -87,19 +73,13 @@ function tintFor(id) {
 
 const MiniBarChart = ({ color }) => (
   <View style={styles.miniBarChart}>
-    <View style={[styles.bar, { height: 8, backgroundColor: color, opacity: 0.3 }]} />
-    <View style={[styles.bar, { height: 14, backgroundColor: color, opacity: 0.5 }]} />
-    <View style={[styles.bar, { height: 20, backgroundColor: color, opacity: 0.7 }]} />
-    <View style={[styles.bar, { height: 26, backgroundColor: color, opacity: 1 }]} />
+    <View style={[styles.bar, styles.bar1, { backgroundColor: color }]} />
+    <View style={[styles.bar, styles.bar2, { backgroundColor: color }]} />
+    <View style={[styles.bar, styles.bar3, { backgroundColor: color }]} />
+    <View style={[styles.bar, styles.bar4, { backgroundColor: color }]} />
   </View>
 );
 
-/**
- * `accent` is the vivid hue, correct for borders and solid fills. `glyph` is
- * what is drawn ON the soft `tint` and therefore needs contrast against it —
- * the amber and green accents measure barely 2:1 on their own soft fills. It
- * defaults to `accent`, so only the two palettes that need it pass one.
- */
 const StatTile = ({ label, subLabel, value, tint, accent, glyph = accent, iconName }) => (
   <View style={styles.statTile}>
     <View style={styles.statTileHeader}>
@@ -166,15 +146,12 @@ const DashboardScreen = ({ navigation }) => {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
 
-  // Refresh on focus, not just on mount: returning from a save must show it.
   useFocusEffect(
     useCallback(() => {
       loadAll();
     }, [loadAll]),
   );
 
-  // An interrupted consultation is offered here as well as on the recording
-  // screen, because a crash on the report screen leaves nothing else to find.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
@@ -227,9 +204,7 @@ const DashboardScreen = ({ navigation }) => {
   const filtersActive = draftsOnly || query.trim().length > 0;
 
   const handleNewDictation = useCallback(() => {
-    // Explicit reset rather than relying on RecordingScreen clearing on mount.
     resetRecording();
-    // A new consultation must never append onto the previous one's transcript.
     clearRefinementState();
     navigation.navigate('Recording');
   }, [resetRecording, navigation]);
@@ -265,9 +240,6 @@ const DashboardScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             await clearActiveSession(unfinished?.id);
-            // Discarding the only unfinished consultation means no consultation
-            // audio should survive it, and after a restart the path is no
-            // longer known in memory.
             await purgeAbandoned(0);
             clearRefinementState();
             setUnfinished(null);
@@ -296,9 +268,6 @@ const DashboardScreen = ({ navigation }) => {
   );
 
   const handleToggleSearch = useCallback(() => {
-    // Read from the closure rather than nesting setQuery inside the setSearching
-    // updater: React may invoke an updater twice, and a side effect in there
-    // runs twice with it.
     if (searching) {
       setQuery('');
     }
@@ -402,10 +371,10 @@ const DashboardScreen = ({ navigation }) => {
           style={styles.ctaCard}
         >
           <View style={styles.waveContainerLeft}>
-            <View style={[styles.waveBar, { height: 8 }]} />
-            <View style={[styles.waveBar, { height: 16 }]} />
-            <View style={[styles.waveBar, { height: 12 }]} />
-            <View style={[styles.waveBar, { height: 20 }]} />
+            <View style={[styles.waveBar, styles.waveBar8]} />
+            <View style={[styles.waveBar, styles.waveBar16]} />
+            <View style={[styles.waveBar, styles.waveBar12]} />
+            <View style={[styles.waveBar, styles.waveBar20]} />
           </View>
           
           <View style={styles.ctaMic}>
@@ -413,10 +382,10 @@ const DashboardScreen = ({ navigation }) => {
           </View>
           
           <View style={styles.waveContainerRight}>
-            <View style={[styles.waveBar, { height: 20 }]} />
-            <View style={[styles.waveBar, { height: 12 }]} />
-            <View style={[styles.waveBar, { height: 16 }]} />
-            <View style={[styles.waveBar, { height: 8 }]} />
+            <View style={[styles.waveBar, styles.waveBar20]} />
+            <View style={[styles.waveBar, styles.waveBar12]} />
+            <View style={[styles.waveBar, styles.waveBar16]} />
+            <View style={[styles.waveBar, styles.waveBar8]} />
           </View>
 
           <View style={styles.ctaText}>
@@ -670,8 +639,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: FAB_SIZE + spacing.xl,
   },
-
-  // ------------------------------------------------------------- greeting
   greetingRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -721,8 +688,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: spacing.sm,
   },
-
-  // ------------------------------------------------------------------ CTA
   ctaWrapper: {
     marginTop: spacing.md,
     shadowColor: '#2F6BFF',
@@ -755,6 +720,18 @@ const styles = StyleSheet.create({
     width: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
     borderRadius: 1,
+  },
+  waveBar8: {
+    height: 8,
+  },
+  waveBar12: {
+    height: 12,
+  },
+  waveBar16: {
+    height: 16,
+  },
+  waveBar20: {
+    height: 20,
   },
   ctaMic: {
     width: 46,
@@ -796,10 +773,8 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 24,
     color: '#7C4DFF',
-    marginLeft: 2, // optical center for chevron
+    marginLeft: 2,
   },
-
-  // ---------------------------------------------------------------- overview
   overviewContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
@@ -920,8 +895,23 @@ const styles = StyleSheet.create({
     width: 5,
     borderRadius: 2.5,
   },
+  bar1: {
+    height: 8,
+    opacity: 0.3,
+  },
+  bar2: {
+    height: 14,
+    opacity: 0.5,
+  },
+  bar3: {
+    height: 20,
+    opacity: 0.7,
+  },
+  bar4: {
+    height: 26,
+    opacity: 1,
+  },
 
-  // -------------------------------------------------------- quick actions
   quickActionsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -998,8 +988,6 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 1,
   },
-
-  // ---------------------------------------------------------------- list
   search: {
     ...typography.body,
     backgroundColor: colors.surface,
@@ -1087,8 +1075,6 @@ const styles = StyleSheet.create({
   statusTextFinal: {
     color: colors.successText,
   },
-
-  // --------------------------------------------------------------- states
   emptyBox: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
@@ -1156,8 +1142,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.secondaryAccent,
   },
-
-  // ------------------------------------------------------------------ fab
   fabRow: {
     position: 'absolute',
     left: 0,
