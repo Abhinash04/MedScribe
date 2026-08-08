@@ -1,10 +1,3 @@
-/**
- * Date and time formatting shared by the dashboard list and the PDF footer.
- *
- * Pure, with no React Native imports, so `scripts/test-report.mjs` can assert
- * the PDF payload under plain Node.
- */
-
 const MONTHS = [
   'Jan',
   'Feb',
@@ -24,10 +17,6 @@ function pad(value) {
   return String(value).padStart(2, '0');
 }
 
-/**
- * "12 Mar 2026, 14:05" — deliberately not `toLocaleString`, which varies with
- * device locale and would make a saved report read differently on two phones.
- */
 export function formatDateTime(epochMs) {
   if (!epochMs) {
     return '';
@@ -44,15 +33,6 @@ export function formatDateTime(epochMs) {
   );
 }
 
-/**
- * "Today, 14:05" / "Yesterday, 19:15" / "12 Mar 2026, 14:05".
- *
- * The dashboard list is read at a glance between consultations, where the day
- * matters more than the date. Anything older than yesterday falls back to
- * `formatDateTime` — "3 days ago" is worse than a date in a medical record.
- *
- * `now` is injectable so the day boundary is testable without a clock.
- */
 export function formatRelativeDateTime(epochMs, now = Date.now()) {
   if (!epochMs) {
     return '';
@@ -77,7 +57,6 @@ export function formatRelativeDateTime(epochMs, now = Date.now()) {
   return formatDateTime(epochMs);
 }
 
-/** Filename-safe stamp: `20260312-1405`. */
 export function fileStamp(epochMs = Date.now()) {
   const date = new Date(epochMs);
   return (

@@ -172,7 +172,6 @@ const useRecordingStore = create((set, get) => ({
   setAnuvadiniResult: (result, options) =>
     set(state => ({ anuvadini: applyResult(state.anuvadini, result, options) })),
 
-  /** Edits made while the alternative transcript is the active one. */
   setAnuvadiniText: text =>
     set(state => ({ anuvadini: { ...state.anuvadini, text: text ?? '' } })),
 
@@ -234,16 +233,9 @@ const useRecordingStore = create((set, get) => ({
     }),
 }));
 
-/**
- * Joined native transcript — what the recognizer produced.
- */
 export const selectFullTranscript = state =>
   chunksFrom(state.segments).join(' ').trim() || state.chunks.join(' ').trim();
 
-/**
- * The transcript the doctor has chosen. Extraction and the report read this;
- * the native one stays intact underneath either way.
- */
 export const selectActiveTranscript = state =>
   activeText({
     nativeText: selectFullTranscript(state),
