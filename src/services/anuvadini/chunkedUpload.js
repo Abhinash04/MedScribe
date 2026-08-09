@@ -18,9 +18,15 @@ export async function uploadChunks({
   readChunk,
   send,
   stillCurrent = () => true,
+  onProgress = null,
 }) {
   const texts = (progress.texts ?? []).slice();
+  const total = chunks.length;
+  const settled = () =>
+    chunks.filter(chunk => typeof texts[chunk.index] === 'string').length;
   let last = null;
+
+  onProgress?.({ done: settled(), total });
 
   for (const chunk of chunks) {
     if (typeof texts[chunk.index] === 'string') {
@@ -43,6 +49,7 @@ export async function uploadChunks({
       break;
     }
     texts[chunk.index] = last.text;
+    onProgress?.({ done: settled(), total });
   }
 
   const carried = { ...progress, texts };

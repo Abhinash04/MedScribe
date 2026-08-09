@@ -271,4 +271,53 @@ check(
   );
 }
 
+// ── 12. What the doctor is told while they wait ─────────────────────────────
+//
+// The refining overlay used to state only that something was happening. On a
+// long consultation that is a blank wait of unknown length, which is the one
+// thing a doctor with a patient in front of them cannot judge. These pin the
+// counts the overlay renders.
+{
+  const seen = [];
+  await uploadChunks({
+    chunks: CHUNKS,
+    readChunk: reader(),
+    send: service(TEXTS),
+    onProgress: counts => seen.push(`${counts.done}/${counts.total}`),
+  });
+
+  check('C12.1 opens at nothing done', seen[0], `0/${CHUNKS.length}`);
+  check('C12.2 counts up once per chunk', seen, ['0/3', '1/3', '2/3', '3/3']);
+
+  const failed = [];
+  await uploadChunks({
+    chunks: CHUNKS,
+    readChunk: reader(),
+    send: service(TEXTS, { failAt: 1 }),
+    onProgress: counts => failed.push(counts.done),
+  });
+  check('C12.3 a failed chunk does not advance the count', failed, [0, 1]);
+
+  // The resumed case is why this is counted rather than incremented: chunk 0
+  // is already in hand, so reporting zero would walk the count backwards.
+  const resumed = [];
+  await uploadChunks({
+    chunks: CHUNKS,
+    progress: { ...emptyProgress('/rec.wav', planSignature(CHUNKS)), texts: [TEXTS[0]] },
+    readChunk: reader(),
+    send: service(TEXTS),
+    onProgress: counts => resumed.push(counts.done),
+  });
+  check('C12.4 a resumed upload opens at what it already has', resumed[0], 1);
+  check('C12.5 and still finishes at the total', resumed[resumed.length - 1], CHUNKS.length);
+
+  check(
+    'C12.6 omitting the callback changes nothing',
+    (
+      await uploadChunks({ chunks: CHUNKS, readChunk: reader(), send: service(TEXTS) })
+    ).result.text,
+    joinChunks(CHUNKS, TEXTS),
+  );
+}
+
 report();
