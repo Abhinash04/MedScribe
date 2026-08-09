@@ -67,6 +67,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const selectedSource = useRecordingStore(state => state.transcriptSource);
   const setTranscriptSource = useRecordingStore(state => state.setTranscriptSource);
   const setAnuvadiniText = useRecordingStore(state => state.setAnuvadiniText);
+  const refineProgress = useRecordingStore(state => state.refineProgress);
   const [viewedSource, setViewedSource] = useState(selectedSource);
   const [blocked, setBlocked] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -79,6 +80,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
+  const editorFade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -153,6 +155,16 @@ const TranscriptReviewScreen = ({ navigation }) => {
   useEffect(() => {
     setEditableText(viewedText);
   }, [viewedText]);
+
+  useEffect(() => {
+    editorFade.setValue(0);
+    Animated.timing(editorFade, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [viewedSource, editorFade]);
 
   useEffect(() => {
     setStage(CONSULTATION_STAGE.REVIEW);
@@ -484,17 +496,24 @@ const TranscriptReviewScreen = ({ navigation }) => {
                     <Text style={[styles.segmentTabText, isSelectedTab && styles.segmentTabTextActive]}>
                       {LABEL[source]}
                     </Text>
+                    {isUsed && (
+                      <Icon
+                        name="check-circle"
+                        size={13}
+                        color={isSelectedTab ? '#FFFFFF' : '#2F6BFF'}
+                        style={styles.usedCheckMargin}
+                      />
+                    )}
                   </View>
-                  {isUsed && (
-                    <Text style={[styles.inUseText, isSelectedTab && styles.inUseTextActive]}>
-                      IN USE
-                    </Text>
-                  )}
-                  {isUsed && isSelectedTab && (
-                    <View style={styles.checkBadge}>
-                      <Icon name="check" size={12} color="#2F6BFF" />
-                    </View>
-                  )}
+                  <Text
+                    style={[
+                      styles.inUseText,
+                      isSelectedTab && styles.inUseTextActive,
+                      !isUsed && styles.inUseTextIdle,
+                    ]}
+                  >
+                    {isUsed ? 'USED FOR REPORT' : 'PREVIEW ONLY'}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -538,28 +557,47 @@ const TranscriptReviewScreen = ({ navigation }) => {
                   {viewingAi ? 'AI Transcription' : 'Original Transcription'}
                 </Text>
               </View>
-              {viewedIsSelected && (
+              {viewedIsSelected ? (
                 <View style={styles.selectedBadge}>
-                  <Text style={styles.selectedBadgeText}>Selected</Text>
+                  <Icon name="check" size={12} color="#FFFFFF" />
+                  <Text style={styles.selectedBadgeText}>Used for report</Text>
+                </View>
+              ) : (
+                <View style={styles.unusedBadge}>
+                  <Text style={styles.unusedBadgeText}>Not used</Text>
                 </View>
               )}
             </View>
-            {viewingAi && !hasAiText && anuvadini.status !== ANUVADINI_STATUS.READY ? (
-              <Text style={styles.placeholder}>
-                {anuvadini.status === ANUVADINI_STATUS.PENDING
-                  ? 'The AI transcription is still being generated. The original transcript is ready to use in the meantime.'
-                  : 'No AI transcription for this dictation. The original transcript is unaffected and can still generate the report.'}
-              </Text>
-            ) : (
-              <TextInput
-                style={styles.editorInput}
-                multiline
-                value={editableText}
-                onChangeText={setEditableText}
-                placeholder="Dictated text will appear here..."
-                placeholderTextColor="#94A3B8"
-              />
-            )}
+            <Animated.View style={{ opacity: editorFade }}>
+              {viewingAi && !hasAiText && anuvadini.status !== ANUVADINI_STATUS.READY ? (
+                anuvadini.status === ANUVADINI_STATUS.PENDING ? (
+                  <View style={styles.pendingBlock}>
+                    <ActivityIndicator size="small" color="#2F6BFF" />
+                    <Text style={styles.pendingTitle}>
+                      Generating AI transcription…
+                    </Text>
+                    <Text style={styles.pendingDetail}>
+                      This usually takes a few seconds. The original transcript is
+                      ready to use in the meantime.
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.placeholder}>
+                    No AI transcription for this dictation. The original transcript
+                    is unaffected and can still generate the report.
+                  </Text>
+                )
+              ) : (
+                <TextInput
+                  style={styles.editorInput}
+                  multiline
+                  value={editableText}
+                  onChangeText={setEditableText}
+                  placeholder="Dictated text will appear here..."
+                  placeholderTextColor="#94A3B8"
+                />
+              )}
+            </Animated.View>
 
             <View style={styles.editorToolbar}>
               <View style={styles.toolbarLeft}>
@@ -636,7 +674,11 @@ const TranscriptReviewScreen = ({ navigation }) => {
         </Pressable>
       </View>
 
-      <RefiningOverlay visible={refining} onSkip={handleSkipRefinement} />
+      <RefiningOverlay
+        visible={refining}
+        onSkip={handleSkipRefinement}
+        progress={refineProgress}
+      />
 
       <MissingFieldsModal
         visible={!!blocked}
@@ -876,7 +918,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   segmentTabActive: {
-    backgroundColor: '#2F6BFF',
+    backgroundColor: '#1D4ED8',
     shadowColor: '#2F6BFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -890,7 +932,7 @@ const styles = StyleSheet.create({
   segmentTabText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#475569',
   },
   segmentTabTextActive: {
     color: '#FFFFFF',
@@ -899,21 +941,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
-    color: '#94A3B8',
+    color: '#1D4ED8',
     marginTop: 2,
   },
   inUseTextActive: {
     color: '#E0E7FF',
   },
-  checkBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    right: 16,
+  inUseTextIdle: {
+    color: '#475569',
+  },
+  usedCheckMargin: {
+    marginLeft: 6,
   },
   fallbackNotice: {
     flexDirection: 'row',
@@ -991,7 +1029,10 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   selectedBadge: {
-    backgroundColor: '#34D399',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#15803D',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
@@ -1001,6 +1042,40 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+  unusedBadge: {
+    backgroundColor: colors.warningLight,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  unusedBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.warningText,
+    letterSpacing: 0.5,
+  },
+  pendingBlock: {
+    padding: 24,
+    minHeight: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  pendingTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  pendingDetail: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#94A3B8',
+    textAlign: 'center',
+    maxWidth: 260,
   },
   placeholder: {
     padding: 24,

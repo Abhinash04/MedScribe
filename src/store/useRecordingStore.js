@@ -16,29 +16,16 @@ export const CONSULTATION_STAGE = {
   REPORT: 'report',
 };
 
-/**
- * Recording Session Store.
- *
- * Manages utterances (segments) with rich metadata (timestamps, confidence,
- * edit flags), live extracted fields, duration timer, and session status.
- */
-
 export function generateSegmentId() {
   return `seg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/**
- * Session ids carry a random suffix for the same reason segment ids do: two
- * sessions started inside the same millisecond would otherwise collide, and the
- * id is the primary key of the autosave row.
- */
 export function generateSessionId() {
   return `sess_${Date.now().toString(36)}_${Math.random()
     .toString(36)
     .slice(2, 7)}`;
 }
 
-/** Legacy mirror of the segment texts, kept for readers that predate segments. */
 function chunksFrom(segments) {
   return segments.map(segment => segment.text);
 }
@@ -58,28 +45,19 @@ const initialState = {
   sessionId: generateSessionId(),
   status: RECORDING_STATE.IDLE,
   segments: [],
-  chunks: [], // Maintained for backward compatibility
+  chunks: [],
   partialText: '',
   errorMessage: '',
   errorCode: null,
   durationSeconds: 0,
   liveExtractedFields: {},
-  // The editable report draft, held here so it survives an "Add More Speech"
-  // round trip through the recording screen. Manual edits would otherwise be
-  // lost when the report screen remounts and re-extracts.
   reportDraft: null,
-  // Where the consultation had got to, so an interrupted one reopens on the
-  // screen the doctor was actually on.
   stage: CONSULTATION_STAGE.RECORDING,
   createdAt: Date.now(),
-  // The alternative transcript. `segments` remain the native one — duplicating
-  // that text here would give the same transcript two owners.
   anuvadini: emptyAnuvadini(),
   transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
-  // The recognizer's own words, frozen when dictation ends. Segments stay
-  // editable; this is the baseline the "what AI changed" comparison uses, so a
-  // doctor's edit cannot rewrite history.
   nativeRaw: '',
+  refineProgress: { done: 0, total: 0 },
 };
 
 const useRecordingStore = create((set, get) => ({
@@ -107,7 +85,6 @@ const useRecordingStore = create((set, get) => ({
     });
   },
 
-  /** Backward-compatible alias. One append path, so the two cannot drift. */
   appendChunk: text => get().appendSegment({ text }),
 
   updateSegment: (id, newText) => {
@@ -135,14 +112,6 @@ const useRecordingStore = create((set, get) => ({
     });
   },
 
-  /**
-   * Replaces the whole transcript with the doctor's edited text.
-   *
-   * This collapses the utterance breakdown into one segment, which is why it
-   * returns early when the text is unchanged: saving the review screen without
-   * editing anything must not destroy per-utterance boundaries and their
-   * timestamps and confidences.
-   */
   setFullTranscript: fullText => {
     const trimmed = fullText?.trim() ?? '';
     set(state => {
@@ -171,6 +140,9 @@ const useRecordingStore = create((set, get) => ({
 
   setAnuvadiniResult: (result, options) =>
     set(state => ({ anuvadini: applyResult(state.anuvadini, result, options) })),
+
+  setRefineProgress: ({ done = 0, total = 0 } = {}) =>
+    set({ refineProgress: { done, total } }),
 
   setAnuvadiniText: text =>
     set(state => ({ anuvadini: { ...state.anuvadini, text: text ?? '' } })),
@@ -230,6 +202,7 @@ const useRecordingStore = create((set, get) => ({
       anuvadini: emptyAnuvadini(),
       transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
       nativeRaw: '',
+      refineProgress: { done: 0, total: 0 },
     }),
 }));
 

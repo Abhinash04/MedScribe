@@ -9,45 +9,47 @@ import {
 } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
-/**
- * Shown while the AI transcript is being generated, before the doctor sees the
- * review screen's editor.
- *
- * Deliberately blocking. The refined transcript replaces what is on screen the
- * moment it lands, so allowing edits underneath it would mean discarding work
- * the doctor had just done — waiting is the honest state.
- *
- * `onSkip` is what keeps that from becoming a trap. Refinement time scales with
- * dictation length (one request per 45 s of audio), so a long consultation has
- * a slow tail, and a doctor with a patient in front of them must always be able
- * to move on. Skipping does not cancel the request: the result still arrives
- * and fills the AI tab, it simply no longer takes over on its own.
- */
-const RefiningOverlay = ({ visible, onSkip }) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onSkip}>
-    <View style={styles.overlay}>
-      <View style={styles.card}>
-        <ActivityIndicator size="large" color={colors.primaryAccent} />
+const RefiningOverlay = ({ visible, onSkip, progress }) => {
+  const total = progress?.total ?? 0;
+  const done = Math.min(progress?.done ?? 0, total);
+  const showParts = total > 1;
 
-        <Text style={styles.title}>Refining your dictation with AI. Please wait…</Text>
-        <Text style={styles.detail}>
-          Your recording is being transcribed a second time for accuracy. This
-          usually takes a few seconds.
-        </Text>
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onSkip}>
+      <View style={styles.overlay}>
+        <View style={styles.card}>
+          <ActivityIndicator size="large" color={colors.primaryAccent} />
 
-        <Pressable
-          style={({ pressed }) => [styles.skip, pressed && styles.pressed]}
-          onPress={onSkip}
-          accessibilityRole="button"
-          accessibilityLabel="Continue with the original transcription"
-          hitSlop={8}
-        >
-          <Text style={styles.skipText}>Continue with original</Text>
-        </Pressable>
+          <Text style={styles.title}>Refining your dictation…</Text>
+          <Text style={styles.detail}>
+            We’re improving the transcription for better clinical accuracy.
+          </Text>
+
+          {showParts ? (
+            <View style={styles.progressBlock}>
+              <Text style={styles.progressText}>
+                Part {Math.min(done + 1, total)} of {total}
+              </Text>
+              <View style={styles.track}>
+                <View style={[styles.fill, { width: `${(done / total) * 100}%` }]} />
+              </View>
+            </View>
+          ) : null}
+
+          <Pressable
+            style={({ pressed }) => [styles.skip, pressed && styles.pressed]}
+            onPress={onSkip}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with the original transcription"
+            hitSlop={8}
+          >
+            <Text style={styles.skipText}>Continue with original</Text>
+          </Pressable>
+        </View>
       </View>
-    </View>
-  </Modal>
-);
+    </Modal>
+  );
+};
 
 const styles = StyleSheet.create({
   overlay: {
@@ -81,6 +83,29 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 19,
+  },
+  progressBlock: {
+    width: '100%',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+  },
+  track: {
+    width: '100%',
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.surfaceBorder,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: colors.primaryAccent,
   },
   skip: {
     paddingVertical: spacing.sm,

@@ -79,6 +79,7 @@ export async function refineTranscript({
   inFlight = controller;
 
   store.setAnuvadiniPending();
+  store.setRefineProgress({ done: 0, total: plan.chunks.length });
 
   const token = getAnuvadiniToken();
 
@@ -89,6 +90,11 @@ export async function refineTranscript({
     send: payload =>
       transcribe({ audioBase64: payload, language, token, signal: controller.signal }),
     stillCurrent: () => inFlight === controller,
+    onProgress: counts => {
+      if (inFlight === controller) {
+        useRecordingStore.getState().setRefineProgress(counts);
+      }
+    },
   });
 
   if (superseded) {

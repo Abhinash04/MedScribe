@@ -1,15 +1,11 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 import { CHANGE, diffTranscripts, summarizeChanges } from '../services/transcriptDiff';
 import { colors, spacing, typography } from '../theme';
 
-/**
- * What the second transcription changed, against the raw recogniser output.
- *
- * Both sides are the frozen originals, never the editable drafts, so a doctor's
- * own correction can never appear here as something the AI did.
- */
 const TranscriptDiffView = ({ original, revised }) => {
+  const [expanded, setExpanded] = useState(false);
   const changes = useMemo(() => summarizeChanges(original, revised), [original, revised]);
   const runs = useMemo(() => diffTranscripts(original, revised), [original, revised]);
 
@@ -28,13 +24,35 @@ const TranscriptDiffView = ({ original, revised }) => {
     );
   }
 
+  const label = `${changes.length} ${changes.length === 1 ? 'change' : 'changes'}`;
+
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>
-        What AI changed ({changes.length}
-        {changes.length === 1 ? ' change' : ' changes'})
-      </Text>
+      <Pressable
+        style={styles.header}
+        onPress={() => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setExpanded(value => !value);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={
+          expanded ? `Hide the ${label} AI made` : `View the ${label} AI made`
+        }
+        accessibilityState={{ expanded }}
+      >
+        <Text style={styles.title}>What AI changed</Text>
+        <View style={styles.headerRight}>
+          <Text style={styles.count}>{label}</Text>
+          <Icon
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={colors.textSecondary}
+          />
+        </View>
+      </Pressable>
 
+      {!expanded ? null : (
+      <>
       <View style={styles.summary}>
         {changes.map((change, index) => (
           <Text key={`${change.from}-${change.to}-${index}`} style={styles.summaryLine}>
@@ -76,6 +94,8 @@ const TranscriptDiffView = ({ original, revised }) => {
           </Text>
         ))}
       </Text>
+      </>
+      )}
     </View>
   );
 };
@@ -88,6 +108,22 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceBorder,
     padding: spacing.md,
     gap: spacing.xs,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  count: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   title: {
     ...typography.body,
