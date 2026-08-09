@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
@@ -23,6 +23,10 @@ import { getActiveSession, clearActiveSession } from '../services/sessionPersist
 import { colors, spacing, typography } from '../theme';
 
 const HEADLINE = {
+  [RECORDING_STATE.IDLE]: {
+    title: 'Ready to Dictate',
+    subtitle: 'Tap Start dictation when you are ready to speak.',
+  },
   [RECORDING_STATE.CHECKING_PERMISSION]: {
     title: 'Preparing microphone',
     subtitle: 'Checking microphone access…',
@@ -98,7 +102,18 @@ const RecordingScreen = ({ navigation, route }) => {
   const [showStopModal, setShowStopModal] = useState(false);
 
   // Check for an interrupted session before the first start.
+  //
+  // The latch makes this run at most once per mount. Without it, the resume
+  // effect below clearing its own param flips `resumeRequested` back to false,
+  // re-runs this, and it offers to recover the session being dictated right now.
+  const probedRef = useRef(false);
+
   useEffect(() => {
+    if (probedRef.current) {
+      return;
+    }
+    probedRef.current = true;
+
     if (resumeRequested) {
       return;
     }
@@ -110,7 +125,12 @@ const RecordingScreen = ({ navigation, route }) => {
       if (cancelled) {
         return;
       }
-      if (active?.segments?.length > 0) {
+      // A row whose id matches the store's is this session's own autosave, not
+      // an interrupted one — recovering it would restore the doctor's dictation
+      // over itself.
+      const isOwnAutosave =
+        active?.id === useRecordingStore.getState().sessionId;
+      if (active?.segments?.length > 0 && !isOwnAutosave) {
         setRecoveredSessionData(active);
         setRecoveryState('prompting');
       } else {
@@ -140,8 +160,6 @@ const RecordingScreen = ({ navigation, route }) => {
     setRecoveryState('settled');
   }, [recoveredSessionData]);
 
-  // Coming back from the transcript review to add more. The screen is still
-  // mounted and already settled, so the session has to be told explicitly.
   useEffect(() => {
     if (!resumeRequested) {
       return;
@@ -154,9 +172,6 @@ const RecordingScreen = ({ navigation, route }) => {
     navigation.goBack();
   }, [navigation]);
 
-  /**
-   * Hand off to Transcript Review step.
-   */
   const handleContinueToReview = useCallback(() => {
     navigation.navigate('TranscriptReview');
   }, [navigation]);
@@ -207,6 +222,7 @@ const RecordingScreen = ({ navigation, route }) => {
   const isListening = status === RECORDING_STATE.LISTENING;
   const isProcessing = status === RECORDING_STATE.PROCESSING;
   const isError = status === RECORDING_STATE.ERROR;
+  const isIdle = status === RECORDING_STATE.IDLE;
   const showTranscript =
     !isChecking && (!!transcript || !!partialText || isListening || isPaused);
 
@@ -236,6 +252,8 @@ const RecordingScreen = ({ navigation, route }) => {
                 ? 'Paused'
                 : isProcessing
                 ? 'Processing'
+                : isIdle
+                ? 'Ready'
                 : 'Stopped'}
             </Text>
           </View>
@@ -287,6 +305,7 @@ const RecordingScreen = ({ navigation, route }) => {
           hasTranscript={!!transcript}
           onPause={pause}
           onResume={resume}
+          onStart={resumeDictation}
           onStop={handleTapStop}
           onRestart={retry}
           onRetry={retry}

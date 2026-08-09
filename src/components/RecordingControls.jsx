@@ -31,19 +31,37 @@ const ControlButton = ({ label, onPress, variant = 'primary', disabled, hint, st
   </Pressable>
 );
 
-/**
- * State-aware control row for the recording session.
- */
 const RecordingControls = ({
   status,
   hasTranscript,
   onPause,
   onResume,
+  onStart,
   onStop,
   onRestart,
   onRetry,
   onContinue,
 }) => {
+  if (status === RECORDING_STATE.IDLE) {
+    return (
+      <View style={styles.column}>
+        <ControlButton
+          label="Start dictation"
+          onPress={onStart}
+          hint="Begins speech recognition, keeping any restored transcript"
+        />
+        {hasTranscript ? (
+          <ControlButton
+            label="Review Transcript"
+            variant="secondary"
+            onPress={onContinue}
+            hint="Opens the transcript review screen before report generation"
+          />
+        ) : null}
+      </View>
+    );
+  }
+
   if (status === RECORDING_STATE.LISTENING) {
     return (
       <View style={styles.row}>
@@ -182,7 +200,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: 0.3,
   },
-  // Filled blue button: ink-on-blue fails contrast, so the label flips.
   labelOnAccent: {
     color: colors.onPrimary,
   },
