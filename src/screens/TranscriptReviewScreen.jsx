@@ -233,8 +233,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
   ]);
 
   const applySource = useCallback(
-    (source, { announce }) => {
-      commitEditor(editableText);
+    (source, { announce, commit = true }) => {
+      if (commit) {
+        commitEditor(editableText);
+      }
       setTranscriptSource(source);
 
       const next = useRecordingStore.getState();
@@ -271,6 +273,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
     [applySource],
   );
 
+  const viewedSourceRef = useRef(viewedSource);
+  viewedSourceRef.current = viewedSource;
+
   useEffect(() => {
     const state = useRecordingStore.getState();
     if (
@@ -283,7 +288,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
     ) {
       return;
     }
-    applySource(TRANSCRIPT_SOURCE.ANUVADINI, { announce: false });
+    applySource(TRANSCRIPT_SOURCE.ANUVADINI, {
+      announce: false,
+      commit: viewedSourceRef.current !== TRANSCRIPT_SOURCE.ANUVADINI,
+    });
     setViewedSource(TRANSCRIPT_SOURCE.ANUVADINI);
   }, [anuvadini, applySource]);
 

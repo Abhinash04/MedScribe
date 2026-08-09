@@ -425,4 +425,49 @@ check('T14.10 and reports pass one next', nextPassIndex(null), 1);
     true);
 }
 
+// T16 pins the upstream half of the "AI transcript emptied on arrival" defect.
+// The wipe itself was in the review screen, which no fixture can reach, so what
+// is guaranteed here is the contract that screen relies on: a pass that
+// succeeds after an earlier failure produces offerable text, and auto-select
+// still fires — which is exactly when the screen used to overwrite it.
+{
+  const failed = applyResult(markPending(emptyAnuvadini()), {
+    ok: false,
+    errorKind: ERROR_KIND.NO_AUDIO,
+  });
+  check('T16.1 the failed pass leaves nothing to offer', failed.text, '');
+
+  const recovered = applyResult(markPending(failed), { ok: true, text: REFINED });
+  check('T16.2 a successful retry fills the text', recovered.text, REFINED);
+  check('T16.3 and the untouched baseline', recovered.raw, REFINED);
+  check('T16.4 the failure is cleared', recovered.error, null);
+
+  check(
+    'T16.5 the recovered pass is offerable',
+    canOffer({ nativeText: NATIVE, anuvadini: recovered }, TRANSCRIPT_SOURCE.ANUVADINI),
+    true,
+  );
+  check(
+    'T16.6 auto-select fires on the recovered pass',
+    shouldAutoSelectAi({
+      nativeText: NATIVE,
+      anuvadini: recovered,
+      source: TRANSCRIPT_SOURCE.NATIVE,
+      chosen: false,
+    }),
+    true,
+  );
+
+  // An emptied transcript must not be selectable — the screen's own guard
+  // against shipping a blank report if the wipe ever returns by another route.
+  check(
+    'T16.7 an emptied transcript cannot be offered',
+    canOffer(
+      { nativeText: NATIVE, anuvadini: { ...recovered, text: '' } },
+      TRANSCRIPT_SOURCE.ANUVADINI,
+    ),
+    false,
+  );
+}
+
 report();
