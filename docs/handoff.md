@@ -2,7 +2,7 @@
 
 > **Purpose of this document.** It captures the state of MedScribe after Phases 1–9, including the reasoning behind decisions that are not obvious from reading the code. Several parts of this codebase look like mistakes and are not — those are called out explicitly in [Implementation Notes](#7-implementation-notes--conventions). Read that section before changing anything in the speech, persistence or export pipelines.
 
-**Last updated:** 2026-08-07
+**Last updated:** 2026-08-09
 **Branch:** `abhi-dev`
 
 ---
@@ -42,6 +42,16 @@ Phase 5 adds the transcript review step in front of extraction, and makes the di
 
 Phase 9 closes the gap between what a doctor says and what the report holds. Extraction reads a closed phrasebook, so ordinary speech missed fields and — worse, once measured — filled some with values belonging elsewhere. Speech that reaches no field is now kept verbatim for review, and evidence decides both whether a value may stay where a marker put it and whether an unmarked sentence may fill a field on its own.
 
+Phase 10 gives the completeness gate a voice. When a dictation leaves mandatory
+fields empty the app now says which ones aloud, at the moment processing
+finishes and while the patient is still in the room — the written warning
+remains, and the speech is layered on top of it, never in place of it.
+
+Phase 11 stops the weaker transcript being the default. The recogniser exists
+for live feedback while speaking; once the refined transcript arrives it takes
+over on its own, so the better text is no longer behind a tap that is easy to
+miss. The screens were redesigned in the same pass.
+
 **Scope boundary:** the application is a *documentation aid only*. It performs no diagnosis and makes no medical decisions (SRS §1.2). Editable fields do not change that — the doctor is the author of every value; the app only proposes.
 
 Full requirements live in [`MedSrcibe_SRS.md`](./MedSrcibe_SRS.md). The two Antigravity documents in this folder describe the *original Phase 1 plan* and are historical — they do not reflect the current codebase.
@@ -61,8 +71,10 @@ Full requirements live in [`MedSrcibe_SRS.md`](./MedSrcibe_SRS.md). The two Anti
 | **Phase 6** | Extraction v2 — natural phrasing, negation, retraction, pronoun gender, prescription list | Complete |
 | **Phase 7** | Auto-save and consultation recovery, mandatory-field completeness gate | Complete |
 | **Phase 8** | Shared microphone, Anuvadini second transcription, editable AI transcript, continuation, diff | Complete, verified on hardware in **both Debug and Release** |
-| **Phase 9A** | Extraction v3 — nothing dictated is discarded: residue capture, the notes card, the grounding invariant | Complete; **device verification pending** |
-| **Phase 9B** | Extraction v3 — evidence scoring: wrong values rejected or rerouted, unmarked speech promoted | Complete; **device verification pending** |
+| **Phase 9A** | Extraction v3 — nothing dictated is discarded: residue capture, the notes card, the grounding invariant | Complete; exercised on device, **checklist not completed** |
+| **Phase 9B** | Extraction v3 — evidence scoring: wrong values rejected or rerouted, unmarked speech promoted | Complete; exercised on device, **checklist not completed** |
+| **Phase 10** | Spoken missing-field prompts — Anuvadini TTS, native playback, prompt ordering guard | Complete; the prompt was **heard on device**, later fixes unverified |
+| **Phase 11** | AI transcript selected automatically, and the screen redesign | Complete; **bundles and passes the gate, not device-verified** |
 
 The hardening round is five commits: `c02369d` (extraction pipeline correctness), `b0c9b6f` (permission rejection + native error surfacing), `9d4ddff` (transcript preserved on error, reset on new dictation), `3095391` (phone numbers + trailing unmarked values), `c59877d` (recording restarts after leaving the screen).
 
@@ -176,6 +188,16 @@ Extraction v3 stops the two ways dictation used to go wrong — being lost, and 
 | Evidence scoring | `scoreField` scores a span against each field from vocabulary the pipeline already owns — drug tokens, doses, symptom terms, chronicity, condition nouns, advice imperatives. One scorer, one place to tune. |
 | Wrong values rejected | A value its field cannot hold is rerouted or dropped: a condition out of the prescription, a dosed drug out of the remarks, a fragment out of the symptom list. `personName` now rejects clinical vocabulary outright. |
 | Unmarked speech promoted | A note whose evidence names one field decisively fills it, marked `auto` and shown as an **AUTO** badge, so a value placed by score is never mistaken for one the doctor stated. Below the bar it stays a note — a missing value is visible, a confident wrong one is not. |
+
+Phase 10 and 11 change what the doctor hears and which transcript they get:
+
+| Capability | Description |
+| :-- | :-- |
+| Spoken missing-field prompt | When Generate Report is blocked, the missing fields are read aloud — *"The patient name and contact number are still missing…"* — built from `blockingFields()` so there is one definition of what is missing. **Field names only, never values**: the text leaves the device for a third-party service, and a suite asserts no value can reach it. |
+| Additive, never the mechanism | The modal and its list are unchanged and appear whether or not speech succeeds. A synthesis or playback failure is swallowed: the doctor was already told in writing. |
+| AI transcript by default | Refinement starts at Stop, a blocking overlay says *"Refining your dictation with AI. Please wait…"*, and the result becomes the active transcript with no tap. **Continue with original** escapes a slow upload without cancelling the request. |
+| An explicit choice still wins | The automatic switch happens once, before the doctor has touched anything. The moment they pick either source — or decline to wait — nothing moves under them again. |
+| Redesigned screens | Dashboard, Recording, Report and Transcript Review restyled, with gradients, Feather icons and the IPC logo. Contrast-safe text tokens (see §7) came out of the same pass. |
 
 **FR-4 now spans two screens** — the live transcript during dictation and the review screen after it. Extraction reads whatever the doctor approved on the second, never the raw recogniser output.
 
@@ -344,6 +366,58 @@ text = base.text + "\n" + new     the doctor's corrections survive
 Appending to the snapshot rather than to live state is what makes **Retry idempotent by construction** — replaying the same continuation any number of times yields exactly one appended chunk. The base belongs to the *recording*, not the request: retained on failure so Retry replays the same starting point, cleared on success, and cleared by `clearSession`, consultation discard and starting a new consultation.
 
 **Viewing is separate from selecting.** `viewedSource` is screen-local; `transcriptSource` in the store is what the report is built from. Only the explicit *Use …* action changes the latter, and only that re-runs extraction — folded through the existing `mergeExtraction`, so manually corrected report fields survive.
+
+### The transcript the report starts from — Phase 11
+
+Phase 11 **deliberately reverses the second half of that invariant**, and the
+replacement has to hold as firmly as the original did. The recogniser's text is
+live feedback while speaking; the refined one is the record, and leaving it
+behind a tap meant the weaker transcript was usually what a report got built
+from.
+
+`shouldAutoSelectAi({ nativeText, anuvadini, source, chosen })` in
+[`consultationTranscripts.js`](../src/services/consultationTranscripts.js) is
+the whole rule, pure so it is asserted under plain Node rather than inferred
+from conditions scattered through a component. It reuses `canOffer`, so "is the
+refined text worth having" keeps one definition.
+
+The boundary that replaces "only an explicit action changes the source":
+
+> **The switch may happen only while the doctor has made no choice of their
+> own.** `chosen` is set the moment they pick either source — including
+> choosing Original, and including dismissing the wait — after which a result
+> landing later fills the other tab and nothing moves under them.
+
+No "already switched" flag exists, and none is needed: acting on the rule moves
+`source` off `NATIVE`, so it returns false by construction. That is also why a
+continuation cannot re-trigger it.
+
+Both paths — the automatic switch and the explicit one — go through the same
+`applySource`, so `mergeExtraction` still protects a field the doctor already
+corrected. Only the explicit path raises the "Report source changed" alert; the
+automatic one happens before they have touched anything, so a dialog would be
+reporting a decision they never made.
+
+### Spoken prompts — Phase 10
+
+```text
+TranscriptReviewScreen  (Generate Report blocked)
+      │
+      └── speechPromptService        ← ordering, single-flight, version guard
+               ├── missingFieldPrompt   (pure: blockingFields → one sentence)
+               ├── anuvadini/speechClient  → speechContract   (never throws)
+               └── audioFeedbackService → AudioCue.playSpeech (native)
+```
+
+The same shape as transcription, for the same reasons: `speechClient` mirrors
+`transcriptionClient` down to the injected transport and the never-throw
+contract, and shares `ERROR_KIND` rather than inventing a second vocabulary.
+`missingFieldPrompt` is pure and RN-free, so the wording is tested under Node.
+
+Two properties are load-bearing and are covered in §7: playback lives inside
+`AudioCueModule` because that class owns the stream mute, and the prompt service
+carries a monotonic version so a stop can never be overtaken by a prompt that
+then plays into a live microphone.
 
 ### Transcription transport — Phase 8
 
@@ -609,6 +683,7 @@ MedScribe/
 ├── src/
 │   ├── components/
 │   │   ├── AdditionalNotes.jsx      # Dictation that reached no field — keep or leave out
+│   │   ├── IPCLogo.jsx              # Official IPC mark, aspect-ratio safe
 │   │   ├── AnimatedMicButton.jsx    # Hero mic, Reanimated breathing + ripple
 │   │   ├── AppHeader.jsx            # Brand header, optional back button
 │   │   ├── ListeningVisualizer.jsx  # Aura + spectrum driven by real mic RMS
@@ -616,6 +691,7 @@ MedScribe/
 │   │   ├── MicGlyph.jsx             # Mic icon drawn from Views (no icon font in use)
 │   │   ├── PermissionGate.jsx       # denied / blocked / unavailable states (NFR-4)
 │   │   ├── RecordingControls.jsx    # State-aware button row
+│   │   ├── RefiningOverlay.jsx      # Blocking wait while the AI transcript lands
 │   │   ├── ReportField.jsx          # One report row — UNCERTAIN / AUTO / EDITED badges
 │   │   ├── ScreenContainer.jsx      # Safe-area wrapper, status bar
 │   │   ├── SectionTitle.jsx         # Title + subtitle block
@@ -644,6 +720,8 @@ MedScribe/
 │   │   ├── speechService.js         # Vendor isolation layer + amplitudeShared
 │   │   ├── extractionService.js     # FR-5 orchestrator; extractForReport = record + notes
 │   │   ├── captureOutcome.js        # Every recording pass ends with an explicit verdict
+│   │   ├── missingFieldPrompt.js    # blockingFields → the spoken sentence (pure)
+│   │   ├── speechPromptService.js   # Prompt ordering: version guard, single-flight
 │   │   ├── reportDraft.js           # Pure: extraction → editable draft, merge, diff, notes
 │   │   ├── reportDocument.js        # Pure: draft → PDF payload
 │   │   ├── pdfService.js            # Native-exporter isolation layer
@@ -683,6 +761,7 @@ MedScribe/
 │   │                                #   numeric, cleanup, synonyms, history, residue, recall
 │   └── test-{report,completeness,capture-outcome,transcript-*,anuvadini-client,
 │       audio-budget,chunked-upload,proxy}.mjs
+│   └── test-tts-{prompt,client,prompt-service}.mjs   # prompt wording, client, ordering
 ├── android/                         # compileSdk/targetSdk 36, minSdk 24, New Arch + Hermes
 │   └── app/src/main/
 │       ├── java/com/medscribe/pdf/  # PdfExporterModule.kt + PdfExporterPackage.kt
@@ -935,6 +1014,104 @@ regex REPLACES React Native's own `/(\\__tests__\\.*)$/`, silently pulling
 `defaultConfig.resolver.blockList` rather than hardcoded so a future RN default
 is preserved automatically.
 
+### ⚠️ Prompt playback lives in `AudioCueModule`, not a module of its own
+
+`playSpeech` / `stopSpeech` sit on the cue module because **that class owns the
+`STREAM_MUSIC` mute**. A dictation mutes that stream, and the prompt plays on
+it, so speaking into an active mute is silence the caller cannot detect.
+`playSpeech` restores the streams before starting; because both live in one
+class the ordering is enforced rather than trusted to a caller.
+
+Two more obligations there:
+
+- **`suppressSystemTones` stops any prompt.** Suppression is armed as a dictation starts, so a prompt still sounding is about to be recorded. JavaScript stops it before navigating; this is the backstop for every path that does not.
+- **`stopSpeechInternal` is the single teardown path.** Completion, error, explicit stop, `onHostPause`, `onHostDestroy` and `invalidate` all route through it, so the `MediaPlayer` and its staged file are released exactly once. The staged WAV is prompt audio in `cacheDir`; a process killed mid-playback cannot delete it, so the module purges leftovers named `medscribe_prompt*` on the next launch — same reasoning as the mute-marker recovery beside it.
+
+`player` and `playerFile` are registered **before** `prepare()`. When they were
+registered after, a `prepare()` failure left the `MediaPlayer` unreferenced and
+therefore never released.
+
+### ⚠️ The prompt service carries a version, and it is a safety guard
+
+Tearing playback down is asynchronous. Without a version, a caller that started
+earlier could resume after its `await` and overwrite the state of one that
+started later — and the dangerous case is an **external `stopPrompt()` being
+overtaken**. That is the call `handleResumeRecording` awaits *before the
+microphone opens*, so a prompt slipping past it plays into a live
+`SharedMicModule` and is transcribed into the report as the doctor's own words.
+
+`speechPromptService` increments a counter on every request and every stop, and
+re-checks it after each await. The old behaviour was reproduced against the
+pre-fix code before the guard was written, and
+`scripts/test-tts-prompt-service.mjs` pins both orderings.
+
+**The prompt text carries field NAMES only, never values.** It leaves the device
+for a third-party synthesis service. `test-tts-prompt.mjs` builds a draft full
+of recognisable values and asserts none of them — and no digit — reaches the
+sentence.
+
+### ⚠️ Clipboard comes from `@react-native-clipboard/clipboard`
+
+React Native's own `Clipboard` is exported but marked `@deprecated` and "will be
+removed in a future release" — the notice is in the `.d.ts`, not the `.js`, so
+grepping the implementation finds nothing. If it is removed the import becomes
+`undefined` and Copy crashes on tap: a runtime failure in front of a patient
+rather than a build error. The maintained package costs nothing extra here
+because Phase 11 already requires a native rebuild.
+
+### `setLayoutAnimationEnabledExperimental` must not be called
+
+`newArchEnabled=true`, and under Fabric `LayoutAnimation` is always enabled, so
+the opt-in is a no-op that logs *"currently a no-op in the New Architecture"* on
+every launch. It was only ever needed on the old renderer.
+`LayoutAnimation.configureNext` still works and still drives the transcript tab
+switch.
+
+### ⚠️ `.mjs` needs its own ESLint override
+
+`@react-native`'s config declares parser overrides for `*.js`, `*.jsx`, `*.ts`
+and `*.tsx` — **never `.mjs`**. ESLint therefore fell back to `espree` at its
+ES2015 default, which parses `export` and arrow functions but rejects
+`async function` with a bare `Parsing error: Unexpected token function`.
+
+Worse, `eslint .` walks `.js` plus whatever the config's `overrides` globs match,
+so nothing matched `.mjs` and **`server/` and all 22 fixture suites were
+silently unlinted** while reporting clean. `.eslintrc.js` now carries an
+override setting `ecmaVersion: 'latest'`, `sourceType: 'module'` and the node
+env; that also brings the files into `eslint .` on a directory scan. Removing it
+does not restore an error — it restores the silence.
+
+### ⚠️ `warning` and `success` are fill and border hues only
+
+Measured against WCAG on their own soft fills:
+
+| Pair | Ratio | AA needs |
+| :-- | --: | --: |
+| `warning #F59E0B` on `warningLight #FFFBEB` | **2.07** | 4.5 |
+| `success #22C55E` on `successSoft #DFF8EC` | **2.04** | 4.5 |
+
+Both fail even the 3.0 large-text floor, and the DRAFT/FINAL pills are 10px. So
+anything *drawn on* those fills — pill text, avatar initials, chip glyphs — uses
+`warningText` (#B45309, **4.84**) or `successText` (#166534, **6.38**).
+`successText` is green-800 rather than green-700 because green-700 lands at
+**4.48**, just under the bar.
+
+`StatTile` and `QuickAction` take a separate `glyph` prop defaulting to `accent`
+for exactly this reason: `accent` stays the vivid hue for borders and solid
+fills, `glyph` is what sits on the tint. `test-capture-outcome.mjs` (O2) asserts
+every `colors.*` and `typography.*` a StyleSheet names actually exists, so a
+typo in a token fails the gate rather than shipping as an invisible label.
+
+### Node ≥ 22.12, and the reason is the config files
+
+`babel.config.js`, `jest.config.js` and `.prettierrc.js` use ESM syntax in `.js`
+files with no `"type": "module"`, so loading them depends on Node's
+`require(esm)` — unflagged only from **22.12**. On 22.11 the bundler dies at
+`babel.config.js` with `SyntaxError: Unexpected token 'export'`. Demonstrated
+with `node --no-experimental-require-module`. `.eslintrc.js` and
+`metro.config.js` stay CommonJS: `extends` is a reserved word so it cannot be a
+named export, and `metro.config.js` needs `__dirname`.
+
 ### Build & tooling gotchas
 - **Manifest changes require a full native rebuild.** Metro fast-refresh will not pick them up. If permission dialogs silently stop appearing after a manifest edit, this is why.
 - **Three Phase 4 pieces are native and each needs a rebuild:** `@op-engineering/op-sqlite` (JSI library), the `PdfExporter` TurboModule (codegen + Kotlin), and the `FileProvider` entry in `AndroidManifest.xml`. Pulling these changes and running only `npm start` gives you a dashboard that cannot open its database and a PDF button that reports itself unavailable. Neither is a code defect.
@@ -967,6 +1144,9 @@ is preserved automatically.
 | `@react-navigation/native-stack` | ^7.18.6 | Native stack navigator. |
 | `react-native-screens` | ^4.26.2 | Native screen primitives. |
 | `react-native-safe-area-context` | ^5.8.0 | Safe-area insets. |
+| `react-native-vector-icons` | ^10.3.0 | Feather icons across the redesigned screens. **Native**: `android/app/build.gradle` applies its `fonts.gradle` to bundle the font, and without that line every glyph renders as a box. |
+| `react-native-linear-gradient` | ^2.8.3 | Dashboard gradients (Phase 11). **Native** — needs a rebuild, not a Metro reload. |
+| `@react-native-clipboard/clipboard` | ^1.16.3 | Copy on the transcript toolbar. **Native.** Deliberately not React Native's own `Clipboard` — see §7. |
 
 **Phase 5 added no npm dependencies.** The app now ships **two** app-local Kotlin TurboModules — `com/medscribe/pdf` and `com/medscribe/audio`. Neither is autolinked; both are registered by hand in `MainApplication.kt`, and forgetting that line is a silent failure that only shows up as a missing module at runtime.
 
@@ -976,9 +1156,11 @@ is preserved automatically.
 
 Listed honestly so nobody assumes they are load-bearing:
 
-`axios`, `zod`, `react-hook-form`, `react-native-gesture-handler`, `react-native-vector-icons`, `@react-native-vector-icons/material-design-icons`, `@react-native/new-app-screen`.
+`axios`, `zod`, `react-hook-form`, `react-native-gesture-handler`, `@react-native-vector-icons/material-design-icons`, `@react-native/new-app-screen`.
 
-`axios` and `zod` are **not** a pending API integration. Extraction is rule-based by design (SRS §8 puts AI-assisted extraction under Future Enhancements), and the pipeline deliberately has no network dependency. Note also that all icons are hand-built from `View` primitives despite two icon packages being installed.
+`axios` and `zod` are **not** a pending API integration. Extraction is rule-based by design (SRS §8 puts AI-assisted extraction under Future Enhancements), and the pipeline deliberately has no network dependency.
+
+**`react-native-vector-icons` moved out of this list in Phase 11** and is now used throughout the redesigned screens. The older hand-built glyphs survive only where they still earn their place — `MicGlyph`, and `IPCLogo` which renders the official mark from an asset.
 
 ---
 

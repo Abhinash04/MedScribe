@@ -51,6 +51,8 @@ MedScribe lets doctors create patient records by dictating instead of typing. It
 - **A value has to suit its field** — the phrase that opens a field no longer settles what goes into it. Measured before this existed: *"Clinically this is viral fever"* put **`Viral Fever` in the patient's name**, conditions landed in the prescription, a dosed drug landed in the remarks, and the fragment "Also been" became a symptom. Each is now rejected or rerouted on the evidence in the value itself, and the patient name refuses clinical vocabulary outright.
 - **Structured report** — a preview with an N-of-10 required-field summary. Fields the doctor never mentioned show **Not Available** rather than being hidden, values inferred from a hedged phrase are flagged **UNCERTAIN**, and values placed by classification are flagged **AUTO**. Editing a field clears both — the value is the doctor's from that point on.
 - **Completeness gate** — ten of the eleven fields are mandatory and are checked against their own validators before a report is produced; a six-character PIN and a ten-digit contact number are not merely non-empty text. A blocked report names exactly what is still needed and offers **Add More Speech** or **Review Fields**. Additional Remarks is optional and never blocks anything. Medical History and Prescription Notes accept an explicitly dictated absence — "no significant medical history", "no medication prescribed" — which the app never fills in on the doctor's behalf.
+- **The gaps are read aloud** — when Generate Report is blocked, the missing mandatory fields are spoken: *"The patient name and contact number are still missing. Please provide these mandatory details."* It fires the moment processing finishes, while the patient is still in the room and **Add More Speech** is one tap away. The written warning is unchanged and appears either way — the speech is layered on top, never in place of it, and a failure to synthesise is swallowed rather than reported twice. The prompt names fields and **never reads a value**, because the text leaves the device for a third-party service.
+- **The AI transcript becomes the default on its own** — refinement starts at Stop, a full-screen *"Refining your dictation with AI. Please wait…"* covers the wait, and the refined text becomes the working transcript with no tap. **Continue with original** escapes a slow upload without cancelling the request. Once the doctor picks either source themselves, nothing switches under them again.
 - **Transcript review step** — dictation lands on a review screen before any report is generated. Two tabs, **Original** and **AI Transcription**, each with a full editor; a **What AI changed** panel below them; then resume dictating or generate the report.
 - **Automatic consultation saving** — the transcript, the report draft and the doctor's manual field edits are written to the database as they change, debounced so a partial speech result never causes a write, and flushed immediately when the app goes to the background. The consultation also records which screen it reached, so after a force-stop, an OS kill or a flat battery the Dashboard offers to resume it at the recording, transcript-review or report stage. The row is cleared only once the report is actually saved or the doctor discards it — not when Generate Report is pressed. Best-effort by design: a failed write is logged and swallowed rather than interrupting the consultation.
 - **Transcript inspection** — the report can reveal the original dictation, which is the fastest way to tell a transcription gap from an extraction gap.
@@ -116,6 +118,7 @@ Single doctor, no login. Multi-doctor and authentication are Roadmap items, not 
 | Animation | Reanimated 4 + Worklets |
 | Speech | Android `SpeechRecognizer`, driven by an in-app Kotlin TurboModule that owns the microphone and feeds it through a pipe (`EXTRA_AUDIO_SOURCE`); `@appcitor/react-native-voice-to-text` remains the fallback path |
 | Second transcription | Anuvadini STT over HTTPS, called directly with a build-time Bearer token; `server/` holds a dependency-free Node proxy for local development and future production |
+| Spoken prompts | Anuvadini text-to-speech over the same host and credential, played by the in-app `AudioCue` TurboModule (`MediaPlayer`) |
 | Permissions | `react-native-permissions` 5 |
 | Database | SQLite via `@op-engineering/op-sqlite` 17 (JSI) |
 | PDF | In-app Kotlin TurboModule over `android.graphics.pdf.PdfDocument` — no third-party generator |
@@ -342,6 +345,7 @@ MedScribe/
 ├── src/
 │   ├── components/                  # Reusable UI
 │   │   ├── AdditionalNotes.jsx      #   Dictation that reached no field — keep or leave out
+│   │   ├── IPCLogo.jsx              #   Official IPC mark, aspect-ratio safe
 │   │   ├── AnimatedMicButton.jsx    #   Hero microphone with Reanimated feedback
 │   │   ├── AppHeader.jsx            #   Brand header + optional back button
 │   │   ├── ListeningVisualizer.jsx  #   Aura + spectrum driven by real mic levels
@@ -349,6 +353,7 @@ MedScribe/
 │   │   ├── MicGlyph.jsx             #   Microphone icon drawn from Views (no icon font)
 │   │   ├── PermissionGate.jsx       #   Denied / blocked / unavailable screens
 │   │   ├── RecordingControls.jsx    #   State-aware action buttons
+│   │   ├── RefiningOverlay.jsx      #   Blocking wait while the AI transcript lands
 │   │   ├── ReportField.jsx          #   One report row — UNCERTAIN / AUTO / EDITED badges
 │   │   ├── ScreenContainer.jsx      #   Safe-area + status-bar wrapper
 │   │   ├── SectionTitle.jsx         #   Title + subtitle block
@@ -396,12 +401,16 @@ MedScribe/
 │   │   ├── captureOutcome.js        # Every recording pass ends with an explicit verdict (pure)
 │   │   ├── reportDraft.js           # Extraction → editable draft, notes, badges (pure)
 │   │   ├── reportCompleteness.js    # Mandatory-field gate (pure)
+│   │   ├── missingFieldPrompt.js    # blockingFields → the spoken sentence (pure)
+│   │   ├── speechPromptService.js   # Prompt ordering: version guard, single-flight
 │   │   ├── reportDocument.js        # Draft → PDF payload (pure)
 │   │   ├── pdfService.js            # Native PDF exporter isolation layer
 │   │   ├── anuvadini/               # Transcription client
 │   │   │   ├── proxyContract.js     #   Request shapes and error kinds
 │   │   │   ├── transcriptionClient.js #  Transport switch: direct or proxy
 │   │   │   ├── chunkedUpload.js     #   45 s chunks around the upstream truncation
+│   │   │   ├── speechClient.js      #   Text-to-speech, mirrors transcriptionClient
+│   │   │   ├── speechContract.js    #   TTS request shapes and the audio reader
 │   │   │   └── language.js          #   Language normalization (en → en-IN)
 │   │   └── extraction/              # One module per pipeline stage
 │   │       ├── normalizeTranscript.js
@@ -445,7 +454,8 @@ MedScribe/
 │   ├── test-anuvadini-client.mjs    #   Transcription client, both transports
 │   ├── test-audio-budget.mjs        #   Upload sizing and the duration ceiling
 │   ├── test-chunked-upload.mjs      #   Chunk ordering, partial failure, retry
-│   └── test-proxy.mjs               #   Proxy translation and credential containment
+│   ├── test-proxy.mjs               #   Proxy translation and credential containment
+│   └── test-tts-{prompt,client,prompt-service}.mjs  # wording, client, ordering
 ├── server/                          # Dependency-free Node proxy — local dev / future prod
 │   ├── index.mjs                    #   Routing, body cap, field translation, error mapping
 │   ├── anuvadini.mjs                #   The upstream call; the only place the token lives
@@ -479,14 +489,17 @@ MedScribe/
 | `@react-navigation/native` + `@react-navigation/native-stack` | Screen navigation. |
 | `react-native-screens` | Native screen optimization. |
 | `react-native-safe-area-context` | Notch and system-bar insets. |
+| `react-native-vector-icons` | Feather icons across the screens. **Native** — `android/app/build.gradle` applies its `fonts.gradle` to bundle the font; without that line every glyph is a box. |
+| `react-native-linear-gradient` | Dashboard gradients. **Native** — needs a rebuild, not a Metro reload. |
+| `@react-native-clipboard/clipboard` | Copy on the transcript toolbar. **Native.** Deliberately not React Native's own `Clipboard`, which is deprecated and slated for removal. |
 
 **PDF generation has no package.** It is an in-app Kotlin TurboModule over Android's own `PdfDocument` — no maintained React Native PDF *generator* supports the New Architecture, and an unmaintained dependency in the export path of a medical record is a liability.
 
 ### Installed but not yet used
 
-`axios`, `zod`, `react-hook-form`, `react-native-gesture-handler`, `react-native-vector-icons`, `@react-native-vector-icons/material-design-icons`, `@react-native/new-app-screen`.
+`axios`, `zod`, `react-hook-form`, `react-native-gesture-handler`, `@react-native-vector-icons/material-design-icons`, `@react-native/new-app-screen`.
 
-These are reserved for later phases. Listed explicitly so nobody assumes they are load-bearing.
+These are reserved for later phases. Listed explicitly so nobody assumes they are load-bearing. `react-native-vector-icons` was on this list until the redesign; it is now used throughout and has moved to the table above.
 
 ---
 
@@ -814,7 +827,9 @@ npm start -- --reset-cache
 | **6** | Extraction v2 — natural phrasing, negation, retraction, pronoun gender, prescription list | Complete |
 | **7** | Auto-save and consultation recovery, mandatory-field completeness gate | Complete |
 | **8** | Shared microphone, Anuvadini second transcription, editable AI transcript, continuation, diff | Complete; verified on device in both Debug and Release |
-| **9** | Extraction v3 — nothing dictated is discarded, and evidence decides whether a value may stay where a marker put it | Complete against fixtures; **device verification pending** |
+| **9** | Extraction v3 — nothing dictated is discarded, and evidence decides whether a value may stay where a marker put it | Complete; exercised on device, full checklist not run |
+| **10** | Spoken missing-field prompts — the completeness gate reads the gaps aloud | Complete; the prompt was heard on device, later fixes unverified |
+| **11** | AI transcript selected automatically, and the screen redesign | Complete; bundles and passes the gate, **not device-verified** |
 
 **Next up**, in priority order:
 
