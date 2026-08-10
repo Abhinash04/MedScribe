@@ -25,7 +25,12 @@ import { extractPatientFields } from './extractionService';
 const SAMPLE_RATE_HZ = 16000;
 const RECOGNITION_LANGUAGE = 'en-IN';
 const SHARED_MIC_POLL_MS = 400;
+const SHARED_MIC_RETRY_DELAY_MS = 400;
+const SHARED_MIC_START_ATTEMPTS = 3;
 const rmsToLevel = rms => Math.max(0, Math.min(10, ((rms ?? 0) / 3000) * 10));
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+const describeNativeError = error =>
+  `${error?.code ?? 'no-code'}: ${error?.message ?? error}`;
 
 class DictationSessionManager {
   constructor() {
@@ -47,49 +52,61 @@ class DictationSessionManager {
   async startSession() {
     const store = useRecordingStore.getState();
     this.lastExtractedTranscript = '';
+    store.setCaptureUnavailable(false);
     audioFeedbackService.playStartCue();
     this.startTimer();
     store.setStatus(RECORDING_STATE.LISTENING);
 
-    if (isCaptureEnabled() && (await sharedMic.isSupported())) {
-      beginPass();
-      await this.startSharedMic(store.sessionId);
+    if (!isCaptureEnabled()) {
+      return;
     }
+
+    if (!(await sharedMic.isSupported())) {
+      console.warn(
+        '[dictationSessionManager] shared mic not supported on this device; ' +
+          'this dictation will have no audio to refine',
+      );
+      store.setCaptureUnavailable(true);
+      return;
+    }
+
+    beginPass();
+    await this.startSharedMic(store.sessionId);
   }
 
   async startSharedMic(sessionId) {
     this.passIndex += 1;
     const name = `${sessionId}-${this.passIndex}`;
 
-    const attempt = () =>
-      sharedMic.start(SAMPLE_RATE_HZ, name, RECOGNITION_LANGUAGE, true);
-
-    try {
-      await attempt();
-    } catch (error) {
-      console.warn(
-        '[dictationSessionManager] shared mic start failed, recovering:',
-        error?.message ?? error,
-      );
+    for (let attempt = 1; attempt <= SHARED_MIC_START_ATTEMPTS; attempt += 1) {
       try {
-        await sharedMic.stop();
-      } catch {}
-      try {
-        await attempt();
-      } catch (retryError) {
+        await sharedMic.start(SAMPLE_RATE_HZ, name, RECOGNITION_LANGUAGE, true);
+        this.sharedMicActive = true;
+        this.lastSharedText = '';
+        this.startSharedMicPolling();
+        return true;
+      } catch (error) {
         console.warn(
-          '[dictationSessionManager] shared mic unavailable:',
-          retryError?.message ?? retryError,
+          `[dictationSessionManager] shared mic start attempt ${attempt}/` +
+            `${SHARED_MIC_START_ATTEMPTS} failed — ${describeNativeError(error)}`,
         );
-        this.sharedMicActive = false;
-        return false;
+        if (attempt === SHARED_MIC_START_ATTEMPTS) {
+          break;
+        }
+        try {
+          await sharedMic.stop();
+        } catch {}
+        await wait(SHARED_MIC_RETRY_DELAY_MS);
       }
     }
 
-    this.sharedMicActive = true;
-    this.lastSharedText = '';
-    this.startSharedMicPolling();
-    return true;
+    console.warn(
+      '[dictationSessionManager] shared mic unavailable; recognizer runs alone ' +
+        'and this dictation will have no audio to refine',
+    );
+    this.sharedMicActive = false;
+    useRecordingStore.getState().setCaptureUnavailable(true);
+    return false;
   }
 
   usesSharedMic() {

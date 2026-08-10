@@ -1,11 +1,5 @@
-import {
-  LayoutAnimation,
-  Pressable,
-  Text,
-  View,
-  useMemo,
-  useState,
-} from 'react-native';
+import { useMemo, useState } from 'react';
+import { LayoutAnimation, Pressable, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import {
   CHANGE,

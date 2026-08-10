@@ -72,8 +72,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
   );
   const setAnuvadiniText = useRecordingStore(state => state.setAnuvadiniText);
   const refineProgress = useRecordingStore(state => state.refineProgress);
+  const captureUnavailable = useRecordingStore(
+    state => state.captureUnavailable,
+  );
   const [viewedSource, setViewedSource] = useState(selectedSource);
   const [blocked, setBlocked] = useState(null);
+  const [promptReason, setPromptReason] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const chosenRef = useRef(false);
@@ -213,6 +217,18 @@ const TranscriptReviewScreen = ({ navigation }) => {
     navigation.navigate('Recording', { resume: true });
   }, [navigation, editableText, commitEditor, setStage]);
 
+  const playPrompt = useCallback(async completeness => {
+    setPromptReason(null);
+    const outcome = await speakMissingFields(blockingFields(completeness));
+    if (outcome.spoken) {
+      return;
+    }
+    if (__DEV__) {
+      console.warn('[speechPrompt] not spoken:', outcome.reason);
+    }
+    setPromptReason(outcome.reason ?? 'unknown');
+  }, []);
+
   const handleGenerateReport = useCallback(async () => {
     if (!beginSubmit()) return;
     try {
@@ -226,7 +242,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
       const result = validateReportCompleteness(draft);
       if (!result.isComplete) {
         setBlocked(result);
-        speakMissingFields(blockingFields(result));
+        playPrompt(result);
         return;
       }
       setStage(CONSULTATION_STAGE.REPORT);
@@ -252,6 +268,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
     setStage,
     beginSubmit,
     endSubmit,
+    playPrompt,
   ]);
 
   const applySource = useCallback(
@@ -350,6 +367,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const handleAddMoreSpeech = useCallback(() => {
     setBlocked(null);
+    setPromptReason(null);
     handleResumeRecording();
   }, [handleResumeRecording]);
 
@@ -366,14 +384,15 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const handleDismissBlocked = useCallback(() => {
     setBlocked(null);
+    setPromptReason(null);
     stopPrompt();
   }, []);
 
   const handleReplayPrompt = useCallback(() => {
     if (blocked) {
-      speakMissingFields(blockingFields(blocked));
+      playPrompt(blocked);
     }
-  }, [blocked]);
+  }, [blocked, playPrompt]);
 
   const handleReviewFields = useCallback(async () => {
     if (!beginSubmit()) return;
@@ -407,6 +426,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
       case ANUVADINI_STATUS.FAILED:
         if (anuvadini.error === ERROR_KIND.AUDIO_TOO_LARGE) {
           return 'Recording too long to process';
+        }
+        if (captureUnavailable) {
+          return 'Microphone capture did not start — nothing to refine';
         }
         if (anuvadini.error === ERROR_KIND.NO_AUDIO) {
           return 'No audio was recorded for this pass — dictate again';
@@ -569,8 +591,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
           {showFailureNotice ? (
             <View style={styles.fallbackNotice}>
               <Text style={styles.fallbackText}>
-                AI refinement could not be completed — continuing with the
-                original transcription.
+                {captureUnavailable
+                  ? 'Microphone capture did not start for this dictation, so ' +
+                    'there was no audio to refine — continuing with the ' +
+                    'original transcription.'
+                  : 'AI refinement could not be completed — continuing with ' +
+                    'the original transcription.'}
               </Text>
               <Pressable
                 onPress={() => setDismissedAt(anuvadini.updatedAt)}
@@ -746,6 +772,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
         onReviewFields={handleReviewFields}
         onReplay={handleReplayPrompt}
         onDismiss={handleDismissBlocked}
+        promptError={promptReason}
       />
     </ScreenContainer>
   );

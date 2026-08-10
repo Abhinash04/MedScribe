@@ -1,6 +1,24 @@
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import styles from './styles/MissingFieldsModal.styles';
 
+const PROMPT_ERROR_TEXT = {
+  not_configured: 'the spoken prompt is not configured in this build',
+  network: 'the network could not be reached',
+  timeout: 'the speech service timed out',
+  client_error: 'the speech service rejected the request',
+  server_error: 'the speech service is unavailable',
+  malformed: 'the speech service returned no usable audio',
+  empty_speech: 'the speech service returned no usable audio',
+  unsupported_language: 'this language has no voice',
+  playback_failed: 'the audio could not be played on this device',
+  cancelled: 'it was interrupted',
+  superseded: 'it was interrupted',
+  nothing_missing: 'there was nothing to read out',
+};
+
+const describePromptError = reason =>
+  PROMPT_ERROR_TEXT[reason] || `of an unexpected error (${reason})`;
+
 const MissingFieldsModal = ({
   visible,
   missing = [],
@@ -9,6 +27,7 @@ const MissingFieldsModal = ({
   onReviewFields,
   onReplay,
   onDismiss,
+  promptError = null,
 }) => {
   const total = missing.length + invalid.length;
   const detail = total === 1 ? 'detail is' : 'details are';
@@ -38,6 +57,13 @@ const MissingFieldsModal = ({
               </View>
             ))}
           </ScrollView>
+
+          {promptError ? (
+            <Text style={styles.promptError}>
+              The spoken prompt could not play because{' '}
+              {describePromptError(promptError)}.
+            </Text>
+          ) : null}
 
           <View style={styles.buttonRow}>
             <Pressable

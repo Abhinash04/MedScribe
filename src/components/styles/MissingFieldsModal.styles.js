@@ -57,6 +57,12 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
   },
+  promptError: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
   buttonRow: {
     gap: spacing.sm,
     marginTop: spacing.xs,

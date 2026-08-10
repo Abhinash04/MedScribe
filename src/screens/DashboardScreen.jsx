@@ -523,16 +523,6 @@ const DashboardScreen = ({ navigation }) => {
 
       <View style={styles.quickActionsHeader}>
         <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-        <Pressable
-          onPress={handleShowAll}
-          accessibilityRole="button"
-          accessibilityLabel={
-            showAll ? 'Show recent reports only' : 'View all reports'
-          }
-          hitSlop={8}
-        >
-          <Text style={styles.viewAllTextQuick}>View All ›</Text>
-        </Pressable>
       </View>
 
       <View style={styles.quickGrid}>
