@@ -3,6 +3,9 @@ import DashboardScreen from '../screens/DashboardScreen';
 import RecordingScreen from '../screens/RecordingScreen';
 import TranscriptReviewScreen from '../screens/TranscriptReviewScreen';
 import ReportScreen from '../screens/ReportScreen';
+import ReportsScreen from '../screens/ReportsScreen';
+import PatientsScreen from '../screens/PatientsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import MicSpikeScreen from '../screens/MicSpikeScreen';
 import SttBaselineScreen from '../screens/SttBaselineScreen';
 import { colors } from '../theme';
@@ -20,6 +23,9 @@ const RootNavigator = () => {
       }}
     >
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
+      <Stack.Screen name="Reports" component={ReportsScreen} />
+      <Stack.Screen name="Patients" component={PatientsScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Recording" component={RecordingScreen} />
       <Stack.Screen name="TranscriptReview" component={TranscriptReviewScreen} />
       <Stack.Screen name="Report" component={ReportScreen} />
