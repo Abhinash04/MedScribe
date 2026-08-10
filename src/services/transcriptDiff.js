@@ -18,7 +18,9 @@ export const normalizeToken = token =>
 function longestCommonSubsequence(left, right) {
   const rows = left.length;
   const columns = right.length;
-  const table = Array.from({ length: rows + 1 }, () => new Array(columns + 1).fill(0));
+  const table = Array.from({ length: rows + 1 }, () =>
+    new Array(columns + 1).fill(0),
+  );
 
   for (let row = rows - 1; row >= 0; row -= 1) {
     for (let column = columns - 1; column >= 0; column -= 1) {

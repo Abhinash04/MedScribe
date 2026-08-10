@@ -7,7 +7,9 @@ const LIST_FIELDS = new Set(
 export const NOTES_KEY = 'additionalNotes';
 
 const noteId = (start, end, text) =>
-  Number.isFinite(start) && Number.isFinite(end) ? `${start}-${end}` : `t:${text}`;
+  Number.isFinite(start) && Number.isFinite(end)
+    ? `${start}-${end}`
+    : `t:${text}`;
 
 export function notesFrom(residue) {
   return (Array.isArray(residue) ? residue : [])
@@ -54,7 +56,9 @@ export function setNoteKept(draft, index, kept) {
   }
   return withNotes(
     draft,
-    notes.map((note, position) => (position === index ? { ...note, kept: !!kept } : note)),
+    notes.map((note, position) =>
+      position === index ? { ...note, kept: !!kept } : note,
+    ),
   );
 }
 
@@ -66,7 +70,9 @@ export function setNoteText(draft, index, text) {
   return withNotes(
     draft,
     notes.map((note, position) =>
-      position === index ? { ...note, text: typeof text === 'string' ? text : '' } : note,
+      position === index
+        ? { ...note, text: typeof text === 'string' ? text : '' }
+        : note,
     ),
   );
 }
@@ -240,7 +246,10 @@ export function applyEdit(draft, key, value) {
 
 export function addListItem(draft, key, item = '') {
   const current = draft[key]?.value;
-  return applyEdit(draft, key, [...(Array.isArray(current) ? current : []), item]);
+  return applyEdit(draft, key, [
+    ...(Array.isArray(current) ? current : []),
+    item,
+  ]);
 }
 
 export function removeListItem(draft, key, index) {
@@ -269,7 +278,9 @@ export function setListItem(draft, key, index, item) {
 
 export function hasValue(entry, key) {
   if (isListField(key)) {
-    return Array.isArray(entry?.value) && entry.value.some(item => !!item?.trim?.());
+    return (
+      Array.isArray(entry?.value) && entry.value.some(item => !!item?.trim?.())
+    );
   }
   return !!entry?.value?.trim?.();
 }
@@ -280,8 +291,9 @@ export function countFilledFields(draft) {
 }
 
 export function countRequiredFilled(draft) {
-  return REQUIRED_FIELDS.filter(field => hasValue(draft?.[field.key], field.key))
-    .length;
+  return REQUIRED_FIELDS.filter(field =>
+    hasValue(draft?.[field.key], field.key),
+  ).length;
 }
 
 export function hasEdits(draft) {
@@ -294,7 +306,8 @@ export function isDirty(draft, saved) {
   }
   return (
     PATIENT_FIELDS.some(
-      field => !valuesEqual(draft?.[field.key]?.value, saved?.[field.key]?.value),
+      field =>
+        !valuesEqual(draft?.[field.key]?.value, saved?.[field.key]?.value),
     ) || !valuesEqual(keptNotes(draft), keptNotes(saved))
   );
 }

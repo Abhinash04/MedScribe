@@ -27,7 +27,6 @@ export function decideCaptureOutcome({
 const NOT_RETRYABLE = new Set([
   ERROR_KIND.NO_AUDIO,
   ERROR_KIND.NOT_CONFIGURED,
-  // Resending re-reads the same oversized recording and fails identically.
   ERROR_KIND.AUDIO_TOO_LARGE,
 ]);
 

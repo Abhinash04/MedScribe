@@ -118,8 +118,7 @@ class AudioFeedbackService {
     if (!module) {
       return;
     }
-    module.restoreSystemTones().catch(() => {
-    });
+    module.restoreSystemTones().catch(() => {});
   }
 
   playStartCue() {

@@ -1,7 +1,7 @@
-import React from 'react';
-import { StatusBar, StyleSheet, View } from 'react-native';
+import { StatusBar, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme';
+import styles from './styles/ScreenContainer.styles';
 
 const ScreenContainer = ({ children, style }) => {
   const insets = useSafeAreaInsets();
@@ -28,12 +28,5 @@ const ScreenContainer = ({ children, style }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.primaryBackground,
-  },
-});
 
 export default ScreenContainer;

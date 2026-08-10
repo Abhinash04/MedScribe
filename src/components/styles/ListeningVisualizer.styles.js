@@ -1,0 +1,106 @@
+import { StyleSheet } from 'react-native';
+import { colors, spacing } from '../../theme';
+
+export const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  centerStage: {
+    width: 180,
+    height: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: spacing.lg,
+  },
+  auraRingOuter: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: colors.accentGlow,
+  },
+  auraRingInner: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.accentGlowActive,
+  },
+  micEmblem: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.secondaryAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: colors.secondaryAccent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  micCapsule: {
+    width: 16,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: colors.secondaryAccent,
+    alignItems: 'center',
+    paddingTop: 3,
+  },
+  micGridTop: {
+    width: 8,
+    height: 2,
+    backgroundColor: colors.primaryBackground,
+    borderRadius: 1,
+    opacity: 0.7,
+  },
+  micGridLine: {
+    width: 8,
+    height: 2,
+    backgroundColor: colors.primaryBackground,
+    borderRadius: 1,
+    marginTop: 2,
+    opacity: 0.7,
+  },
+  micStandCup: {
+    width: 24,
+    height: 14,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    borderWidth: 2.5,
+    borderColor: colors.secondaryAccent,
+    borderTopWidth: 0,
+    marginTop: -8,
+  },
+  micStem: {
+    width: 2.5,
+    height: 6,
+    backgroundColor: colors.secondaryAccent,
+    marginTop: 1,
+  },
+  micBase: {
+    width: 16,
+    height: 2.5,
+    backgroundColor: colors.secondaryAccent,
+    borderRadius: 1,
+  },
+  waveSpectrumRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 64,
+    marginTop: spacing.xl,
+    gap: 8,
+  },
+  waveBar: {
+    width: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.secondaryAccent,
+  },
+});
+
+export default styles;

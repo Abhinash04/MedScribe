@@ -17,7 +17,9 @@ export const CONSULTATION_STAGE = {
 };
 
 export function generateSegmentId() {
-  return `seg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  return `seg_${Date.now().toString(36)}_${Math.random()
+    .toString(36)
+    .slice(2, 7)}`;
 }
 
 export function generateSessionId() {
@@ -76,7 +78,10 @@ const useRecordingStore = create((set, get) => ({
       return;
     }
     set(state => {
-      const nextSegments = [...state.segments, makeSegment(trimmed, confidence)];
+      const nextSegments = [
+        ...state.segments,
+        makeSegment(trimmed, confidence),
+      ];
       return {
         segments: nextSegments,
         chunks: chunksFrom(nextSegments),
@@ -139,7 +144,9 @@ const useRecordingStore = create((set, get) => ({
     set(state => ({ anuvadini: markPending(state.anuvadini) })),
 
   setAnuvadiniResult: (result, options) =>
-    set(state => ({ anuvadini: applyResult(state.anuvadini, result, options) })),
+    set(state => ({
+      anuvadini: applyResult(state.anuvadini, result, options),
+    })),
 
   setRefineProgress: ({ done = 0, total = 0 } = {}) =>
     set({ refineProgress: { done, total } }),
@@ -182,7 +189,8 @@ const useRecordingStore = create((set, get) => ({
       stage: sessionData.stage || CONSULTATION_STAGE.RECORDING,
       createdAt: sessionData.createdAt || Date.now(),
       anuvadini: normalizeAnuvadini(sessionData.anuvadiniTranscript),
-      transcriptSource: sessionData.transcriptSource || TRANSCRIPT_SOURCE.NATIVE,
+      transcriptSource:
+        sessionData.transcriptSource || TRANSCRIPT_SOURCE.NATIVE,
       nativeRaw: sessionData.nativeRaw || '',
       status: RECORDING_STATE.IDLE,
     });

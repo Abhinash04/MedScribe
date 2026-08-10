@@ -32,7 +32,9 @@ export function missingFieldPrompt(fields) {
   }
 
   if (names.length <= SPOKEN_FIELD_LIMIT) {
-    return `The ${joinNames(names)} are still missing. Please provide these mandatory details.`;
+    return `The ${joinNames(
+      names,
+    )} are still missing. Please provide these mandatory details.`;
   }
 
   const spoken = names.slice(0, SPOKEN_FIELD_LIMIT);
@@ -40,7 +42,9 @@ export function missingFieldPrompt(fields) {
   const detail = rest === 1 ? 'detail' : 'details';
 
   return (
-    `The ${spoken.join(', ')}, and ${rest} other mandatory ${detail} are still ` +
+    `The ${spoken.join(
+      ', ',
+    )}, and ${rest} other mandatory ${detail} are still ` +
     'missing. Please provide the missing information.'
   );
 }

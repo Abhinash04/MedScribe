@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import AppHeader from '../components/AppHeader';
 import ScreenContainer from '../components/ScreenContainer';
 import {
@@ -15,7 +15,7 @@ import {
   RESULTS,
 } from '../services/permissionService';
 import * as speech from '../services/speechService';
-import { colors, spacing, typography } from '../theme';
+import styles from './styles/SttBaselineScreen.styles';
 
 const SAFETY_STOP_MS = 90000;
 
@@ -63,7 +63,12 @@ const SttBaselineScreen = ({ navigation }) => {
       countersRef.current.starts += 1;
     } catch (error) {
       if (String(error?.code ?? '') !== 'ALREADY_LISTENING') {
-        console.log('[STT-BASE]', 'start rejected', error?.code, error?.message);
+        console.log(
+          '[STT-BASE]',
+          'start rejected',
+          error?.code,
+          error?.message,
+        );
       }
     }
   }, []);
@@ -220,10 +225,19 @@ const SttBaselineScreen = ({ navigation }) => {
 
   return (
     <ScreenContainer>
-      <AppHeader showBack onBackPress={() => navigation.goBack()} title="STT Measure" />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <AppHeader
+        showBack
+        onBackPress={() => navigation.goBack()}
+        title="STT Measure"
+      />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.scriptBox}>
-          <Text style={styles.scriptLabel}>READ EXACTLY THIS, ONCE, THEN TAP STOP</Text>
+          <Text style={styles.scriptLabel}>
+            READ EXACTLY THIS, ONCE, THEN TAP STOP
+          </Text>
           <Text style={styles.script} selectable>
             {FIXTURE_SCRIPT}
           </Text>
@@ -237,7 +251,11 @@ const SttBaselineScreen = ({ navigation }) => {
               onPress={() => setLabel(item)}
               disabled={running}
             >
-              <Text style={[styles.tagText, label === item && styles.tagTextActive]}>{item}</Text>
+              <Text
+                style={[styles.tagText, label === item && styles.tagTextActive]}
+              >
+                {item}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -261,8 +279,12 @@ const SttBaselineScreen = ({ navigation }) => {
 
         {running ? (
           <Text style={styles.mono}>
-            {`${Math.floor(elapsed / 1000)}s · sessions ${counters.ready} · restarts ${counters.restarts}\n` +
-              `partials ${counters.partials} · finals ${counters.finals} · errors ${errorSummary || 'none'}`}
+            {`${Math.floor(elapsed / 1000)}s · sessions ${
+              counters.ready
+            } · restarts ${counters.restarts}\n` +
+              `partials ${counters.partials} · finals ${
+                counters.finals
+              } · errors ${errorSummary || 'none'}`}
           </Text>
         ) : null}
 
@@ -270,12 +292,14 @@ const SttBaselineScreen = ({ navigation }) => {
           <View style={styles.reportCard}>
             <Text style={styles.reportTitle}>{report.label}</Text>
             <Text style={styles.metricBig}>
-              Overall word recall: {report.overallRecall}% ({report.overallHits})
+              Overall word recall: {report.overallRecall}% ({report.overallHits}
+              )
             </Text>
             <Text
               style={[
                 styles.metricBig,
-                report.criticalRecall.split('/')[0] === report.criticalRecall.split('/')[1]
+                report.criticalRecall.split('/')[0] ===
+                report.criticalRecall.split('/')[1]
                   ? styles.good
                   : styles.bad,
               ]}
@@ -284,7 +308,9 @@ const SttBaselineScreen = ({ navigation }) => {
             </Text>
 
             {CRITICAL_VALUES.map(value => {
-              const hit = report.criticalDetail.find(item => item.key === value.key);
+              const hit = report.criticalDetail.find(
+                item => item.key === value.key,
+              );
               return (
                 <Text key={value.key} style={styles.mono}>
                   {hit?.found ? '✓' : '✗'} {value.label}
@@ -295,14 +321,26 @@ const SttBaselineScreen = ({ navigation }) => {
             <Text style={styles.mono}>
               {`\nsessions ${report.sessions} · restarts ${report.restarts}\n` +
                 `median gap ${report.medianGapMs}ms · max gap ${report.maxGapMs}ms (${report.measuredGaps} measured)\n` +
-                `duplicate words ${report.duplicateWords}${report.duplicateExamples.length ? ` (${report.duplicateExamples.join(' | ')})` : ''}\n` +
+                `duplicate words ${report.duplicateWords}${
+                  report.duplicateExamples.length
+                    ? ` (${report.duplicateExamples.join(' | ')})`
+                    : ''
+                }\n` +
                 `partials ${report.partials} · finals ${report.finals}\n` +
-                `errors ${Object.entries(report.errorsByCode).map(([c, n]) => `${c}×${n}`).join(' ') || 'none'} · fatal ${report.fatalErrors}\n` +
-                `locale ${report.locale} · duration ${Math.round(report.durationMs / 1000)}s`}
+                `errors ${
+                  Object.entries(report.errorsByCode)
+                    .map(([c, n]) => `${c}×${n}`)
+                    .join(' ') || 'none'
+                } · fatal ${report.fatalErrors}\n` +
+                `locale ${report.locale} · duration ${Math.round(
+                  report.durationMs / 1000,
+                )}s`}
             </Text>
 
             {report.missingWords.length ? (
-              <Text style={styles.mono}>missing: {report.missingWords.join(' ')}</Text>
+              <Text style={styles.mono}>
+                missing: {report.missingWords.join(' ')}
+              </Text>
             ) : null}
 
             <Text style={styles.transcript} selectable>
@@ -314,53 +352,5 @@ const SttBaselineScreen = ({ navigation }) => {
     </ScreenContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  content: { paddingBottom: spacing.xl, gap: spacing.xs },
-  scriptBox: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    borderRadius: 12,
-    padding: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  scriptLabel: { fontSize: 10, fontWeight: '700', color: colors.primaryAccent, letterSpacing: 0.8 },
-  script: { ...typography.body, fontSize: 14, marginTop: 4 },
-  row: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, flexWrap: 'wrap' },
-  tag: {
-    paddingVertical: 4,
-    paddingHorizontal: spacing.sm,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  tagActive: { backgroundColor: colors.primaryAccent, borderColor: colors.primaryAccent },
-  tagText: { fontSize: 12, color: colors.textSecondary },
-  tagTextActive: { color: colors.onPrimary, fontWeight: '700' },
-  button: {
-    backgroundColor: colors.primaryAccent,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 999,
-  },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 13 },
-  reportCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    borderRadius: 12,
-    padding: spacing.sm,
-    marginTop: spacing.md,
-    gap: 2,
-  },
-  reportTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, textTransform: 'uppercase' },
-  metricBig: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginTop: 4 },
-  good: { color: colors.success },
-  bad: { color: colors.danger },
-  mono: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
-  transcript: { fontSize: 12, color: colors.textPrimary, fontStyle: 'italic', marginTop: spacing.xs },
-});
 
 export default SttBaselineScreen;

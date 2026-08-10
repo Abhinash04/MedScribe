@@ -4,7 +4,10 @@ import { classifySegment } from './extraction/classifySegment.js';
 import { inferGender } from './extraction/collectEvidence.js';
 import { splitFindings } from './extraction/detectNegation.js';
 import { looksLikeMedication } from './extraction/parseMedication.js';
-import { markRetractions, suppressNegated } from './extraction/suppressNegated.js';
+import {
+  markRetractions,
+  suppressNegated,
+} from './extraction/suppressNegated.js';
 import { detectMarkers } from './extraction/detectMarkers.js';
 import {
   normalizeTranscript,
@@ -80,7 +83,10 @@ export function extractPatientFields(transcript) {
     candidates.push(gender);
   }
 
-  const { candidates: asserted, negatedHistory } = suppressNegated(text, candidates);
+  const { candidates: asserted, negatedHistory } = suppressNegated(
+    text,
+    candidates,
+  );
 
   if (negatedHistory) {
     const value = applyPostProcessor('text', negatedHistory.text);
@@ -109,7 +115,11 @@ export function extractPatientFields(transcript) {
   );
 
   const resolved = resolveConflicts(
-    markRetractions(asserted, original, at => toOriginalRange(indexMap, at, at).start),
+    markRetractions(
+      asserted,
+      original,
+      at => toOriginalRange(indexMap, at, at).start,
+    ),
   );
   appendDenials(resolved, denied);
   const record = { ...empty };
@@ -140,7 +150,10 @@ export function applyClassifiedResidue(record, residue) {
       continue;
     }
 
-    const value = applyPostProcessor(FIELD_MARKERS[field].postProcessor, item.text);
+    const value = applyPostProcessor(
+      FIELD_MARKERS[field].postProcessor,
+      item.text,
+    );
     if (!isValid(FIELD_MARKERS[field].validator, value)) {
       continue;
     }
@@ -187,7 +200,10 @@ function routeByEvidence(segment, value) {
   };
 
   const moveTo = (field, text) =>
-    asCandidate(field, applyPostProcessor(FIELD_MARKERS[field].postProcessor, text));
+    asCandidate(
+      field,
+      applyPostProcessor(FIELD_MARKERS[field].postProcessor, text),
+    );
 
   if (!Array.isArray(value)) {
     const destination = reroute(segment.field, value);
@@ -216,14 +232,16 @@ function routeByEvidence(segment, value) {
 
   return [
     ...(staying.length ? asCandidate(segment.field, staying) : []),
-    ...[...moved].flatMap(([field, entries]) => moveTo(field, entries.join(', '))),
+    ...[...moved].flatMap(([field, entries]) =>
+      moveTo(field, entries.join(', ')),
+    ),
   ];
 }
 
 function appendDenials(resolved, denied) {
-  const unique = [...new Set(denied.map(item => item.trim().toLowerCase()))].filter(
-    item => item.length > 1,
-  );
+  const unique = [
+    ...new Set(denied.map(item => item.trim().toLowerCase())),
+  ].filter(item => item.length > 1);
   if (!unique.length) {
     return;
   }

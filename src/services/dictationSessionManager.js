@@ -73,8 +73,7 @@ class DictationSessionManager {
       );
       try {
         await sharedMic.stop();
-      } catch {
-      }
+      } catch {}
       try {
         await attempt();
       } catch (retryError) {
@@ -205,7 +204,9 @@ class DictationSessionManager {
       clearTimeout(this.extractDebounceId);
       this.extractDebounceId = null;
     }
-    useRecordingStore.getState().setNativeRaw(selectFullTranscript(useRecordingStore.getState()));
+    useRecordingStore
+      .getState()
+      .setNativeRaw(selectFullTranscript(useRecordingStore.getState()));
 
     this.runLiveExtraction();
     this.persistCurrentSession();
@@ -232,7 +233,10 @@ class DictationSessionManager {
     if (outcome === CAPTURE_OUTCOME.TOO_LARGE) {
       useRecordingStore
         .getState()
-        .setAnuvadiniResult({ ok: false, errorKind: ERROR_KIND.AUDIO_TOO_LARGE });
+        .setAnuvadiniResult({
+          ok: false,
+          errorKind: ERROR_KIND.AUDIO_TOO_LARGE,
+        });
     }
 
     if (captured?.path) {

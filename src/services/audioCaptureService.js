@@ -47,7 +47,9 @@ export async function startCapture(
 ) {
   const module = audioCapture();
   if (!module) {
-    throw new Error('AudioCapture module is not in this build. Rebuild natively.');
+    throw new Error(
+      'AudioCapture module is not in this build. Rebuild natively.',
+    );
   }
   if (!SUPPORTED_SOURCES.has(source)) {
     throw new Error(`Unknown audio source: ${source}`);

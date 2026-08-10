@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { spacing, typography } from '../theme';
+import { Text, View } from 'react-native';
+import { typography } from '../theme';
+import styles from './styles/SectionTitle.styles';
 
 const SectionTitle = ({ title, subtitle, style }) => {
   return (
@@ -14,20 +14,5 @@ const SectionTitle = ({ title, subtitle, style }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    marginVertical: spacing.lg,
-  },
-  subtitle: {
-    marginTop: spacing.sm,
-    maxWidth: 320,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-});
 
 export default SectionTitle;

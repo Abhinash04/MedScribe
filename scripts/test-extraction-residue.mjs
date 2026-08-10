@@ -176,9 +176,6 @@ check(
   );
 }
 
-// ── 6b. A note is identified by its span, never by its text ─────────────────
-// Text is neither unique nor fixed: a dictation can repeat a sentence, and the
-// card lets the doctor edit one. Matching on it lost the decision both ways.
 {
   const twice = [
     { text: 'Same sentence.', start: 0, end: 14, suggestedField: null },

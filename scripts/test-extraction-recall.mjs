@@ -64,17 +64,6 @@ const RECALL = {
   ],
 };
 
-/**
- * Two floors, because the two paths fail for different reasons and a single
- * number would hide one behind the other.
- *
- * MARKERS is the closed phrasebook alone. FULL adds evidence routing and
- * residue promotion — the whole read a report is built from. A marker
- * regression and a scorer regression are not the same bug, so each is measured.
- *
- * Recorded, not chosen. Before Phase 2 the phrasebook reached 27/40 (68 %);
- * marker and hedge additions took it to 34, and promotion closes the rest.
- */
 const MARKERS = {
   diagnosis: 8,
   symptoms: 10,
@@ -127,9 +116,6 @@ check(
   true,
 );
 
-// A value the doctor did not explicitly mark has to say so, or the report gives
-// a classifier's guess the same standing as dictation. The flag is the whole
-// safety argument for promotion, so it is asserted both ways.
 for (const [field, rows] of Object.entries(RECALL)) {
   for (const [text] of rows) {
     const marked = !!extractPatientFields(text)[field];
@@ -145,10 +131,6 @@ for (const [field, rows] of Object.entries(RECALL)) {
   }
 }
 
-// The general form of the precision cases below: no field ends up holding a
-// value whose own evidence contradicts it. The bar is 0 rather than the
-// autofill floor because a marker is evidence a bare score does not have — this
-// catches contradiction, not weakness.
 for (const rows of Object.values(RECALL)) {
   for (const [text] of rows) {
     for (const [field, entry] of Object.entries(readFully(text))) {
@@ -167,19 +149,11 @@ for (const rows of Object.values(RECALL)) {
   }
 }
 
-// ── 2. Precision — every case below was observed populating the wrong field ──
-// Checked on the full read, not on markers alone: promotion is another way for
-// a value to reach the wrong field, and it is the read the report is built from.
-
-// The worst thing this system can do: the patient's name on a report being a
-// diagnosis. `personName` accepted any run of letters, so "Viral Fever" passed.
 {
   const record = readFully('Clinically this is viral fever.');
   check('N2.1 a diagnosis never becomes the patient name', holds(record, 'patientName', 'fever'), false);
 }
 
-// A condition is not a prescription. "continue his regular medication for
-// diabetes" put the conditions in the drug list and a fragment in remarks.
 {
   const record = readFully(
     'He should continue his regular medication for diabetes and high blood pressure.',
@@ -188,7 +162,6 @@ for (const rows of Object.values(RECALL)) {
   check('N2.3 nor does a bare connective fragment reach remarks', valueOf(record, 'additionalRemarks').trim(), '');
 }
 
-// A weak marker firing mid-sentence produced the symptom "Also been".
 {
   const record = readFully(
     'The patient has also been advised to avoid physical activity until symptoms improve.',
@@ -201,19 +174,16 @@ for (const rows of Object.values(RECALL)) {
   );
 }
 
-// A chronic condition stated after a symptoms marker is history, not a symptom.
 {
   const record = readFully('Symptoms are fever. He has diabetes.');
   check('N2.6 fever is still a symptom', holds(record, 'symptoms', 'fever'), true);
   check('N2.7 diabetes is not', holds(record, 'symptoms', 'diabetes'), false);
 }
 
-// A drug with a dose belongs in the prescription, never only in remarks.
 {
   const record = readFully('He should take paracetamol 500 milligrams.');
   check('N2.8 a dosed drug is not filed as a remark', holds(record, 'additionalRemarks', 'paracetamol'), false);
-  // Rerouting it to the prescription put it alongside the bare drug-and-dose
-  // fallback claiming the same words, listing one drug twice.
+  
   check(
     'N2.9 and it is listed once, not twice',
     (record.prescriptionNotes?.value ?? []).filter(entry => /paracetamol/i.test(entry)).length,
@@ -221,8 +191,6 @@ for (const rows of Object.values(RECALL)) {
   );
 }
 
-// The `reports` marker fires on the noun as readily as the verb, so an errand
-// mentioning medical reports opened a symptoms span holding only "Tomorrow".
 {
   const said = 'His brother will bring the previous reports tomorrow.';
   const { record, residue } = extractForReport(said);
@@ -232,7 +200,7 @@ for (const rows of Object.values(RECALL)) {
     residue.some(item => item.text === said),
     true,
   );
-  // The qualifier must survive where the span does carry a finding.
+  
   check(
     'N2.12 a finding keeps its time qualifier',
     holds(readFully('She has fever tomorrow.'), 'symptoms', 'fever tomorrow'),
@@ -240,9 +208,6 @@ for (const rows of Object.values(RECALL)) {
   );
 }
 
-// ── 3. What must not break ──────────────────────────────────────────────────
-// A plainly marked dictation is the common case and must be unaffected by any
-// scoring layer.
 {
   const record = readFully(
     'Patient name is Rohit Mehta. He is 46 years old. Gender is male. ' +

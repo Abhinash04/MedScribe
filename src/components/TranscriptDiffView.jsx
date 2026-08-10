@@ -1,13 +1,30 @@
-import React, { useMemo, useState } from 'react';
-import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  LayoutAnimation,
+  Pressable,
+  Text,
+  View,
+  useMemo,
+  useState,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { CHANGE, diffTranscripts, summarizeChanges } from '../services/transcriptDiff';
-import { colors, spacing, typography } from '../theme';
+import {
+  CHANGE,
+  diffTranscripts,
+  summarizeChanges,
+} from '../services/transcriptDiff';
+import { colors } from '../theme';
+import styles from './styles/TranscriptDiffView.styles';
 
 const TranscriptDiffView = ({ original, revised }) => {
   const [expanded, setExpanded] = useState(false);
-  const changes = useMemo(() => summarizeChanges(original, revised), [original, revised]);
-  const runs = useMemo(() => diffTranscripts(original, revised), [original, revised]);
+  const changes = useMemo(
+    () => summarizeChanges(original, revised),
+    [original, revised],
+  );
+  const runs = useMemo(
+    () => diffTranscripts(original, revised),
+    [original, revised],
+  );
 
   if (!original?.trim() || !revised?.trim()) {
     return null;
@@ -24,7 +41,9 @@ const TranscriptDiffView = ({ original, revised }) => {
     );
   }
 
-  const label = `${changes.length} ${changes.length === 1 ? 'change' : 'changes'}`;
+  const label = `${changes.length} ${
+    changes.length === 1 ? 'change' : 'changes'
+  }`;
 
   return (
     <View style={styles.card}>
@@ -52,132 +71,55 @@ const TranscriptDiffView = ({ original, revised }) => {
       </Pressable>
 
       {!expanded ? null : (
-      <>
-      <View style={styles.summary}>
-        {changes.map((change, index) => (
-          <Text key={`${change.from}-${change.to}-${index}`} style={styles.summaryLine}>
-            {change.type === 'replaced' ? (
-              <>
-                <Text style={styles.removedText}>{change.from}</Text>
-                <Text style={styles.arrow}> → </Text>
-                <Text style={styles.addedText}>{change.to}</Text>
-              </>
-            ) : change.type === 'added' ? (
-              <>
-                <Text style={styles.arrow}>added </Text>
-                <Text style={styles.addedText}>{change.to}</Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.arrow}>removed </Text>
-                <Text style={styles.removedText}>{change.from}</Text>
-              </>
-            )}
-          </Text>
-        ))}
-      </View>
+        <>
+          <View style={styles.summary}>
+            {changes.map((change, index) => (
+              <Text
+                key={`${change.from}-${change.to}-${index}`}
+                style={styles.summaryLine}
+              >
+                {change.type === 'replaced' ? (
+                  <>
+                    <Text style={styles.removedText}>{change.from}</Text>
+                    <Text style={styles.arrow}> → </Text>
+                    <Text style={styles.addedText}>{change.to}</Text>
+                  </>
+                ) : change.type === 'added' ? (
+                  <>
+                    <Text style={styles.arrow}>added </Text>
+                    <Text style={styles.addedText}>{change.to}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.arrow}>removed </Text>
+                    <Text style={styles.removedText}>{change.from}</Text>
+                  </>
+                )}
+              </Text>
+            ))}
+          </View>
 
-      <Text style={styles.inlineLabel}>In context</Text>
-      <Text style={styles.inline}>
-        {runs.map((run, index) => (
-          <Text
-            key={`${run.type}-${index}`}
-            style={
-              run.type === CHANGE.REMOVED
-                ? styles.removed
-                : run.type === CHANGE.ADDED
-                  ? styles.added
-                  : styles.equal
-            }
-          >
-            {run.tokens.join(' ')}{' '}
+          <Text style={styles.inlineLabel}>In context</Text>
+          <Text style={styles.inline}>
+            {runs.map((run, index) => (
+              <Text
+                key={`${run.type}-${index}`}
+                style={
+                  run.type === CHANGE.REMOVED
+                    ? styles.removed
+                    : run.type === CHANGE.ADDED
+                    ? styles.added
+                    : styles.equal
+                }
+              >
+                {run.tokens.join(' ')}{' '}
+              </Text>
+            ))}
           </Text>
-        ))}
-      </Text>
-      </>
+        </>
       )}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  count: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  title: {
-    ...typography.body,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  empty: {
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  summary: {
-    gap: 4,
-    marginTop: spacing.xs,
-  },
-  summaryLine: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  arrow: {
-    color: colors.textMuted,
-    fontSize: 14,
-  },
-  inlineLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.8,
-    marginTop: spacing.sm,
-  },
-  inline: {
-    ...typography.body,
-    fontSize: 15,
-    lineHeight: 24,
-  },
-  equal: {
-    color: colors.textSecondary,
-  },
-  removed: {
-    color: colors.secondaryAccent,
-    textDecorationLine: 'line-through',
-  },
-  added: {
-    color: colors.success,
-    fontWeight: '700',
-  },
-  removedText: {
-    color: colors.secondaryAccent,
-    textDecorationLine: 'line-through',
-    fontWeight: '600',
-  },
-  addedText: {
-    color: colors.success,
-    fontWeight: '700',
-  },
-});
 
 export default TranscriptDiffView;

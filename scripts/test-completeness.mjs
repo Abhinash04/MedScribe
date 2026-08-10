@@ -1,13 +1,4 @@
-/**
- * Report-completeness fixtures.
- *
- *   node scripts/test-completeness.mjs
- *
- * Ten fields must be answered before a report can be produced; Additional
- * Remarks must never block one. The negative assertions carry the weight here:
- * an empty optional field appearing in `missingFields` would stop a doctor from
- * finishing a perfectly complete consultation.
- */
+
 import { extractPatientFields } from '../src/services/extractionService.js';
 import {
   blockingFields,
@@ -56,7 +47,6 @@ const keysOf = list => list.map(item => item.key);
 const validateTranscript = transcript =>
   validateReportCompleteness(toDraft(extractPatientFields(transcript)));
 
-// ── 1. Complete drafts ──────────────────────────────────────────────────────
 const withRemarks = validateReportCompleteness(
   draftOf({ ...COMPLETE, additionalRemarks: 'Review after three days' }),
 );
@@ -87,7 +77,6 @@ check(
   true,
 );
 
-// ── 2. Missing mandatory fields ─────────────────────────────────────────────
 const noContact = validateReportCompleteness(draftOf(without('contactNumber')));
 check('V2.1 one mandatory missing → blocked', noContact.isComplete, false);
 check('V2.2 the missing field is named', keysOf(noContact.missingFields), [
@@ -126,7 +115,6 @@ const emptyList = validateReportCompleteness(
 check('V2.9 an empty list is missing, not present', emptyList.isComplete, false);
 check('V2.10 empty symptoms named', keysOf(emptyList.missingFields), ['symptoms']);
 
-// ── 3. Present but invalid ──────────────────────────────────────────────────
 const shortPhone = validateReportCompleteness(
   draftOf({ ...COMPLETE, contactNumber: '98765' }),
 );
@@ -160,7 +148,6 @@ check('V3.8 missing and invalid are named together, in order', keysOf(blocking),
   'contactNumber',
 ]);
 
-// ── 4. Uncertain values never block ─────────────────────────────────────────
 const uncertain = validateReportCompleteness({
   ...draftOf(COMPLETE),
   gender: { value: 'Female', original: 'Female', confidence: 0.45, source: 'pronoun', edited: false },
@@ -178,7 +165,6 @@ check(
   [],
 );
 
-// ── 5. Manual editing ───────────────────────────────────────────────────────
 const typed = applyEdit(draftOf(without('contactNumber')), 'contactNumber', '9556774130');
 const afterTyping = validateReportCompleteness(typed);
 check('V5.1 manually typed contact completes the report', afterTyping.isComplete, true);
@@ -191,7 +177,6 @@ check(
   ['pinCode'],
 );
 
-// ── 6. Explicitly none ──────────────────────────────────────────────────────
 const HISTORY_NONE = [
   'No significant medical history.',
   'No known medical history.',
@@ -236,7 +221,6 @@ check(
   9,
 );
 
-// ── 7. Add More Speech ──────────────────────────────────────────────────────
 const FIRST_PASS =
   'Patient name is Rahul Sharma. He is 34 years old. Gender is male. ' +
   'Complains of fever and cough. Known case of diabetes. Diagnosis is viral fever. ' +
@@ -245,8 +229,7 @@ const FIRST_PASS =
 const firstDraft = toDraft(extractPatientFields(FIRST_PASS));
 const firstResult = validateReportCompleteness(firstDraft);
 check('V7.1 first pass is blocked', firstResult.isComplete, false);
-// Seven of the ten: name, age, gender, symptoms, history, diagnosis and
-// prescription are dictated; the three demographics are not.
+
 check('V7.1b seven required fields captured', countRequiredFilled(firstDraft), 7);
 check('V7.2 it names the three demographics', keysOf(firstResult.missingFields), [
   'address',

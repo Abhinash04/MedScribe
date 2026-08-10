@@ -41,21 +41,7 @@ export function buildDirectSpeechRequestBody(text, normalizedLanguage, config) {
 }
 
 const AUDIO_KEYS = ['audio', 'audio_url', 'audioFile'];
-
-/**
- * `audio_url` carries base64 in every response observed, but the name says it
- * may not, and decoding a link yields bytes that reach the player as noise.
- * A value that is actually a link is refused rather than decoded.
- */
 const LOOKS_LIKE_URL = /^https?:\/\//i;
-
-/**
- * Prefers a candidate with content, then settles for any string.
- *
- * The two-pass shape matters: `{audio: '   ', audioFile: '<real>'}` must still
- * find the real one, while `{audio: '   '}` alone has to reach the trim check
- * below so it reads as an empty result rather than a malformed response.
- */
 const firstString = candidates =>
   candidates.find(value => typeof value === 'string' && value.trim()) ??
   candidates.find(value => typeof value === 'string');

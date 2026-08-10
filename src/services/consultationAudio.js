@@ -35,7 +35,10 @@ export function adopt(path, bytes) {
   };
   return { ...current };
 }
-export async function begin(sessionId, source = capture.AUDIO_SOURCES.VOICE_RECOGNITION) {
+export async function begin(
+  sessionId,
+  source = capture.AUDIO_SOURCES.VOICE_RECOGNITION,
+) {
   if (!capture.isAvailable()) {
     return null;
   }
@@ -109,11 +112,17 @@ export async function planUpload() {
     return null;
   }
   const window = Math.round(CHUNK_SNAP_WINDOW_SECONDS * BYTES_PER_SECOND);
-  const snapped = await sharedMic.snapChunkBoundaries(current.path, planned, window);
+  const snapped = await sharedMic.snapChunkBoundaries(
+    current.path,
+    planned,
+    window,
+  );
   const preferred = snapped ? chunksFromBoundaries(snapped) : [];
   return {
     path: current.path,
-    chunks: chunksWithinCap(preferred) ? preferred : chunksFromBoundaries(planned),
+    chunks: chunksWithinCap(preferred)
+      ? preferred
+      : chunksFromBoundaries(planned),
   };
 }
 export async function readChunkForUpload(chunk) {
@@ -122,7 +131,11 @@ export async function readChunkForUpload(chunk) {
   }
 
   try {
-    return await sharedMic.readCaptureChunkBase64(current.path, chunk.start, chunk.end);
+    return await sharedMic.readCaptureChunkBase64(
+      current.path,
+      chunk.start,
+      chunk.end,
+    );
   } catch {
     return null;
   }

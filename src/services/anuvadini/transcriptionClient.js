@@ -103,14 +103,18 @@ export async function transcribe({
   }
 
   const read = readTranscription(response?.body);
-  return read.ok ? { ok: true, text: read.text, errorKind: null } : failed(read.errorKind);
+  return read.ok
+    ? { ok: true, text: read.text, errorKind: null }
+    : failed(read.errorKind);
 }
 
 function classifyThrown(error, signal) {
   if (signal?.aborted) {
     return ERROR_KIND.CANCELLED;
   }
-  const reason = String(error?.message || error?.name || error || '').toLowerCase();
+  const reason = String(
+    error?.message || error?.name || error || '',
+  ).toLowerCase();
   if (reason.includes('timeout') || reason.includes('abort')) {
     return ERROR_KIND.TIMEOUT;
   }

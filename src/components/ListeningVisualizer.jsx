@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect } from 'react';
+import { View } from 'react-native';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -10,23 +10,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { amplitudeShared } from '../services/speechService';
-import { colors, spacing } from '../theme';
+import styles from './styles/ListeningVisualizer.styles';
 
-/**
- * Android's SpeechRecognizer reports volume as raw RMS dB, roughly -2 at the
- * noise floor and ~10 at speaking volume. Map that onto 0..1.
- */
 const RMS_FLOOR = -2;
 const RMS_CEILING = 10;
 
-/**
- * One spectrum bar. Height tracks the live microphone level rather than a
- * random walk, so the visualizer reflects what the microphone actually hears.
- */
 const WaveBar = ({ factor, minHeight, maxHeight, isActive }) => {
-  // Derives height on the UI thread straight from the shared amplitude.
-  // Nothing here goes through React state, so microphone updates at
-  // 10-20x/second cost zero renders.
   const animStyle = useAnimatedStyle(() => {
     if (!isActive) {
       return { height: withTiming(minHeight, { duration: 300 }) };
@@ -47,7 +36,6 @@ const WaveBar = ({ factor, minHeight, maxHeight, isActive }) => {
   return <Animated.View style={[styles.waveBar, animStyle]} />;
 };
 
-// Per-bar gain, so a uniform input level still produces an organic silhouette.
 const BAR_CONFIG = [
   { factor: 0.75, minHeight: 12, maxHeight: 36 },
   { factor: 1.15, minHeight: 14, maxHeight: 54 },
@@ -58,15 +46,6 @@ const BAR_CONFIG = [
   { factor: 1.2, minHeight: 14, maxHeight: 50 },
 ];
 
-/**
- * Listening stage for the recording screen (SRS FR-2 feedback).
- *
- * Microphone level is read from the `amplitudeShared` Reanimated value rather
- * than passed as a prop — see the note in `speechService`.
- *
- * @param {boolean} isActive False while processing/finished — freezes the
- *   animation instead of pulsing forever after recording has stopped.
- */
 const ListeningVisualizer = ({ isActive = true, isPaused = false }) => {
   const pulseScale1 = useSharedValue(1);
   const pulseOpacity1 = useSharedValue(0.4);
@@ -92,8 +71,6 @@ const ListeningVisualizer = ({ isActive = true, isPaused = false }) => {
       return;
     }
 
-    // Ambient aura — a steady presence cue independent of input level, so the
-    // stage never looks frozen during a pause between sentences.
     pulseScale1.value = withRepeat(
       withSequence(
         withTiming(1.35, { duration: 1800 }),
@@ -167,7 +144,6 @@ const ListeningVisualizer = ({ isActive = true, isPaused = false }) => {
 
   return (
     <View style={styles.container}>
-      {/* Central Floating Listening Emblem */}
       <View style={styles.centerStage}>
         <Animated.View style={[styles.auraRingOuter, aura2Style]} />
         <Animated.View style={[styles.auraRingInner, aura1Style]} />
@@ -183,7 +159,6 @@ const ListeningVisualizer = ({ isActive = true, isPaused = false }) => {
         </Animated.View>
       </View>
 
-      {/* Live microphone level spectrum */}
       <View
         style={styles.waveSpectrumRow}
         accessibilityRole="image"
@@ -202,107 +177,5 @@ const ListeningVisualizer = ({ isActive = true, isPaused = false }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  centerStage: {
-    width: 180,
-    height: 180,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: spacing.lg,
-  },
-  auraRingOuter: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: colors.accentGlow,
-  },
-  auraRingInner: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.accentGlowActive,
-  },
-  micEmblem: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.secondaryAccent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 8,
-    shadowColor: colors.secondaryAccent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-  },
-  micCapsule: {
-    width: 16,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: colors.secondaryAccent,
-    alignItems: 'center',
-    paddingTop: 3,
-  },
-  micGridTop: {
-    width: 8,
-    height: 2,
-    backgroundColor: colors.primaryBackground,
-    borderRadius: 1,
-    opacity: 0.7,
-  },
-  micGridLine: {
-    width: 8,
-    height: 2,
-    backgroundColor: colors.primaryBackground,
-    borderRadius: 1,
-    marginTop: 2,
-    opacity: 0.7,
-  },
-  micStandCup: {
-    width: 24,
-    height: 14,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    borderWidth: 2.5,
-    borderColor: colors.secondaryAccent,
-    borderTopWidth: 0,
-    marginTop: -8,
-  },
-  micStem: {
-    width: 2.5,
-    height: 6,
-    backgroundColor: colors.secondaryAccent,
-    marginTop: 1,
-  },
-  micBase: {
-    width: 16,
-    height: 2.5,
-    backgroundColor: colors.secondaryAccent,
-    borderRadius: 1,
-  },
-  waveSpectrumRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 64,
-    marginTop: spacing.xl,
-    gap: 8,
-  },
-  waveBar: {
-    width: 5,
-    borderRadius: 2.5,
-    backgroundColor: colors.secondaryAccent,
-  },
-});
 
 export default ListeningVisualizer;

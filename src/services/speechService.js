@@ -29,9 +29,6 @@ export const destroy = async () => {
   try {
     return await VoiceToText.destroy();
   } finally {
-    // destroy() clears the library's native listener map, so the registrations
-    // this module cached are gone. Nulling it is what lets the next subscribe()
-    // rebuild them instead of short-circuiting on a stale non-null value.
     nativeSubscriptions = null;
   }
 };
@@ -70,7 +67,8 @@ function ensureNativeListeners() {
       dispatch('onError', normalizeError(event)),
     ),
     VoiceToText.addEventListener(SPEECH_EVENTS.VOLUME_CHANGED, event => {
-      amplitudeShared.value = typeof event?.value === 'number' ? event.value : 0;
+      amplitudeShared.value =
+        typeof event?.value === 'number' ? event.value : 0;
     }),
   ];
 }

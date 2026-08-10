@@ -3,7 +3,8 @@ export const BITS_PER_SAMPLE = 16;
 export const CHANNELS = 1;
 export const WAV_HEADER_BYTES = 44;
 export const BLOCK_ALIGN = (BITS_PER_SAMPLE * CHANNELS) / 8;
-export const BYTES_PER_SECOND = (SAMPLE_RATE_HZ * BITS_PER_SAMPLE * CHANNELS) / 8;
+export const BYTES_PER_SECOND =
+  (SAMPLE_RATE_HZ * BITS_PER_SAMPLE * CHANNELS) / 8;
 export const SAFE_CHUNK_SECONDS = 45;
 export const CHUNK_HARD_CAP_SECONDS = 50;
 export const CHUNK_SNAP_WINDOW_SECONDS = 1.5;
@@ -38,10 +39,15 @@ export function planChunkBoundaries(fileBytes) {
     return [];
   }
 
-  const count = Math.max(1, Math.ceil(audio / (SAFE_CHUNK_SECONDS * BYTES_PER_SECOND)));
+  const count = Math.max(
+    1,
+    Math.ceil(audio / (SAFE_CHUNK_SECONDS * BYTES_PER_SECOND)),
+  );
   const boundaries = [];
   for (let index = 0; index <= count; index += 1) {
-    boundaries.push(WAV_HEADER_BYTES + alignDown(Math.round((audio * index) / count)));
+    boundaries.push(
+      WAV_HEADER_BYTES + alignDown(Math.round((audio * index) / count)),
+    );
   }
   boundaries[count] = WAV_HEADER_BYTES + alignDown(audio);
   return boundaries;
@@ -51,7 +57,9 @@ export function chunksFromBoundaries(boundaries) {
   const chunks = [];
 
   for (let index = 0; index + 1 < points.length; index += 1) {
-    const start = alignDown(Math.max(WAV_HEADER_BYTES, Math.round(points[index])));
+    const start = alignDown(
+      Math.max(WAV_HEADER_BYTES, Math.round(points[index])),
+    );
     const end = alignDown(Math.max(start, Math.round(points[index + 1])));
     if (end - start < BLOCK_ALIGN) {
       continue;

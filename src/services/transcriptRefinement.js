@@ -86,9 +86,15 @@ export async function refineTranscript({
   const { superseded, result, progress } = await uploadChunks({
     chunks: plan.chunks,
     progress: uploaded,
-    readChunk: chunk => audioBase64 ?? consultationAudio.readChunkForUpload(chunk),
+    readChunk: chunk =>
+      audioBase64 ?? consultationAudio.readChunkForUpload(chunk),
     send: payload =>
-      transcribe({ audioBase64: payload, language, token, signal: controller.signal }),
+      transcribe({
+        audioBase64: payload,
+        language,
+        token,
+        signal: controller.signal,
+      }),
     stillCurrent: () => inFlight === controller,
     onProgress: counts => {
       if (inFlight === controller) {
