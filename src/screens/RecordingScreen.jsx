@@ -8,11 +8,13 @@ import ScreenContainer from '../components/ScreenContainer';
 import SectionTitle from '../components/SectionTitle';
 import TranscriptView from '../components/TranscriptView';
 import LiveFieldsPreview from '../components/LiveFieldsPreview';
-import StopConfirmationModal from '../components/StopConfirmationModal';
+import RefiningOverlay from '../components/RefiningOverlay';
 import SessionRecoveryModal from '../components/SessionRecoveryModal';
 import { RECORDING_STATE } from '../constants/recordingStates';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import useRecordingStore from '../store/useRecordingStore';
+import { CAPTURE_OUTCOME } from '../services/captureOutcome';
+import { ANUVADINI_STATUS } from '../services/consultationTranscripts';
 import {
   getActiveSession,
   clearActiveSession,
@@ -93,8 +95,10 @@ const RecordingScreen = ({ navigation, route }) => {
   });
 
   const restoreSession = useRecordingStore(state => state.restoreSession);
+  const anuvadiniStatus = useRecordingStore(state => state.anuvadini.status);
+  const refineProgress = useRecordingStore(state => state.refineProgress);
 
-  const [showStopModal, setShowStopModal] = useState(false);
+  const [awaitingRefinement, setAwaitingRefinement] = useState(false);
 
   const probedRef = useRef(false);
 
@@ -163,15 +167,27 @@ const RecordingScreen = ({ navigation, route }) => {
     navigation.navigate('TranscriptReview');
   }, [navigation]);
 
-  const handleTapStop = useCallback(() => {
-    setShowStopModal(true);
-  }, []);
-
-  const handleConfirmStop = useCallback(async () => {
-    setShowStopModal(false);
-    await stop();
+  const handleTapStop = useCallback(async () => {
+    const outcome = await stop();
+    if (outcome === CAPTURE_OUTCOME.REFINE) {
+      setAwaitingRefinement(true);
+      return;
+    }
     navigation.navigate('TranscriptReview');
   }, [stop, navigation]);
+
+  const handleSkipRefinement = useCallback(() => {
+    setAwaitingRefinement(false);
+    navigation.navigate('TranscriptReview');
+  }, [navigation]);
+
+  useEffect(() => {
+    if (!awaitingRefinement || anuvadiniStatus === ANUVADINI_STATUS.PENDING) {
+      return;
+    }
+    setAwaitingRefinement(false);
+    navigation.navigate('TranscriptReview');
+  }, [awaitingRefinement, anuvadiniStatus, navigation]);
 
   const handleBackPress = useCallback(async () => {
     await stop();
@@ -319,10 +335,10 @@ const RecordingScreen = ({ navigation, route }) => {
         ) : null}
       </View>
 
-      <StopConfirmationModal
-        visible={showStopModal}
-        onCancel={() => setShowStopModal(false)}
-        onConfirm={handleConfirmStop}
+      <RefiningOverlay
+        visible={awaitingRefinement}
+        onSkip={handleSkipRefinement}
+        progress={refineProgress}
       />
 
       <SessionRecoveryModal

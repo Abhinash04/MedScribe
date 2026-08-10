@@ -58,6 +58,8 @@ export async function refineTranscript({
   const store = useRecordingStore.getState();
   const passIndex = activePass ?? beginPass();
 
+  store.setAnuvadiniPending();
+
   const plan = audioBase64
     ? { path: null, chunks: [{ index: 0, start: 0, end: 0 }] }
     : await consultationAudio.planUpload();
@@ -78,7 +80,6 @@ export async function refineTranscript({
   const controller = new AbortController();
   inFlight = controller;
 
-  store.setAnuvadiniPending();
   store.setRefineProgress({ done: 0, total: plan.chunks.length });
 
   const token = getAnuvadiniToken();

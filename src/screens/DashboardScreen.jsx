@@ -555,7 +555,7 @@ const DashboardScreen = ({ navigation }) => {
           onPress={handleToggleDrafts}
           style={styles.quickBorderRight}
         />
-        {__DEV__ ? (
+        {/* {__DEV__ ? (
           <QuickAction
             label="STT Measure"
             subLabel="Speech to Text analytics"
@@ -577,7 +577,7 @@ const DashboardScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('MicSpike')}
             style={styles.quickBorderRight}
           />
-        ) : null}
+        ) : null} */}
         <QuickAction
           label={showAll ? 'Recent Only' : 'All Reports'}
           subLabel="View and manage reports"

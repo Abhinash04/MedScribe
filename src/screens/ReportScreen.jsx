@@ -258,6 +258,11 @@ const ReportScreen = ({ route }) => {
     navigation.navigate('Dashboard');
   }, [resetRecording, navigation]);
 
+  const handleHome = useCallback(
+    () => navigation.navigate('Dashboard'),
+    [navigation],
+  );
+
   const shareDiagnostics = useCallback(async () => {
     try {
       await Share.share({
@@ -323,7 +328,7 @@ const ReportScreen = ({ route }) => {
   if (loading || !draft) {
     return (
       <ScreenContainer>
-        <AppHeader showBack onBackPress={() => navigation.goBack()} title="Patient Report" />
+        <AppHeader showHome onHomePress={handleHome} title="Patient Report" />
         <View style={styles.centered}>
           {loadError ? (
             <Text style={styles.errorText}>{loadError}</Text>
@@ -342,8 +347,8 @@ const ReportScreen = ({ route }) => {
   return (
     <ScreenContainer>
       <AppHeader
-        showBack
-        onBackPress={() => navigation.goBack()}
+        showHome
+        onHomePress={handleHome}
         title="Patient Report"
         onLongPressTitle={DIAGNOSTICS_ENABLED ? handleDiagnostics : undefined}
       />
