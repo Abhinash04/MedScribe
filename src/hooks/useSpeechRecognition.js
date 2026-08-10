@@ -409,8 +409,9 @@ export default function useSpeechRecognition({
   }, [safeStart]);
 
   const stopWithManager = useCallback(async () => {
-    await dictationSessionManager.stopSession();
+    const outcome = await dictationSessionManager.stopSession();
     await stop();
+    return outcome;
   }, [stop]);
   const resumeDictation = useCallback(
     () => beginSession({ keepTranscript: true }),

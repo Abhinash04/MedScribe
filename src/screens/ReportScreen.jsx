@@ -11,12 +11,17 @@ import {
   Text,
   View,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
+import ActionDock, {
+  useActionDockClearance,
+} from '../components/ActionDock';
 import AdditionalNotes from '../components/AdditionalNotes';
 import AppHeader from '../components/AppHeader';
 import MissingFieldsModal from '../components/MissingFieldsModal';
 import ReportField from '../components/ReportField';
 import ScreenContainer from '../components/ScreenContainer';
-import { PATIENT_FIELDS, REQUIRED_FIELDS } from '../constants/patientFields';
+import { REQUIRED_FIELDS } from '../constants/patientFields';
+import { HALF_WIDTH, REPORT_SECTIONS } from '../constants/reportSections';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import { extractForReport } from '../services/extractionService';
 import { exportReport, shareReport } from '../services/pdfService';
@@ -30,6 +35,7 @@ import {
   draftNotes,
   draftValues,
   fromStored,
+  hasValue,
   isDirty,
   mergeExtraction,
   setNoteKept,
@@ -52,6 +58,96 @@ import { formatDateTime } from '../utils/datetime';
 import styles from './styles/ReportScreen.styles';
 
 const TOTAL_REQUIRED = REQUIRED_FIELDS.length;
+
+const SECTION_TINTS = {
+  patient: { fill: colors.accentSoft, glyph: colors.primaryAccent },
+  clinical: { fill: colors.violetSoft, glyph: colors.violet },
+  additional: { fill: colors.warningSoft, glyph: colors.warningText },
+};
+
+/**
+ * One card per group of fields. The short fields listed in HALF_WIDTH pair up
+ * two to a row; everything else takes the full width.
+ */
+const ReportSection = ({ section, draft, onChange }) => {
+  const tint = SECTION_TINTS[section.key] ?? SECTION_TINTS.patient;
+  const required = section.fields.filter(field => field.required);
+  const filled = required.filter(field =>
+    hasValue(draft?.[field.key], field.key),
+  ).length;
+  const complete = filled === required.length;
+
+  const renderField = field => (
+    <ReportField
+      key={field.key}
+      label={field.label}
+      entry={draft[field.key]}
+      isList={!!field.list}
+      multiline={!!field.multiline}
+      required={!!field.required}
+      keyboard={field.keyboard}
+      onChange={value => onChange(field.key, value)}
+    />
+  );
+
+  // Walk the section once, collapsing runs of short fields into paired rows.
+  const rows = [];
+  for (let index = 0; index < section.fields.length; index += 1) {
+    const field = section.fields[index];
+    const next = section.fields[index + 1];
+
+    if (HALF_WIDTH.has(field.key) && next && HALF_WIDTH.has(next.key)) {
+      rows.push({
+        key: `${field.key}-${next.key}`,
+        node: (
+          <View style={styles.fieldPair}>
+            <View style={styles.pairItem}>{renderField(field)}</View>
+            <View style={styles.pairItem}>{renderField(next)}</View>
+          </View>
+        ),
+      });
+      index += 1;
+      continue;
+    }
+
+    rows.push({ key: field.key, node: renderField(field) });
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionIcon, { backgroundColor: tint.fill }]}>
+          <Icon name={section.icon} size={18} color={tint.glyph} />
+        </View>
+        <Text style={styles.sectionTitle}>{section.title}</Text>
+        {required.length ? (
+          <View
+            style={[
+              styles.sectionCountPill,
+              complete && styles.sectionCountPillComplete,
+            ]}
+          >
+            <Text
+              style={[
+                styles.sectionCountText,
+                complete && styles.sectionCountTextComplete,
+              ]}
+            >
+              {filled}/{required.length}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      {rows.map((row, index) => (
+        <View key={row.key}>
+          {index === 0 ? null : <View style={styles.divider} />}
+          {row.node}
+        </View>
+      ))}
+    </View>
+  );
+};
 
 const ReportScreen = ({ route }) => {
   const navigation = useNavigation();
@@ -80,6 +176,7 @@ const ReportScreen = ({ route }) => {
   const [loadError, setLoadError] = useState('');
   const [showMissing, setShowMissing] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const dockClearance = useActionDockClearance();
 
   useEffect(() => {
     if (openedId || draft) {
@@ -258,6 +355,11 @@ const ReportScreen = ({ route }) => {
     navigation.navigate('Dashboard');
   }, [resetRecording, navigation]);
 
+  const handleHome = useCallback(
+    () => navigation.navigate('Dashboard'),
+    [navigation],
+  );
+
   const shareDiagnostics = useCallback(async () => {
     try {
       await Share.share({
@@ -323,7 +425,7 @@ const ReportScreen = ({ route }) => {
   if (loading || !draft) {
     return (
       <ScreenContainer>
-        <AppHeader showBack onBackPress={() => navigation.goBack()} title="Patient Report" />
+        <AppHeader showHome onHomePress={handleHome} title="Patient Report" />
         <View style={styles.centered}>
           {loadError ? (
             <Text style={styles.errorText}>{loadError}</Text>
@@ -338,12 +440,67 @@ const ReportScreen = ({ route }) => {
   const savedLabel = savedAt
     ? `Saved ${formatDateTime(savedAt)}`
     : 'Not saved yet';
+  const complete = captured === TOTAL_REQUIRED;
+  const isFinal = status === REPORT_STATUS.FINAL;
+  const progressPercent = TOTAL_REQUIRED
+    ? Math.round((captured / TOTAL_REQUIRED) * 100)
+    : 0;
+
+  // The dock points at whatever comes next: bank the edits, then finalize a
+  // complete draft, then export. Nothing is emphasised while the report is
+  // saved but still missing details — the next step there is editing a field.
+  const emphasis = dirty
+    ? 'save'
+    : isFinal
+    ? 'pdf'
+    : complete
+    ? 'finalize'
+    : null;
+
+  const dockItems = [
+    {
+      key: 'save',
+      label: 'Save',
+      icon: 'save',
+      onPress: handleSave,
+      disabled: busy,
+      busy,
+      accessibilityLabel: reportId ? 'Save changes' : 'Save report',
+    },
+    {
+      key: 'pdf',
+      label: 'PDF',
+      icon: 'download',
+      onPress: handleExportPdf,
+      disabled: busy,
+      accessibilityLabel: 'Download the report as a PDF',
+    },
+    {
+      key: 'finalize',
+      label: isFinal ? 'Finalized' : 'Finalize',
+      icon: 'check-circle',
+      onPress: handleFinalize,
+      disabled: busy || isFinal,
+      done: isFinal,
+      accessibilityLabel: isFinal
+        ? 'This report is finalized'
+        : 'Finalize this report',
+    },
+    {
+      key: 'home',
+      label: 'Dashboard',
+      icon: 'home',
+      onPress: handleDone,
+      accessibilityLabel: 'Back to dashboard',
+    },
+  ];
 
   return (
+    <>
     <ScreenContainer>
       <AppHeader
-        showBack
-        onBackPress={() => navigation.goBack()}
+        showHome
+        onHomePress={handleHome}
         title="Patient Report"
         onLongPressTitle={DIAGNOSTICS_ENABLED ? handleDiagnostics : undefined}
       />
@@ -354,15 +511,53 @@ const ReportScreen = ({ route }) => {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: dockClearance },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryCount}>
-              {captured} of {TOTAL_REQUIRED}
-            </Text>
-            <Text style={styles.summaryLabel}>required fields captured</Text>
+            <View style={styles.summaryTop}>
+              <View
+                style={[
+                  styles.summaryIcon,
+                  complete
+                    ? styles.summaryIconComplete
+                    : styles.summaryIconPending,
+                ]}
+              >
+                <Icon
+                  name={complete ? 'check-circle' : 'alert-circle'}
+                  size={22}
+                  color={complete ? colors.successText : colors.warningText}
+                />
+              </View>
+              <View style={styles.summaryTextCol}>
+                <Text style={styles.summaryCount}>
+                  {captured} of {TOTAL_REQUIRED} captured
+                </Text>
+                <Text style={styles.summaryLabel}>
+                  {complete
+                    ? 'All required details are in. Tap any field to correct it.'
+                    : 'Tap any field to correct it before saving.'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.track}>
+              <View
+                style={[
+                  styles.trackFill,
+                  complete
+                    ? styles.trackFillComplete
+                    : styles.trackFillPending,
+                  { width: `${progressPercent}%` },
+                ]}
+              />
+            </View>
+
             <View style={styles.metaRow}>
               <View
                 style={[
@@ -372,6 +567,17 @@ const ReportScreen = ({ route }) => {
                     : styles.statusDraft,
                 ]}
               >
+                <Icon
+                  name={
+                    status === REPORT_STATUS.FINAL ? 'check-circle' : 'edit-3'
+                  }
+                  size={11}
+                  color={
+                    status === REPORT_STATUS.FINAL
+                      ? colors.onPrimary
+                      : colors.textPrimary
+                  }
+                />
                 <Text
                   style={[
                     styles.statusText,
@@ -383,44 +589,57 @@ const ReportScreen = ({ route }) => {
                   {status === REPORT_STATUS.FINAL ? 'FINAL' : 'DRAFT'}
                 </Text>
               </View>
-              <Text style={styles.savedLabel}>
-                {dirty ? 'Unsaved changes' : savedLabel}
-              </Text>
+
+              <View style={styles.savedRow}>
+                <Icon
+                  name={dirty ? 'alert-circle' : 'clock'}
+                  size={12}
+                  color={dirty ? colors.warningText : colors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.savedLabel,
+                    dirty && styles.savedLabelDirty,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {dirty ? 'Unsaved changes' : savedLabel}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.summaryHint}>
-              Tap any field to correct it before saving.
-            </Text>
           </View>
 
           {blocking.length ? (
             <View style={styles.missingCard}>
-              <Text style={styles.missingTitle}>
-                {blocking.length} required{' '}
-                {blocking.length === 1 ? 'detail is' : 'details are'} still
-                needed
-              </Text>
-              <Text style={styles.missingList}>
-                {blocking.map(field => field.label).join(' • ')}
-              </Text>
-              <Text style={styles.missingHint}>
-                Type them in below, or add more speech.
-              </Text>
+              <Icon
+                name="alert-circle"
+                size={18}
+                color={colors.warningText}
+              />
+              <View style={styles.missingBody}>
+                <Text style={styles.missingTitle}>
+                  {blocking.length} required{' '}
+                  {blocking.length === 1 ? 'detail is' : 'details are'} still
+                  needed
+                </Text>
+                <Text style={styles.missingList}>
+                  {blocking.map(field => field.label).join(' • ')}
+                </Text>
+                <Text style={styles.missingHint}>
+                  Type them in below, or add more speech.
+                </Text>
+              </View>
             </View>
           ) : null}
 
-          <View style={styles.reportCard}>
-            {PATIENT_FIELDS.map(field => (
-              <ReportField
-                key={field.key}
-                label={field.label}
-                entry={draft[field.key]}
-                isList={!!field.list}
-                multiline={!!field.multiline}
-                keyboard={field.keyboard}
-                onChange={value => handleChange(field.key, value)}
-              />
-            ))}
-          </View>
+          {REPORT_SECTIONS.map(section => (
+            <ReportSection
+              key={section.key}
+              section={section}
+              draft={draft}
+              onChange={handleChange}
+            />
+          ))}
 
           <AdditionalNotes
             notes={draftNotes(draft)}
@@ -438,6 +657,11 @@ const ReportScreen = ({ route }) => {
                 : 'Show original dictation'
             }
           >
+            <Icon
+              name={showTranscript ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={colors.secondaryAccent}
+            />
             <Text style={styles.transcriptToggleText}>
               {showTranscript ? 'Hide' : 'Show'} original dictation
             </Text>
@@ -453,69 +677,6 @@ const ReportScreen = ({ route }) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={styles.footer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.primaryButton,
-            pressed && styles.pressed,
-            busy && styles.disabled,
-          ]}
-          onPress={handleSave}
-          disabled={busy}
-          accessibilityRole="button"
-          accessibilityLabel="Save report"
-        >
-          {busy ? (
-            <ActivityIndicator color={colors.onPrimary} />
-          ) : (
-            <Text style={styles.primaryLabel}>
-              {reportId ? 'Save Changes' : 'Save Report'}
-            </Text>
-          )}
-        </Pressable>
-
-        <View style={styles.secondaryRow}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              busy && styles.disabled,
-              pressed && styles.pressed,
-            ]}
-            onPress={handleExportPdf}
-            disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel="Download the report as a PDF"
-          >
-            <Text style={styles.secondaryLabel}>Download PDF</Text>
-          </Pressable>
-
-          {status === REPORT_STATUS.FINAL ? null : (
-            <Pressable
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                busy && styles.disabled,
-                pressed && styles.pressed,
-              ]}
-              onPress={handleFinalize}
-              disabled={busy}
-              accessibilityRole="button"
-              accessibilityLabel="Finalize this report"
-            >
-              <Text style={styles.secondaryLabel}>Finalize</Text>
-            </Pressable>
-          )}
-        </View>
-
-        <Pressable
-          onPress={handleDone}
-          accessibilityRole="button"
-          accessibilityLabel="Back to dashboard"
-          style={styles.doneRow}
-        >
-          <Text style={styles.doneText}>Back to dashboard</Text>
-        </Pressable>
-      </View>
-
       <MissingFieldsModal
         visible={showMissing}
         missing={completeness?.missingFields ?? []}
@@ -525,6 +686,8 @@ const ReportScreen = ({ route }) => {
         onDismiss={() => setShowMissing(false)}
       />
     </ScreenContainer>
+    <ActionDock items={dockItems} emphasis={emphasis} />
+    </>
   );
 };
 

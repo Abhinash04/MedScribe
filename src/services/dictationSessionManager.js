@@ -237,14 +237,14 @@ class DictationSessionManager {
 
     if (outcome === CAPTURE_OUTCOME.REFINE) {
       refineTranscript().catch(() => {});
-      return;
+      return outcome;
     }
 
     if (outcome === CAPTURE_OUTCOME.NO_AUDIO) {
       useRecordingStore
         .getState()
         .setAnuvadiniResult({ ok: false, errorKind: ERROR_KIND.NO_AUDIO });
-      return;
+      return outcome;
     }
 
     if (outcome === CAPTURE_OUTCOME.TOO_LARGE) {
@@ -259,6 +259,8 @@ class DictationSessionManager {
     if (captured?.path) {
       await consultationAudio.discard();
     }
+
+    return outcome;
   }
 
   startTimer() {

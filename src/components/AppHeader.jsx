@@ -1,17 +1,31 @@
 import { Text, TouchableOpacity, View } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 import IPCLogo from './IPCLogo';
-import { typography } from '../theme';
+import { colors, typography } from '../theme';
 import styles from './styles/AppHeader.styles';
 
 const AppHeader = ({
   title = 'MedScribe',
   showBack = false,
   onBackPress,
+  showHome = false,
+  onHomePress,
   onLongPressTitle,
 }) => {
   return (
     <View style={styles.headerRow}>
-      {showBack ? (
+      {showHome ? (
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={onHomePress}
+          accessibilityLabel="Go to dashboard"
+          accessibilityRole="button"
+          accessibilityHint="Returns to the dashboard"
+          activeOpacity={0.7}
+        >
+          <Icon name="home" size={18} color={colors.textPrimary} />
+        </TouchableOpacity>
+      ) : showBack ? (
         <TouchableOpacity
           style={styles.backButton}
           onPress={onBackPress}
@@ -39,7 +53,9 @@ const AppHeader = ({
       >
         <Text style={typography.brandTitle}>{title}</Text>
       </TouchableOpacity>
-      {showBack ? <View style={styles.placeholderRight} /> : null}
+      {showBack || showHome ? (
+        <View style={styles.placeholderRight} />
+      ) : null}
     </View>
   );
 };

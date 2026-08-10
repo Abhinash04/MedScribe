@@ -1,11 +1,9 @@
 import { StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../../theme';
 
-const FAB_SIZE = 64;
-
 export const styles = StyleSheet.create({
   listContent: {
-    paddingBottom: FAB_SIZE + spacing.xl,
+    paddingBottom: spacing.xl,
   },
   greetingRow: {
     flexDirection: 'row',
@@ -356,92 +354,10 @@ export const styles = StyleSheet.create({
     height: 2,
     borderRadius: 1,
   },
-  search: {
-    ...typography.body,
-    backgroundColor: colors.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.md,
-    shadowColor: '#2F6BFF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 2,
-  },
   listHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  reportRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#2F6BFF',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 3,
-    padding: spacing.md,
-    paddingRight: 12,
-    marginBottom: spacing.md,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  reportBody: {
-    flex: 1,
-  },
-  patientName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  reportMeta: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  statusDraft: {
-    borderColor: colors.warning,
-    backgroundColor: colors.warningSoft,
-  },
-  statusFinal: {
-    borderColor: colors.success,
-    backgroundColor: colors.successSoft,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  statusTextDraft: {
-    color: colors.warningText,
-  },
-  statusTextFinal: {
-    color: colors.successText,
   },
   emptyBox: {
     alignItems: 'center',
@@ -509,31 +425,6 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.secondaryAccent,
-  },
-  fabRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: spacing.lg,
-    alignItems: 'center',
-  },
-  fab: {
-    width: FAB_SIZE,
-    height: FAB_SIZE,
-    borderRadius: FAB_SIZE / 2,
-    backgroundColor: colors.primaryAccent,
-    borderWidth: 3,
-    borderColor: colors.primaryBackground,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 10,
-    shadowColor: colors.primaryAccent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.55,
-    shadowRadius: 14,
-  },
-  fabPressed: {
-    backgroundColor: colors.primaryHover,
   },
   pressed: {
     opacity: 0.75,

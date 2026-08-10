@@ -6,14 +6,16 @@ import {
   FlatList,
   Pressable,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
+import BottomDock, { useDockClearance } from '../components/BottomDock';
 import IPCLogo from '../components/IPCLogo';
 import MicGlyph from '../components/MicGlyph';
+import ReportListRow from '../components/ReportListRow';
 import ScreenContainer from '../components/ScreenContainer';
+import useStartConsultation from '../hooks/useStartConsultation';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import { purgeAbandoned } from '../services/consultationAudio';
 import { clearRefinementState } from '../services/transcriptRefinement';
@@ -31,13 +33,6 @@ import styles from './styles/DashboardScreen.styles';
 
 const RECENT_LIMIT = 3;
 
-const AVATAR_TINTS = [
-  { fill: colors.accentSoft, text: colors.secondaryAccent },
-  { fill: colors.violetSoft, text: colors.violet },
-  { fill: colors.warningSoft, text: colors.warningText },
-  { fill: colors.successSoft, text: colors.successText },
-];
-
 function greetingFor(date) {
   const hour = date.getHours();
   if (hour < 12) {
@@ -47,28 +42,6 @@ function greetingFor(date) {
     return 'Good Afternoon';
   }
   return 'Good Evening';
-}
-
-function initialsOf(name) {
-  const words = String(name || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (words.length === 0) {
-    return '??';
-  }
-  if (words.length === 1) {
-    return words[0].slice(0, 2).toUpperCase();
-  }
-  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-}
-
-function tintFor(id) {
-  let sum = 0;
-  for (let index = 0; index < id.length; index += 1) {
-    sum += id.charCodeAt(index);
-  }
-  return AVATAR_TINTS[sum % AVATAR_TINTS.length];
 }
 
 const MiniBarChart = ({ color }) => (
@@ -151,14 +124,11 @@ const DashboardScreen = ({ navigation }) => {
   const error = useReportsStore(state => state.error);
   const loadAll = useReportsStore(state => state.loadAll);
   const remove = useReportsStore(state => state.remove);
-  const resetRecording = useRecordingStore(state => state.reset);
   const restoreSession = useRecordingStore(state => state.restoreSession);
+  const startConsultation = useStartConsultation();
+  const clearance = useDockClearance();
 
   const [unfinished, setUnfinished] = useState(null);
-  const [showAll, setShowAll] = useState(false);
-  const [draftsOnly, setDraftsOnly] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [query, setQuery] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -196,32 +166,10 @@ const DashboardScreen = ({ navigation }) => {
     };
   }, [reports]);
 
-  const visibleReports = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const filtered = reports.filter(report => {
-      if (draftsOnly && report.status === REPORT_STATUS.FINAL) {
-        return false;
-      }
-      if (!needle) {
-        return true;
-      }
-      return (
-        report.patientName?.toLowerCase().includes(needle) ||
-        report.diagnosis?.toLowerCase().includes(needle)
-      );
-    });
-
-    const expanded = showAll || draftsOnly || needle.length > 0;
-    return expanded ? filtered : filtered.slice(0, RECENT_LIMIT);
-  }, [reports, query, draftsOnly, showAll]);
-
-  const filtersActive = draftsOnly || query.trim().length > 0;
-
-  const handleNewDictation = useCallback(() => {
-    resetRecording();
-    clearRefinementState();
-    navigation.navigate('Recording');
-  }, [resetRecording, navigation]);
+  const visibleReports = useMemo(
+    () => reports.slice(0, RECENT_LIMIT),
+    [reports],
+  );
 
   const handleOpen = useCallback(
     id => navigation.navigate('Report', { reportId: id }),
@@ -281,76 +229,19 @@ const DashboardScreen = ({ navigation }) => {
     [remove],
   );
 
-  const handleToggleSearch = useCallback(() => {
-    if (searching) {
-      setQuery('');
-    }
-    setSearching(!searching);
-  }, [searching]);
-
-  const handleToggleDrafts = useCallback(() => {
-    setDraftsOnly(previous => !previous);
-  }, []);
-
-  const handleShowAll = useCallback(() => {
-    setShowAll(previous => !previous);
-    setDraftsOnly(false);
-    setQuery('');
-    setSearching(false);
-  }, []);
+  const openReports = useCallback(
+    params => navigation.navigate('Reports', params),
+    [navigation],
+  );
 
   const renderItem = useCallback(
-    ({ item }) => {
-      const isFinal = item.status === REPORT_STATUS.FINAL;
-      const tint = tintFor(item.id);
-
-      return (
-        <Pressable
-          style={({ pressed }) => [styles.reportRow, pressed && styles.pressed]}
-          onPress={() => handleOpen(item.id)}
-          onLongPress={() => handleDelete(item)}
-          accessibilityRole="button"
-          accessibilityLabel={`Open report for ${
-            item.patientName || 'unnamed patient'
-          }`}
-          accessibilityHint="Long press to delete"
-        >
-          <View style={[styles.avatar, { backgroundColor: tint.fill }]}>
-            <Text style={[styles.avatarText, { color: tint.text }]}>
-              {initialsOf(item.patientName)}
-            </Text>
-          </View>
-
-          <View style={styles.reportBody}>
-            <Text style={styles.patientName} numberOfLines={1}>
-              {item.patientName || 'Unnamed patient'}
-            </Text>
-            <Text style={styles.reportMeta} numberOfLines={1}>
-              {formatRelativeDateTime(item.createdAt)}
-              {item.diagnosis ? ` · ${item.diagnosis}` : ''}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.statusPill,
-              isFinal ? styles.statusFinal : styles.statusDraft,
-            ]}
-          >
-            <Text
-              style={[
-                styles.statusText,
-                isFinal ? styles.statusTextFinal : styles.statusTextDraft,
-              ]}
-            >
-              {isFinal ? 'FINAL' : 'DRAFT'}
-            </Text>
-          </View>
-
-          <Icon name="chevron-right" size={20} color={colors.textMuted} />
-        </Pressable>
-      );
-    },
+    ({ item }) => (
+      <ReportListRow
+        report={item}
+        onOpen={handleOpen}
+        onDelete={handleDelete}
+      />
+    ),
     [handleOpen, handleDelete],
   );
 
@@ -374,7 +265,7 @@ const DashboardScreen = ({ navigation }) => {
 
       <Pressable
         style={({ pressed }) => [styles.ctaWrapper, pressed && styles.pressed]}
-        onPress={handleNewDictation}
+        onPress={startConsultation}
         accessibilityRole="button"
         accessibilityLabel="Start new recording"
         accessibilityHint="Opens the dictation screen"
@@ -527,22 +418,13 @@ const DashboardScreen = ({ navigation }) => {
 
       <View style={styles.quickGrid}>
         <QuickAction
-          label="New Consultation"
-          subLabel="Start a new dictation"
-          iconName="plus"
-          tint={colors.violetSoft}
-          accent={colors.secondaryAccent}
-          onPress={handleNewDictation}
-          style={styles.quickBorderRight}
-        />
-        <QuickAction
           label="Search Patients"
           subLabel="Find existing patients"
           iconName="search"
           tint={colors.violetSoft}
           accent={colors.secondaryAccent}
-          active={searching}
-          onPress={handleToggleSearch}
+          onPress={() => openReports({ focusSearch: true })}
+          style={styles.quickBorderRight}
         />
         <QuickAction
           label="Pending Drafts"
@@ -551,65 +433,19 @@ const DashboardScreen = ({ navigation }) => {
           tint={colors.warningSoft}
           accent={colors.warning}
           glyph={colors.warningText}
-          active={draftsOnly}
-          onPress={handleToggleDrafts}
-          style={styles.quickBorderRight}
-        />
-        {__DEV__ ? (
-          <QuickAction
-            label="STT Measure"
-            subLabel="Speech to Text analytics"
-            iconName="file-text"
-            tint={colors.successSoft}
-            accent={colors.success}
-            glyph={colors.successText}
-            onPress={() => navigation.navigate('SttMeasure')}
-          />
-        ) : null}
-        {__DEV__ ? (
-          <QuickAction
-            label="Mic Spike"
-            subLabel="Audio quality monitor"
-            iconName="activity"
-            tint={colors.warningSoft}
-            accent={colors.warning}
-            glyph={colors.warningText}
-            onPress={() => navigation.navigate('MicSpike')}
-            style={styles.quickBorderRight}
-          />
-        ) : null}
-        <QuickAction
-          label={showAll ? 'Recent Only' : 'All Reports'}
-          subLabel="View and manage reports"
-          iconName="folder"
-          tint={colors.infoLight}
-          accent={colors.info}
-          active={showAll}
-          onPress={handleShowAll}
+          onPress={() => openReports({ filter: 'drafts' })}
         />
       </View>
 
-      {searching ? (
-        <TextInput
-          style={styles.search}
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search by patient or diagnosis"
-          placeholderTextColor={colors.textMuted}
-          autoFocus
-          accessibilityLabel="Search saved reports"
-        />
-      ) : null}
-
       <View style={styles.listHeaderRow}>
-        <Text style={styles.sectionTitle}>
-          {draftsOnly ? 'Pending Drafts' : 'Recent Reports'}
-        </Text>
-        {reports.length > RECENT_LIMIT && !filtersActive ? (
-          <Pressable onPress={handleShowAll} accessibilityRole="button">
-            <Text style={styles.linkText}>
-              {showAll ? 'Show less' : 'View all'}
-            </Text>
+        <Text style={styles.sectionTitle}>Recent Reports</Text>
+        {reports.length > RECENT_LIMIT ? (
+          <Pressable
+            onPress={() => openReports({ filter: 'all' })}
+            accessibilityRole="button"
+            accessibilityLabel="View all reports"
+          >
+            <Text style={styles.linkText}>View all</Text>
           </Pressable>
         ) : null}
       </View>
@@ -623,41 +459,32 @@ const DashboardScreen = ({ navigation }) => {
       </View>
     ) : (
       <View style={styles.emptyBox}>
-        <Text style={styles.emptyTitle}>
-          {reports.length === 0 ? 'No reports yet' : 'Nothing matches'}
-        </Text>
+        <Text style={styles.emptyTitle}>No reports yet</Text>
         <Text style={styles.emptyBody}>
-          {reports.length === 0
-            ? 'Tap the microphone to dictate your first patient consultation.'
-            : 'Try a different search, or clear the filters above.'}
+          Tap the microphone to dictate your first patient consultation.
         </Text>
       </View>
     );
 
   return (
-    <ScreenContainer>
-      <FlatList
-        data={visibleReports}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        ListHeaderComponent={header}
-        ListEmptyComponent={empty}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      />
-
-      <View style={styles.fabRow} pointerEvents="box-none">
-        <Pressable
-          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-          onPress={handleNewDictation}
-          accessibilityRole="button"
-          accessibilityLabel="Start a new dictation"
-        >
-          <MicGlyph size={30} color={colors.onPrimary} />
-        </Pressable>
-      </View>
-    </ScreenContainer>
+    <>
+      <ScreenContainer>
+        <FlatList
+          data={visibleReports}
+          keyExtractor={item => item.id}
+          renderItem={renderItem}
+          ListHeaderComponent={header}
+          ListEmptyComponent={empty}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: clearance },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        />
+      </ScreenContainer>
+      <BottomDock active="Dashboard" />
+    </>
   );
 };
 
