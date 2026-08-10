@@ -118,7 +118,7 @@ export async function refineTranscript({
 
   if (result.ok) {
     clearRefinementState();
-    if (!keepAudio) {
+    if (!keepAudio && consultationAudio.currentCapturePath() === plan.path) {
       await consultationAudio.discard();
     }
   }

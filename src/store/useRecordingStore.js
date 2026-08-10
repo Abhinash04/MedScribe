@@ -60,6 +60,7 @@ const initialState = {
   transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
   nativeRaw: '',
   refineProgress: { done: 0, total: 0 },
+  captureUnavailable: false,
 };
 
 const useRecordingStore = create((set, get) => ({
@@ -151,6 +152,9 @@ const useRecordingStore = create((set, get) => ({
   setRefineProgress: ({ done = 0, total = 0 } = {}) =>
     set({ refineProgress: { done, total } }),
 
+  setCaptureUnavailable: captureUnavailable =>
+    set({ captureUnavailable: !!captureUnavailable }),
+
   setAnuvadiniText: text =>
     set(state => ({ anuvadini: { ...state.anuvadini, text: text ?? '' } })),
 
@@ -211,6 +215,7 @@ const useRecordingStore = create((set, get) => ({
       transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
       nativeRaw: '',
       refineProgress: { done: 0, total: 0 },
+      captureUnavailable: false,
     }),
 }));
 
