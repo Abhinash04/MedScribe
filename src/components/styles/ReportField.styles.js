@@ -3,20 +3,20 @@ import { colors, spacing, typography } from '../../theme';
 
 export const styles = StyleSheet.create({
   row: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceBorder,
+    paddingVertical: spacing.sm,
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
+    gap: spacing.xs,
+    marginBottom: 6,
   },
   label: {
-    ...typography.smallCaption,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.2,
     textAlign: 'left',
-    color: colors.textMuted,
+    color: colors.textSecondary,
   },
   uncertainBadge: {
     fontSize: 10,
@@ -45,16 +45,22 @@ export const styles = StyleSheet.create({
     textAlign: 'left',
   },
   input: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    marginTop: 2,
-    borderRadius: 8,
+    minHeight: 48,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     backgroundColor: colors.primaryBackground,
+    color: colors.textPrimary,
+  },
+  inputMissing: {
+    borderColor: colors.warning,
+    backgroundColor: colors.warningLight,
   },
   multiline: {
-    minHeight: 64,
+    minHeight: 96,
+    paddingTop: spacing.sm,
     textAlignVertical: 'top',
   },
   missing: {
@@ -65,7 +71,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   bullet: {
     ...typography.body,

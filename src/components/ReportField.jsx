@@ -9,12 +9,14 @@ const ReportField = ({
   entry,
   isList = false,
   multiline = false,
+  required = false,
   keyboard,
   onChange,
 }) => {
   const value = entry?.value;
   const editable = typeof onChange === 'function';
   const hasValue = isList ? value?.length > 0 : !!value;
+  const needsAttention = required && !hasValue;
   const isUncertain =
     hasValue && !entry?.edited && entry?.confidence < LOW_CONFIDENCE_THRESHOLD;
   const isAuto = hasValue && !entry?.edited && !!entry?.auto;
@@ -104,7 +106,12 @@ const ReportField = ({
         </View>
       ) : editable ? (
         <TextInput
-          style={[styles.value, styles.input, multiline && styles.multiline]}
+          style={[
+            styles.value,
+            styles.input,
+            multiline && styles.multiline,
+            needsAttention && styles.inputMissing,
+          ]}
           value={value ?? ''}
           onChangeText={onChange}
           placeholder={NOT_AVAILABLE}
