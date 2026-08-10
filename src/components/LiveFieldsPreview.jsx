@@ -1,18 +1,6 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../theme';
+import { Text, View } from 'react-native';
+import styles from './styles/LiveFieldsPreview.styles';
 
-/**
- * Live Fields Preview Component.
- *
- * Displays live structured fields extracted in real time as the doctor dictates.
- */
-
-/**
- * The subset worth glancing at mid-dictation, in display order. Keys match
- * `PATIENT_FIELDS`; the rest of the eleven fields are left for the report
- * screen so this strip stays a glance, not a second form.
- */
 const PREVIEW_FIELDS = [
   ['patientName', 'Patient'],
   ['age', 'Age'],
@@ -57,47 +45,5 @@ const LiveFieldsPreview = ({ fields = {}, style }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    padding: spacing.sm,
-    gap: 6,
-  },
-  headerLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.primaryAccent,
-    letterSpacing: 0.8,
-  },
-  pillsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    gap: 4,
-  },
-  pillLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-  pillValue: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    maxWidth: 140,
-  },
-});
 
 export default LiveFieldsPreview;

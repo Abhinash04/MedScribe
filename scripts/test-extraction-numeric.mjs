@@ -1,13 +1,4 @@
-/**
- * Numeric normalization fixtures.
- *
- *   node scripts/test-extraction-numeric.mjs
- *
- * Speech recognisers group digits arbitrarily — "11 00 70", "955 677 4130",
- * "+91-9556-774130" — and the underlying number must survive the grouping.
- * The negative assertions matter as much as the positive ones: a dosage, a
- * duration or an age must never be read as a PIN or a phone number.
- */
+
 import { extractPatientFields } from '../src/services/extractionService.js';
 
 import {
@@ -20,7 +11,6 @@ import {
 const expectFields = (label, transcript, expected) =>
   assertFields(extractPatientFields, label, transcript, expected);
 
-// ── 1. PIN grouping ─────────────────────────────────────────────────────────
 const PIN_FORMS = [
   '110070',
   '110 070',
@@ -41,7 +31,6 @@ for (const form of PIN_FORMS) {
 expectFields('N1.8 pincode spelling', 'Pincode 110 070.', { pinCode: '110070' });
 expectFields('N1.9 postal code', 'Postal code is 11 00 70.', { pinCode: '110070' });
 
-// ── 2. Phone grouping ───────────────────────────────────────────────────────
 const PHONE_FORMS = [
   '9556774130',
   '955 677 4130',
@@ -60,7 +49,6 @@ for (const form of PHONE_FORMS) {
   });
 }
 
-// ── 3. Indian country code ──────────────────────────────────────────────────
 const CC_FORMS = [
   '+919556774130',
   '+91 9556774130',
@@ -77,7 +65,6 @@ for (const form of CC_FORMS) {
   });
 }
 
-// ── 4. Spoken digits ────────────────────────────────────────────────────────
 expectFields('N4.1 spoken PIN', 'PIN code one one zero zero seven zero.', {
   pinCode: '110070',
 });
@@ -94,7 +81,6 @@ expectFields(
   { contactNumber: '9556774130' },
 );
 
-// ── 5. PIN and phone in one transcript ──────────────────────────────────────
 expectFields(
   'N5.1 grouped PIN then grouped phone',
   'Patient lives in Delhi, PIN code 11 00 70. Contact number 955 677 4130.',
@@ -107,7 +93,6 @@ expectFields(
   { pinCode: '110070', contactNumber: '9556774130' },
 );
 
-// ── 6. Numbers that must NOT become PIN or phone ────────────────────────────
 expectFields(
   'N6.1 dosage and duration',
   'Prescribed Paracetamol 500 milligrams twice daily for 5 days.',
@@ -136,7 +121,6 @@ expectFields(
   },
 );
 
-// Digits either side of a sentence boundary must never be concatenated.
 const across = extractPatientFields('PIN code is 110070. Contact number is 9556774130.');
 check(
   'N6.5 PIN not merged with the following phone',
@@ -149,7 +133,6 @@ check(
   '9556774130',
 );
 
-// ── 7. Raw transcript is never rewritten ────────────────────────────────────
 const RAW = 'PIN code is 11 00 70. Contact number is 955 677 4130.';
 const before = RAW;
 extractPatientFields(RAW);

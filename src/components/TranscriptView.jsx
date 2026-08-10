@@ -1,14 +1,7 @@
-import React, { useCallback, useRef } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { useCallback, useRef } from 'react';
+import { ScrollView, Text, View } from 'react-native';
+import styles from './styles/TranscriptView.styles';
 
-/**
- * Live transcript surface (SRS FR-4).
- *
- * Confirmed text renders solid; the recognizer's interim guess trails it in
- * muted italics so the doctor can see words landing without mistaking an
- * unconfirmed phrase for the final record.
- */
 const TranscriptView = ({ finalText = '', partialText = '', style }) => {
   const scrollRef = useRef(null);
 
@@ -46,41 +39,5 @@ const TranscriptView = ({ finalText = '', partialText = '', style }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    padding: spacing.md,
-  },
-  label: {
-    ...typography.smallCaption,
-    textAlign: 'left',
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
-  },
-  scroll: {
-    maxHeight: 180,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xs,
-  },
-  transcript: {
-    ...typography.body,
-    textAlign: 'left',
-  },
-  partial: {
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  placeholder: {
-    ...typography.body,
-    color: colors.textMuted,
-    fontStyle: 'italic',
-  },
-});
 
 export default TranscriptView;

@@ -1,17 +1,4 @@
-/**
- * The spoken missing-field prompt.
- *
- *   node scripts/test-tts-prompt.mjs
- *
- * Two things are being guarded, and the second is the load-bearing one.
- *
- *   GRAMMAR   the sentence has to read naturally aloud at every count, and the
- *             overflow past the spoken cap must be announced rather than
- *             silently dropped — a doctor who hears four fields and is not told
- *             there are more will believe they heard all of them.
- *   PRIVACY   the text leaves the device for a third-party synthesis service.
- *             It may name fields; it may never carry a patient's data.
- */
+
 import { PATIENT_FIELDS } from '../src/constants/patientFields.js';
 import { blockingFields, validateReportCompleteness } from '../src/services/reportCompleteness.js';
 import { missingFieldPrompt, SPOKEN_FIELD_LIMIT } from '../src/services/missingFieldPrompt.js';
@@ -26,12 +13,10 @@ const field = key => {
 
 const promptFor = (...keys) => missingFieldPrompt(keys.map(field));
 
-// ── 1. Nothing to say ───────────────────────────────────────────────────────
 check('S1.1 no fields produces no prompt', missingFieldPrompt([]), '');
 check('S1.2 null is safe', missingFieldPrompt(null), '');
 check('S1.3 undefined is safe', missingFieldPrompt(undefined), '');
 
-// ── 2. Grammar at each count ────────────────────────────────────────────────
 check(
   'S2.1 one field is singular throughout',
   promptFor('patientName'),
@@ -58,9 +43,6 @@ check(
     'Please provide these mandatory details.',
 );
 
-// ── 3. The cap announces its overflow ───────────────────────────────────────
-// The failure this prevents: naming four and stopping, leaving the doctor to
-// think the list was complete.
 check(
   'S3.1 five fields name four and count the rest',
   promptFor('patientName', 'contactNumber', 'pinCode', 'age', 'gender'),
@@ -93,8 +75,6 @@ check(
   );
 }
 
-// ── 4. Spoken wording ───────────────────────────────────────────────────────
-// Labels are written for a form; a few read badly aloud and are overridden.
 check('S4.1 PIN Code keeps its acronym', promptFor('pinCode').includes('PIN code'), true);
 check(
   'S4.2 titles are otherwise lowered',
@@ -112,9 +92,6 @@ check(
   'The diagnosis and patient name are still missing. Please provide these mandatory details.',
 );
 
-// ── 5. Privacy — the load-bearing assertion ─────────────────────────────────
-// A draft full of recognisable values, every required field left blank except
-// the ones filled here. Whatever the prompt says, none of these may be in it.
 {
   const VALUES = {
     patientName: 'Rohit Mehta',
@@ -140,7 +117,7 @@ check(
   for (const [key, value] of Object.entries(VALUES)) {
     check(`S5.2 "${value}" (${key}) never reaches the prompt`, spoken.includes(value), false);
   }
-  // Digits are the sharpest signal: no phone number, PIN or age may appear.
+  
   check('S5.3 no digit from any value appears', /\d/.test(spoken.replace(/\d+ other/, '')), false);
 }
 

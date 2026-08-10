@@ -1,13 +1,4 @@
-/**
- * Conversational-scaffolding cleanup fixtures.
- *
- *   node scripts/test-extraction-cleanup.mjs
- *
- * A field value must contain the clinical information and not the phrasing that
- * introduced it. The "must keep" assertions matter as much as the cleanup ones:
- * severity, chronicity and diagnostic uncertainty are clinical meaning, not
- * scaffolding, and stripping them would rewrite the doctor.
- */
+
 import { extractPatientFields } from '../src/services/extractionService.js';
 import { splitFindings } from '../src/services/extraction/detectNegation.js';
 import {
@@ -25,7 +16,6 @@ import {
 const expectFields = (label, transcript, expected) =>
   assertFields(extractPatientFields, label, transcript, expected);
 
-// ── 1. Diagnosis ────────────────────────────────────────────────────────────
 expectFields('C1.1 looks like … to me', 'Looks like viral fever to me.', {
   diagnosis: 'Viral fever',
 });
@@ -51,7 +41,6 @@ expectFields('C1.10 probably a', 'Probably a viral infection.', {
   diagnosis: 'Viral infection',
 });
 
-// Diagnostic uncertainty is clinical meaning, not scaffolding.
 expectFields('C1.11 KEEP suspected', 'Diagnosis is suspected dengue.', {
   diagnosis: 'Suspected dengue',
 });
@@ -59,7 +48,6 @@ expectFields('C1.12 KEEP probable', 'Diagnosis is probable dengue.', {
   diagnosis: 'Probable dengue',
 });
 
-// ── 2. Symptoms ─────────────────────────────────────────────────────────────
 expectFields(
   'C2.1 is having, scaffolding removed',
   'He is having fever, cough, headache, and body pain for about three days.',
@@ -76,7 +64,6 @@ expectFields(
   { symptoms: ['Fever', 'Dry cough'] },
 );
 
-// Modifiers change the clinical picture and must survive.
 expectFields('C2.4 KEEP persistent', 'Complains of persistent cough.', {
   symptoms: ['Persistent cough'],
 });
@@ -87,7 +74,6 @@ expectFields('C2.6 KEEP recurrent', 'Complains of recurrent chest pain.', {
   symptoms: ['Recurrent chest pain'],
 });
 
-// ── 3. Medical history ──────────────────────────────────────────────────────
 expectFields('C3.1 known case of', 'She is a known case of diabetes.', {
   medicalHistory: 'Diabetes',
 });
@@ -101,7 +87,6 @@ expectFields('C3.4 negation still wins', 'She has no history of asthma.', {
   medicalHistory: 'No history of asthma',
 });
 
-// ── 4. Prescription ─────────────────────────────────────────────────────────
 expectFields(
   'C4.1 I am prescribing',
   'I am prescribing Paracetamol 500 milligrams twice daily for five days.',
@@ -116,7 +101,6 @@ expectFields('C4.3 give him', 'Give him cough syrup twice daily for three days.'
   prescriptionNotes: ['Cough syrup twice daily for three days'],
 });
 
-// Nothing may be invented: no frequency was dictated here.
 expectFields('C4.4 bare drug and dose', 'Paracetamol 500 milligrams after food.', {
   prescriptionNotes: ['Paracetamol 500 milligrams after food'],
 });
@@ -134,7 +118,6 @@ expectFields(
   { prescriptionNotes: null },
 );
 
-// One entry per drug even when neither carries a numeric strength.
 expectFields(
   'C4.7 two drugs split without a strength',
   'Prescribed cough syrup twice daily and vitamin tablets once daily.',
@@ -146,8 +129,6 @@ check(
   ['Paracetamol 500 mg twice daily and drink plenty of water'],
 );
 
-// A frequency is a cadence, not a drug: advice with no medication anchor must
-// not qualify as a prescription.
 check('C4.9 frequency alone is not medication', looksLikeMedication('twice daily'), false);
 check(
   'C4.10 advice with a frequency is not medication',
@@ -167,7 +148,6 @@ expectFields('C4.12 a daily walk is advice', 'Advised a daily walk and adequate 
   additionalRemarks: 'Daily walk and adequate rest',
 });
 
-// ── 5. Additional remarks ───────────────────────────────────────────────────
 expectFields(
   'C5.1 I would advise the patient to',
   'I would advise the patient to drink plenty of water and return after three days.',
@@ -184,10 +164,6 @@ expectFields(
   { additionalRemarks: 'Get a CBC and review after three days' },
 );
 
-// ── 5b. Negation scope ends where the list splits ───────────────────────────
-// A cue stops at the first clause boundary, so the findings list has to split
-// on the same boundary — otherwise "cough" inherits the "no" that ended at the
-// semicolon.
 check('C5.4 semicolon ends the negation', splitFindings('no fever; cough'), {
   positive: ['cough'],
   negative: ['fever'],
@@ -204,14 +180,13 @@ check('C5.7 "although" ends the negation', splitFindings('no fever although coug
   positive: ['cough'],
   negative: ['fever'],
 });
-// A decimal is not a clause boundary.
+
 check(
   'C5.8 a decimal reading is one finding',
   splitFindings('fever 101.5 degrees and cough'),
   { positive: ['fever 101.5 degrees', 'cough'], negative: [] },
 );
 
-// ── 6. Demographics ─────────────────────────────────────────────────────────
 expectFields('C6.1 name', "Patient's name is Rahul Sharma.", { patientName: 'Rahul Sharma' });
 expectFields('C6.2 age', 'He is 34 years old.', { age: '34 Years' });
 expectFields('C6.3 gender phrase', 'She is a female patient.', { gender: 'Female' });
@@ -223,7 +198,6 @@ expectFields('C6.6 contact', 'Her phone number is 955 677 4130.', {
   contactNumber: '9556774130',
 });
 
-// ── 7. Traceability ─────────────────────────────────────────────────────────
 const traced = extractPatientFields('Looks like viral fever to me.');
 check('C7.1 cleaned value', valueOf(traced.diagnosis), 'Viral fever');
 check(
@@ -236,7 +210,6 @@ check(
 );
 check('C7.3 marker recorded', typeof traced.diagnosis.source === 'string', true);
 
-// Diagnosis cleanup must not reach into other fields.
 expectFields(
   'C7.4 hedge words are not stripped from an address',
   'Address is Likely Lane, Sector 10, Noida.',

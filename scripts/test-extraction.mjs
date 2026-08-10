@@ -1,11 +1,4 @@
-/**
- * Extraction fixture suite.
- *
- *   node scripts/test-extraction.mjs
- *
- * Asserts exact values, not counts — a count can pass while a field holds
- * text belonging to another field.
- */
+
 import {
   countCapturedFields,
   extractPatientFields,
@@ -34,7 +27,6 @@ function expectFields(label, transcript, expected) {
   }
 }
 
-// ── 1. Template order (regression) ──────────────────────────────────────────
 expectFields(
   '1 template',
   'Patient name is Hema Sharma. Age 22 years. Gender Female. Address is Sector 12, Dwarka, New Delhi. PIN code 110078. Contact number 9876543210. Complains of fever, cough and headache. Medical history of diabetes. Diagnosis is viral infection. Prescribed paracetamol twice daily. Remarks patient advised for blood tests.',
@@ -50,7 +42,6 @@ expectFields(
   },
 );
 
-// ── 2. Unpunctuated (what real speech produces) ─────────────────────────────
 expectFields(
   '2 unpunctuated',
   'patient name is Hema Sharma age 22 years gender female contact number 9876543210 complains of fever and cough diagnosis is viral infection',
@@ -64,7 +55,6 @@ expectFields(
   },
 );
 
-// ── 3. THE HEADLINE TEST: order independence ────────────────────────────────
 const permutations = [
   'patient name is Hema Sharma age 22 years diagnosis is viral infection contact number 9876543210',
   'diagnosis is viral infection patient name is Hema Sharma contact number 9876543210 age 22 years',
@@ -83,7 +73,6 @@ for (let i = 1; i < permutations.length; i += 1) {
   }
 }
 
-// ── 4. Synonyms / conversational ────────────────────────────────────────────
 expectFields(
   '4 synonyms',
   'the patient is Hema Sharma she is 22 years old she reports fever and cough known case of diabetes started her on paracetamol',
@@ -96,32 +85,27 @@ expectFields(
   },
 );
 
-// ── 5. Fillers ──────────────────────────────────────────────────────────────
 expectFields(
   '5 fillers',
   'um so patient name is Hema Sharma uh age 22 years you know diagnosis is viral infection',
   { patientName: 'Hema Sharma', age: '22 Years', diagnosis: 'Viral infection' },
 );
 
-// ── 6. Repeats → last wins (self-correction) ────────────────────────────────
 expectFields(
   '6 self-correction',
   'age 22 years actually age 42 years',
   { age: '42 Years' },
 );
 
-// ── 7. Precision — absent fields stay null ──────────────────────────────────
 const sparse = extractPatientFields('age 30 years complains of back pain');
 check('7 precision → patientName null', sparse.patientName, null);
 check('7 precision → diagnosis null', sparse.diagnosis, null);
 check('7 precision → contactNumber null', sparse.contactNumber, null);
 check('7 precision → symptoms', valueOf(sparse.symptoms), ['Back pain']);
 
-// ── 8. Empty input ──────────────────────────────────────────────────────────
 check('8 empty → count', countCapturedFields(extractPatientFields('')), 0);
 check('8 null → count', countCapturedFields(extractPatientFields(null)), 0);
 
-// ── 9. Offsets map back to the ORIGINAL transcript ──────────────────────────
 const offsetSource =
   'um so patient name is Hema Sharma uh age 22 years';
 const offsetRecord = extractPatientFields(offsetSource);
@@ -132,14 +116,11 @@ check(
   true,
 );
 
-// ── 10. Confidence bands ────────────────────────────────────────────────────
 const explicit = extractPatientFields('diagnosis is viral infection');
 const hedged = extractPatientFields('looks like viral infection');
 check('10 confidence → explicit > 0.90', explicit.diagnosis?.confidence > 0.9, true);
 check('10 confidence → hedged < 0.75', hedged.diagnosis?.confidence < 0.75, true);
 
-// ── 11-25. Realistic dictation samples ──────────────────────────────────────
-// Sourced from how doctors actually dictate. Assert exact values, never counts.
 const REALISTIC = [
   ['R1 template',
    'Patient name is Hema Sharma. Age 22 years. Gender female. Address is Sector 12, Dwarka, New Delhi. PIN code 110078. Contact number 9876543210. Complains of fever, cough and headache. Medical history of diabetes. Diagnosis is viral infection. Prescribed paracetamol 500 mg twice daily for five days. Remarks: Patient advised for blood tests and adequate hydration.',
@@ -224,7 +205,6 @@ for (const [label, transcript, expected] of REALISTIC) {
   expectFields(label, transcript, expected);
 }
 
-// No field may bleed past a sentence boundary into the next sentence.
 for (const [label, transcript] of REALISTIC) {
   const record = extractPatientFields(transcript);
   for (const [key, field] of Object.entries(record)) {
@@ -235,7 +215,6 @@ for (const [label, transcript] of REALISTIC) {
   }
 }
 
-// ── Report ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failures.length) {
   console.log('FAILURES:\n' + failures.join('\n\n'));

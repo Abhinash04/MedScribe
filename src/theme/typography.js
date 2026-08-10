@@ -37,7 +37,6 @@ export const typography = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: -0.5,
   },
-  // Legacy aliases to prevent breakages, mapped to new values where possible:
   largeHeading: {
     fontSize: 34,
     fontWeight: '700',

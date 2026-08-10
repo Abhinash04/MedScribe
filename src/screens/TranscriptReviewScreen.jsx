@@ -1,16 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
   Animated,
   Easing,
-  Platform,
   LayoutAnimation,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -32,7 +30,7 @@ import useRecordingStore, {
   selectActiveTranscript,
   selectFullTranscript,
 } from '../store/useRecordingStore';
-import { colors, spacing } from '../theme';
+import styles from './styles/TranscriptReviewScreen.styles';
 import dictationSessionManager from '../services/dictationSessionManager';
 import { isRetryableFailure } from '../services/captureOutcome';
 import { extractForReport } from '../services/extractionService';
@@ -41,19 +39,23 @@ import {
   validateReportCompleteness,
 } from '../services/reportCompleteness';
 import { mergeExtraction, toDraft } from '../services/reportDraft';
-import { speakMissingFields, stopPrompt } from '../services/speechPromptService';
+import {
+  speakMissingFields,
+  stopPrompt,
+} from '../services/speechPromptService';
 
 function formatDuration(totalSeconds = 0) {
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  return `${mins.toString().padStart(2, '0')}:${secs
+    .toString()
+    .padStart(2, '0')}`;
 }
 
 const LABEL = {
   [TRANSCRIPT_SOURCE.NATIVE]: 'Original',
   [TRANSCRIPT_SOURCE.ANUVADINI]: 'AI Transcription',
 };
-
 
 const TranscriptReviewScreen = ({ navigation }) => {
   const fullTranscript = useRecordingStore(selectFullTranscript);
@@ -65,7 +67,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const anuvadini = useRecordingStore(state => state.anuvadini);
   const nativeRaw = useRecordingStore(state => state.nativeRaw);
   const selectedSource = useRecordingStore(state => state.transcriptSource);
-  const setTranscriptSource = useRecordingStore(state => state.setTranscriptSource);
+  const setTranscriptSource = useRecordingStore(
+    state => state.setTranscriptSource,
+  );
   const setAnuvadiniText = useRecordingStore(state => state.setAnuvadiniText);
   const refineProgress = useRecordingStore(state => state.refineProgress);
   const [viewedSource, setViewedSource] = useState(selectedSource);
@@ -110,7 +114,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
           duration: 1200,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
 
     Animated.loop(
@@ -127,7 +131,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
   }, [fadeAnim, slideAnim, pulseAnim, floatAnim]);
 
@@ -138,7 +142,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
     return true;
   }, []);
 
-  useEffect(() => () => { stopPrompt(); }, []);
+  useEffect(
+    () => () => {
+      stopPrompt();
+    },
+    [],
+  );
 
   const endSubmit = useCallback(() => {
     submittingRef.current = false;
@@ -146,7 +155,8 @@ const TranscriptReviewScreen = ({ navigation }) => {
   }, []);
 
   const viewingAi = viewedSource === TRANSCRIPT_SOURCE.ANUVADINI;
-  const aiReady = anuvadini.status === ANUVADINI_STATUS.READY && !!anuvadini.text.trim();
+  const aiReady =
+    anuvadini.status === ANUVADINI_STATUS.READY && !!anuvadini.text.trim();
   const hasAiText = !!anuvadini.text.trim();
   const viewedText = viewingAi ? anuvadini.text : fullTranscript;
 
@@ -252,13 +262,17 @@ const TranscriptReviewScreen = ({ navigation }) => {
       setTranscriptSource(source);
 
       const next = useRecordingStore.getState();
-      const { record, residue } = extractForReport(selectActiveTranscript(next));
+      const { record, residue } = extractForReport(
+        selectActiveTranscript(next),
+      );
       const previous = next.reportDraft;
       const kept = previous
         ? Object.keys(previous).filter(key => previous[key]?.edited).length
         : 0;
       setReportDraft(
-        previous ? mergeExtraction(previous, record, residue) : toDraft(record, residue),
+        previous
+          ? mergeExtraction(previous, record, residue)
+          : toDraft(record, residue),
       );
       dictationSessionManager.persistCurrentSession();
 
@@ -270,7 +284,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
         'Report source changed',
         `The report will be built from the ${LABEL[source]} transcript.` +
           (kept
-            ? `\n\n${kept} ${kept === 1 ? 'field you edited was' : 'fields you edited were'} kept.`
+            ? `\n\n${kept} ${
+                kept === 1 ? 'field you edited was' : 'fields you edited were'
+              } kept.`
             : ''),
       );
     },
@@ -404,7 +420,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const canSelectViewed = viewingAi ? aiReady : true;
   const viewedIsSelected = viewedSource === selectedSource;
 
-  const wordCount = editableText ? editableText.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
+  const wordCount = editableText
+    ? editableText
+        .trim()
+        .split(/\s+/)
+        .filter(w => w.length > 0).length
+    : 0;
 
   return (
     <ScreenContainer style={styles.container}>
@@ -426,16 +447,24 @@ const TranscriptReviewScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={[styles.flexOne, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <Animated.View
+          style={[
+            styles.flexOne,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
           <View style={styles.heroSection}>
             <View style={styles.heroLeft}>
               <View style={styles.heroLabelRow} />
-              <Text style={styles.heroTitle}>Review & Edit{'\n'}Transcript</Text>
+              <Text style={styles.heroTitle}>
+                Review & Edit{'\n'}Transcript
+              </Text>
               <Text style={styles.heroSubtitle}>
-                Compare both transcriptions, then choose which one the report is built from.
+                Compare both transcriptions, then choose which one the report is
+                built from.
               </Text>
             </View>
-            
+
             <View style={styles.heroRight}>
               <Animated.View
                 style={[
@@ -444,7 +473,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
                 ]}
               >
                 <View style={[styles.blob, styles.blobBlue]} />
-                <View style={[styles.blob, styles.blobLavender]} />              
+                <View style={[styles.blob, styles.blobLavender]} />
                 <View style={styles.illusDoc}>
                   <Icon name="file-text" size={28} color="#2F6BFF" />
                   <View style={styles.illusSparkle}>
@@ -465,7 +494,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
               </View>
               <View style={styles.summaryTextCol}>
                 <Text style={styles.summaryTitle}>Recording Time</Text>
-                <Text style={styles.summaryValue}>{formatDuration(durationSeconds)}</Text>
+                <Text style={styles.summaryValue}>
+                  {formatDuration(durationSeconds)}
+                </Text>
               </View>
             </View>
             <View style={styles.summaryCard}>
@@ -480,43 +511,59 @@ const TranscriptReviewScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.segmentContainer}>
-            {[TRANSCRIPT_SOURCE.NATIVE, TRANSCRIPT_SOURCE.ANUVADINI].map(source => {
-              const isSelectedTab = viewedSource === source;
-              const isUsed = selectedSource === source;
-              return (
-                <Pressable
-                  key={source}
-                  style={[styles.segmentTab, isSelectedTab && styles.segmentTabActive]}
-                  onPress={() => showSource(source)}
-                >
-                  <View style={styles.segmentTabHeader}>
-                    {source === TRANSCRIPT_SOURCE.ANUVADINI && !isSelectedTab && (
-                      <Icon name="star" size={14} color="#8B5CF6" style={styles.starIconMargin} />
-                    )}
-                    <Text style={[styles.segmentTabText, isSelectedTab && styles.segmentTabTextActive]}>
-                      {LABEL[source]}
-                    </Text>
-                    {isUsed && (
-                      <Icon
-                        name="check-circle"
-                        size={13}
-                        color={isSelectedTab ? '#FFFFFF' : '#2F6BFF'}
-                        style={styles.usedCheckMargin}
-                      />
-                    )}
-                  </View>
-                  <Text
+            {[TRANSCRIPT_SOURCE.NATIVE, TRANSCRIPT_SOURCE.ANUVADINI].map(
+              source => {
+                const isSelectedTab = viewedSource === source;
+                const isUsed = selectedSource === source;
+                return (
+                  <Pressable
+                    key={source}
                     style={[
-                      styles.inUseText,
-                      isSelectedTab && styles.inUseTextActive,
-                      !isUsed && styles.inUseTextIdle,
+                      styles.segmentTab,
+                      isSelectedTab && styles.segmentTabActive,
                     ]}
+                    onPress={() => showSource(source)}
                   >
-                    {isUsed ? 'USED FOR REPORT' : 'PREVIEW ONLY'}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                    <View style={styles.segmentTabHeader}>
+                      {source === TRANSCRIPT_SOURCE.ANUVADINI &&
+                        !isSelectedTab && (
+                          <Icon
+                            name="star"
+                            size={14}
+                            color="#8B5CF6"
+                            style={styles.starIconMargin}
+                          />
+                        )}
+                      <Text
+                        style={[
+                          styles.segmentTabText,
+                          isSelectedTab && styles.segmentTabTextActive,
+                        ]}
+                      >
+                        {LABEL[source]}
+                      </Text>
+                      {isUsed && (
+                        <Icon
+                          name="check-circle"
+                          size={13}
+                          color={isSelectedTab ? '#FFFFFF' : '#2F6BFF'}
+                          style={styles.usedCheckMargin}
+                        />
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.inUseText,
+                        isSelectedTab && styles.inUseTextActive,
+                        !isUsed && styles.inUseTextIdle,
+                      ]}
+                    >
+                      {isUsed ? 'USED FOR REPORT' : 'PREVIEW ONLY'}
+                    </Text>
+                  </Pressable>
+                );
+              },
+            )}
           </View>
 
           {showFailureNotice ? (
@@ -542,8 +589,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
                 <ActivityIndicator size="small" color="#2F6BFF" />
               ) : null}
               <Text style={styles.statusText}>{aiStatusLine()}</Text>
-              {anuvadini.status === ANUVADINI_STATUS.FAILED && canRetryRefinement ? (
-                <Pressable onPress={handleRetryRefinement} accessibilityRole="button">
+              {anuvadini.status === ANUVADINI_STATUS.FAILED &&
+              canRetryRefinement ? (
+                <Pressable
+                  onPress={handleRetryRefinement}
+                  accessibilityRole="button"
+                >
                   <Text style={styles.retry}>Retry</Text>
                 </Pressable>
               ) : null}
@@ -569,7 +620,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
               )}
             </View>
             <Animated.View style={{ opacity: editorFade }}>
-              {viewingAi && !hasAiText && anuvadini.status !== ANUVADINI_STATUS.READY ? (
+              {viewingAi &&
+              !hasAiText &&
+              anuvadini.status !== ANUVADINI_STATUS.READY ? (
                 anuvadini.status === ANUVADINI_STATUS.PENDING ? (
                   <View style={styles.pendingBlock}>
                     <ActivityIndicator size="small" color="#2F6BFF" />
@@ -577,14 +630,14 @@ const TranscriptReviewScreen = ({ navigation }) => {
                       Generating AI transcription…
                     </Text>
                     <Text style={styles.pendingDetail}>
-                      This usually takes a few seconds. The original transcript is
-                      ready to use in the meantime.
+                      This usually takes a few seconds. The original transcript
+                      is ready to use in the meantime.
                     </Text>
                   </View>
                 ) : (
                   <Text style={styles.placeholder}>
-                    No AI transcription for this dictation. The original transcript
-                    is unaffected and can still generate the report.
+                    No AI transcription for this dictation. The original
+                    transcript is unaffected and can still generate the report.
                   </Text>
                 )
               ) : (
@@ -628,12 +681,17 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
           {canSelectViewed && !viewedIsSelected ? (
             <Pressable
-              style={({ pressed }) => [styles.useBtn, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.useBtn,
+                pressed && styles.pressed,
+              ]}
               onPress={() => selectForReport(viewedSource)}
               accessibilityRole="button"
             >
               <Text style={styles.useBtnText}>
-                {viewingAi ? 'Use AI Transcription' : 'Use Original Transcription'}
+                {viewingAi
+                  ? 'Use AI Transcription'
+                  : 'Use Original Transcription'}
               </Text>
             </Pressable>
           ) : null}
@@ -692,507 +750,5 @@ const TranscriptReviewScreen = ({ navigation }) => {
     </ScreenContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#FAFCFF',
-    flex: 1,
-  },
-  appBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'ios' ? 12 : 24,
-    paddingBottom: 16,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  flexOne: {
-    flex: 1,
-  },
-  appBarRightSpacer: {
-    width: 44,
-  },
-  appBarTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0F172A',
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
-  heroSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  heroLeft: {
-    flex: 1,
-  },
-  heroLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  heroLine: {
-    width: 24,
-    height: 2,
-    backgroundColor: '#2F6BFF',
-    marginRight: 8,
-  },
-  heroLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2F6BFF',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  heroTitle: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#0F172A',
-    lineHeight: 44,
-    marginBottom: 12,
-  },
-  heroSubtitle: {
-    fontSize: 15,
-    color: '#64748B',
-    lineHeight: 22,
-    maxWidth: '90%',
-  },
-  heroRight: {
-    width: 90,
-    height: 90,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  illustrationContainer: {
-    position: 'relative',
-    width: 80,
-    height: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  blob: {
-    position: 'absolute',
-    borderRadius: 40,
-    opacity: 0.4,
-  },
-  blobBlue: {
-    width: 70,
-    height: 70,
-    backgroundColor: '#E0E7FF',
-    top: -5,
-    left: -5,
-  },
-  blobLavender: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#F3E8FF',
-    bottom: -5,
-    right: -10,
-  },
-  illusDoc: {
-    width: 48,
-    height: 60,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#2F6BFF',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 5,
-    zIndex: 2,
-  },
-  illusSparkle: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#2F6BFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFF',
-  },
-  illusWave: {
-    position: 'absolute',
-    bottom: 2,
-    left: -12,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 15,
-    elevation: 4,
-    zIndex: 3,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 24,
-    marginHorizontal: -16,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    padding: 12,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 35,
-    elevation: 4,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  iconCircleBlue: {
-    backgroundColor: '#F0F5FF',
-  },
-  iconCirclePurple: {
-    backgroundColor: '#F3E8FF',
-  },
-  starIconMargin: {
-    marginRight: 4,
-  },
-  summaryTextCol: {
-    flex: 1,
-  },
-  summaryTitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#64748B',
-    marginBottom: 4,
-  },
-  summaryValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#2F6BFF',
-  },
-  segmentContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F5F5FA',
-    borderRadius: 999,
-    padding: 6,
-    marginBottom: 24,
-    marginHorizontal: -16,
-  },
-  segmentTab: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentTabActive: {
-    backgroundColor: '#1D4ED8',
-    shadowColor: '#2F6BFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  segmentTabHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  segmentTabText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  segmentTabTextActive: {
-    color: '#FFFFFF',
-  },
-  inUseText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    color: '#1D4ED8',
-    marginTop: 2,
-  },
-  inUseTextActive: {
-    color: '#E0E7FF',
-  },
-  inUseTextIdle: {
-    color: '#475569',
-  },
-  usedCheckMargin: {
-    marginLeft: 6,
-  },
-  fallbackNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.secondaryAccent,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.sm,
-  },
-  fallbackText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 19,
-    color: colors.textPrimary,
-  },
-  fallbackDismiss: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textMuted,
-    paddingHorizontal: spacing.xs,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  retry: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#2F6BFF',
-  },
-  editorCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E0E7FF',
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 35,
-    elevation: 3,
-    marginBottom: 24,
-    marginHorizontal: -16,
-  },
-  editorHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F7FAFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E7FF',
-  },
-  editorHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  editorHeaderTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  selectedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#15803D',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  selectedBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  unusedBadge: {
-    backgroundColor: colors.warningLight,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  unusedBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.warningText,
-    letterSpacing: 0.5,
-  },
-  pendingBlock: {
-    padding: 24,
-    minHeight: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  pendingTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  pendingDetail: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#94A3B8',
-    textAlign: 'center',
-    maxWidth: 260,
-  },
-  placeholder: {
-    padding: 24,
-    fontSize: 16,
-    lineHeight: 28,
-    color: '#94A3B8',
-    minHeight: 200,
-  },
-  editorInput: {
-    padding: 24,
-    fontSize: 16,
-    lineHeight: 28,
-    color: '#1E293B',
-    minHeight: 200,
-    textAlignVertical: 'top',
-  },
-  editorToolbar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  toolbarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  wordCount: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#64748B',
-  },
-  toolbarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  toolbarIcon: {
-    padding: 4,
-  },
-  useBtn: {
-    backgroundColor: '#8B5CF6',
-    paddingVertical: 16,
-    borderRadius: 999,
-    alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 3,
-    marginBottom: 24,
-  },
-  useBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  footer: {
-    paddingHorizontal: 24,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-    paddingTop: 16,
-    backgroundColor: '#FAFCFF',
-    gap: 16,
-  },
-  addMoreBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#2F6BFF',
-    gap: 8,
-  },
-  addMoreBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2F6BFF',
-  },
-  generateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#2F6BFF',
-    paddingHorizontal: 24,
-    shadowColor: '#2F6BFF',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.22,
-    shadowRadius: 40,
-    elevation: 8,
-  },
-  generateBtnContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  generateBtnPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  generateBtnText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-});
 
 export default TranscriptReviewScreen;

@@ -1,13 +1,4 @@
-/**
- * Natural-dictation extraction matrix.
- *
- *   node scripts/test-extraction-natural.mjs
- *
- * Covers the phrasing a doctor actually uses: synonyms, pronouns, negation,
- * self-correction, chronic-vs-acute, and multi-drug prescriptions. Asserts
- * exact field values — a populated field holding another field's text is a
- * failure, not a pass.
- */
+
 import { extractPatientFields } from '../src/services/extractionService.js';
 
 import {
@@ -20,7 +11,6 @@ import {
 const expectFields = (label, transcript, expected) =>
   assertFields(extractPatientFields, label, transcript, expected);
 
-// ── 1. Template and reordering ──────────────────────────────────────────────
 expectFields(
   '1.1 template',
   'Patient name is Hema Sharma. Age twenty two years. Gender female. Diagnosis is viral infection.',
@@ -40,7 +30,6 @@ expectFields(
   },
 );
 
-// ── 2. Synonym-heavy phrasing ───────────────────────────────────────────────
 expectFields(
   '2.1 name synonyms',
   'This is Mr. Rahul Verma. He is 45 years of age.',
@@ -83,7 +72,6 @@ expectFields(
   { additionalRemarks: 'Complete blood count. Return after three days' },
 );
 
-// ── 2b. Natural symptom phrasing ────────────────────────────────────────────
 expectFields(
   '2b.1 is having, multiple symptoms with duration',
   'He is having fever, cough, headache, and body pain for about three days.',
@@ -132,7 +120,6 @@ expectFields('2b.11 came with', 'Came with fever and headache.', {
   symptoms: ['Fever', 'Headache'],
 });
 
-// ── 3. Gender from pronouns ─────────────────────────────────────────────────
 expectFields('3.1 single female pronoun', 'The patient is 22 years old. She has fever.', {
   gender: 'Female',
 });
@@ -173,7 +160,6 @@ expectFields('3.8 gender never inferred from name', 'Patient name is Hema Sharma
   gender: null,
 });
 
-// ── 4. Chronic vs acute ─────────────────────────────────────────────────────
 expectFields(
   '4.1 chronic condition is history, not symptom',
   'Patient has had diabetes for ten years and today presents with fever and cough. Looks like viral infection.',
@@ -196,7 +182,6 @@ expectFields(
   { symptoms: ['Fever since yesterday'], medicalHistory: null },
 );
 
-// ── 5. Negation ─────────────────────────────────────────────────────────────
 expectFields(
   '5.1 negated symptoms excluded',
   'Patient has fever and cough but no chest pain or breathing difficulty.',
@@ -221,7 +206,6 @@ expectFields(
   { symptoms: ['Fever'], additionalRemarks: 'Denies: chest pain' },
 );
 
-// ── 6. Corrections ──────────────────────────────────────────────────────────
 expectFields('6.1 sorry', 'Age 32... sorry, 22 years.', { age: '22 Years' });
 expectFields('6.2 correction cue', 'Contact number 9876543211... correction, 9876543210.', {
   contactNumber: '9876543210',
@@ -232,7 +216,6 @@ expectFields('6.3 actually', 'Diagnosis bacterial infection... actually viral in
 expectFields('6.4 I mean', 'Age 45 years, I mean 54 years.', { age: '54 Years' });
 expectFields('6.5 no make that', 'PIN code 110077, no make that 110078.', { pinCode: '110078' });
 
-// ── 7. Repetition ───────────────────────────────────────────────────────────
 expectFields(
   '7.1 repeated identical value',
   'Patient is Hema Sharma. Patient name again, Hema Sharma.',
@@ -251,7 +234,6 @@ expectFields(
   { symptoms: ['Fever', 'Cough'], diagnosis: 'Viral infection' },
 );
 
-// ── 8. Prescription vs advice ───────────────────────────────────────────────
 expectFields(
   '8.1 prescription with full attributes',
   'Start paracetamol 500 mg twice daily for five days and ask her to get a CBC and return after three days.',
@@ -284,7 +266,6 @@ expectFields(
   { prescriptionNotes: null, additionalRemarks: 'Plenty of oral fluids and complete bed rest' },
 );
 
-// ── 9. Typed values in context ──────────────────────────────────────────────
 expectFields(
   '9.1 dosage is not an age or a PIN',
   'Prescribed paracetamol 500 mg twice daily for five days.',
@@ -304,7 +285,6 @@ expectFields('9.3 sector number is not an age', 'Address is Sector twelve Dwarka
 
 expectFields('9.4 duration is not an age', 'Fever for five days.', { age: null });
 
-// ── 10. Messy speech ────────────────────────────────────────────────────────
 expectFields(
   '10.1 filler heavy',
   'Um, so the patient is, uh, Hema Sharma, you know, and she is basically twenty two years old.',
@@ -336,7 +316,6 @@ expectFields('10.4 empty transcript', '', {
   diagnosis: null,
 });
 
-// ── 11. Never guess ─────────────────────────────────────────────────────────
 expectFields(
   '11.1 unmentioned fields stay null',
   'Complains of fever and cough.',
@@ -358,11 +337,6 @@ expectFields('11.2 no diagnosis invented from symptoms', 'Patient has fever and 
   diagnosis: null,
 });
 
-// ── 12. Gender survives another field's segment span ────────────────────────
-// A segment spans from its marker to the next one, which is far wider than the
-// text it keeps: the age segment covered "38 years male patient" while its
-// value was "38 Years", and the only gender evidence in the dictation was
-// discarded with it.
 expectFields(
   '12.1 gender after an age marker',
   'age 38 years male patient address flat 21',
@@ -384,8 +358,6 @@ expectFields('12.3 female equivalent', 'age 32 years female patient address Delh
 });
 expectFields('12.4 explicit marker still wins', 'Gender male.', { gender: 'Male' });
 
-// The exclusion exists so a field that genuinely KEEPS the word is not read as
-// a gender. That still holds — only fields which discarded it are freed.
 expectFields('12.5 an address keeping the word sets no gender', 'Address is Male Street, Delhi.', {
   gender: null,
 });
@@ -400,9 +372,6 @@ expectFields(
   { gender: null },
 );
 
-// ── 13. "Non" is a negation ─────────────────────────────────────────────────
-// This recorded a POSITIVE history of diabetes for a patient the doctor said
-// was not diabetic — the worst kind of extraction error.
 const nonDiabetic = valueOf(extractPatientFields('Non diabetic.').medicalHistory);
 check('13.1 "Non diabetic" is not a positive history', nonDiabetic === 'Diabetic', false);
 check('13.2 and the statement is kept', /non/i.test(nonDiabetic ?? ''), true);
@@ -415,9 +384,6 @@ expectFields('13.4 a positive history is untouched', 'Known diabetic.', {
 });
 expectFields('13.5 existing negation unchanged', 'No diabetes.', { medicalHistory: null });
 
-// ── 14. An adverb between a verb and its preposition ────────────────────────
-// Every verb + preposition marker required the two to be adjacent, so a single
-// adverb stopped the marker firing and the whole sentence went unclaimed.
 expectFields(
   '14.1 the reported sentence',
   'He presented today with fever, cold, cough, etc.',
@@ -439,28 +405,23 @@ expectFields('14.6 suffering recently from', 'Suffering recently from back pain.
   symptoms: ['Back pain'],
 });
 
-// The adjacent form must be undisturbed by making the gap optional.
 expectFields('14.7 adjacent form unchanged', 'He presented with fever, cold, cough.', {
   symptoms: ['Fever', 'Cold', 'Cough'],
 });
 
-// Multi-word findings still survive the list split.
 expectFields(
   '14.8 multi-word findings stay intact',
   'He presented today with sore throat, chest pain and fever.',
   { symptoms: ['Sore throat', 'Chest pain', 'Fever'] },
 );
 
-// "etc" closes a list without naming a finding.
 const withEtc = valueOf(
   extractPatientFields('He presented today with fever, cough, etc.').symptoms,
 );
 check('14.9 "etc" is not a finding', (withEtc ?? []).join('|').toLowerCase().includes('etc'), false);
 
-// The guard that keeps "if symptoms persist" out of the field still holds.
 expectFields('14.10 a remark does not open a symptoms segment', 'If symptoms persist return.', {
   symptoms: null,
 });
 
-// ── Report ──────────────────────────────────────────────────────────────────
 report();

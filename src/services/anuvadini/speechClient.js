@@ -27,7 +27,11 @@ async function fetchTransport({ url, body, headers, signal, timeoutMs }) {
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: '*/*', ...headers },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: '*/*',
+        ...headers,
+      },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -65,9 +69,6 @@ export async function synthesize({
     return failed(ERROR_KIND.NO_TEXT);
   }
 
-  // Already cancelled before we started — the caller has moved on, so there is
-  // nothing worth sending. Without this the request goes out and is only then
-  // aborted, which costs a round trip nobody is waiting for.
   if (signal?.aborted) {
     return failed(ERROR_KIND.CANCELLED);
   }
@@ -122,7 +123,9 @@ function classifyThrown(error, signal) {
   if (signal?.aborted) {
     return ERROR_KIND.CANCELLED;
   }
-  const reason = String(error?.message || error?.name || error || '').toLowerCase();
+  const reason = String(
+    error?.message || error?.name || error || '',
+  ).toLowerCase();
   if (reason.includes('timeout') || reason.includes('abort')) {
     return ERROR_KIND.TIMEOUT;
   }

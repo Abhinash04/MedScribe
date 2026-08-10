@@ -333,10 +333,6 @@ for (const text of ['One.', 'Two.', 'Three.', 'Four.']) {
   check(`T14.4 "${text}" appears exactly once`, many.raw.split(text).length - 1, 1);
 }
 
-// Replacing a pass that is not the newest. Only one base is stored — the text
-// before the newest pass — so there is nothing to append an older result to.
-// Appending to that base dropped every later pass; keeping the newest left the
-// applied result in `raw` but missing from `text`.
 {
   const replaced = applyResult(many, { ok: true, text: 'TWO-FIXED.' }, { passIndex: 2 });
   check('T14.5 the replaced pass reaches raw', replaced.raw, 'One.\nTWO-FIXED.\nThree.\nFour.');
@@ -370,9 +366,6 @@ check('T14.8 and raw carries both', legacyContinued.raw, 'Pass one text.\nPass t
 check('T14.9 empty state has no passes', normalizeAnuvadini(null).passes, []);
 check('T14.10 and reports pass one next', nextPassIndex(null), 1);
 
-// The rule that replaces "only an explicit action changes the source". The
-// automatic switch is allowed exactly once, before the doctor can have touched
-// anything, and never after they have chosen for themselves.
 {
   const NATIVE_TEXT = 'Patient has fever and caugh.';
   const refined = applyResult(emptyAnuvadini(), {
@@ -404,18 +397,15 @@ check('T14.10 and reports pass one next', nextPassIndex(null), 1);
       chosen: false,
     }), false);
 
-  // The load-bearing pair: an explicit choice, either way, ends the automation.
   check('T15.6 never once the doctor has chosen',
     shouldAutoSelectAi({ ...base, chosen: true }), false);
 
   check('T15.7 including when they chose to stay on the original',
     shouldAutoSelectAi({ ...base, chosen: true, source: TRANSCRIPT_SOURCE.NATIVE }), false);
 
-  // No latch is needed: acting on it moves the source, which closes the rule.
   check('T15.8 does not fire again once AI is already active',
     shouldAutoSelectAi({ ...base, source: TRANSCRIPT_SOURCE.ANUVADINI, chosen: false }), false);
 
-  // A continuation lands a second pass. It must not re-open the decision.
   const continued = applyResult(markPending(refined), { ok: true, text: 'And a headache.' }, { passIndex: 2 });
   check('T15.9 a later pass cannot override an explicit choice',
     shouldAutoSelectAi({ nativeText: NATIVE_TEXT, anuvadini: continued, source: TRANSCRIPT_SOURCE.NATIVE, chosen: true }),
@@ -425,11 +415,6 @@ check('T14.10 and reports pass one next', nextPassIndex(null), 1);
     true);
 }
 
-// T16 pins the upstream half of the "AI transcript emptied on arrival" defect.
-// The wipe itself was in the review screen, which no fixture can reach, so what
-// is guaranteed here is the contract that screen relies on: a pass that
-// succeeds after an earlier failure produces offerable text, and auto-select
-// still fires — which is exactly when the screen used to overwrite it.
 {
   const failed = applyResult(markPending(emptyAnuvadini()), {
     ok: false,
@@ -458,8 +443,6 @@ check('T14.10 and reports pass one next', nextPassIndex(null), 1);
     true,
   );
 
-  // An emptied transcript must not be selectable — the screen's own guard
-  // against shipping a blank report if the wipe ever returns by another route.
   check(
     'T16.7 an emptied transcript cannot be offered',
     canOffer(

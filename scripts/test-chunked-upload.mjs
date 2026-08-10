@@ -1,16 +1,4 @@
-/**
- * Chunked upload fixtures.
- *
- *   node scripts/test-chunked-upload.mjs
- *
- * Anuvadini processes roughly the first 57 seconds of any submission and
- * silently discards the rest — measured against one 99.6 s recording, whose
- * returned transcript is byte-identical from 58 s upward while the audio past
- * that point transcribes perfectly on its own. A long dictation therefore goes
- * up as several requests, and these assertions are about the two ways that can
- * corrupt a medical record: speech arriving out of order, and speech arriving
- * twice or not at all.
- */
+
 import { ERROR_KIND } from '../src/services/anuvadini/proxyContract.js';
 import {
   emptyProgress,
@@ -30,7 +18,6 @@ import { check, report } from './lib/fixture-harness.mjs';
 
 const CHUNKS = planChunks(wavBytesFor(99.6));
 
-/** Answers with the chunk's own text, recording what it was asked for. */
 const service = (byIndex, { failAt = null, failWith = ERROR_KIND.NETWORK } = {}) => {
   const sent = [];
   const send = async (payload, chunk) => {
@@ -56,7 +43,6 @@ const reader = () => {
 
 const TEXTS = ['first part.', 'second part.', 'third part.'];
 
-// ── 1. The whole dictation, in order ────────────────────────────────────────
 {
   const send = service(TEXTS);
   const readChunk = reader();
@@ -76,7 +62,6 @@ const TEXTS = ['first part.', 'second part.', 'third part.'];
   check('C1.7 progress keeps the path', progress.path, '/rec.wav');
 }
 
-// ── 2. A single-chunk recording behaves exactly as before ───────────────────
 {
   const one = planChunks(wavBytesFor(40));
   const send = service(['only part.']);
@@ -93,7 +78,6 @@ const TEXTS = ['first part.', 'second part.', 'third part.'];
   check('C2.4 and it succeeded', result.ok, true);
 }
 
-// ── 3. A mid-pass failure loses nothing that already arrived ────────────────
 let afterFailure = null;
 {
   const send = service(TEXTS, { failAt: 2 });
@@ -110,12 +94,10 @@ let afterFailure = null;
   check('C3.3 reporting the transport error, not a generic one', result.errorKind, ERROR_KIND.NETWORK);
   check('C3.4 the first two texts survived', progress.texts.slice(0, 2), TEXTS.slice(0, 2));
   check('C3.5 the third did not', progress.texts[2], undefined);
-  // A partial transcript must never be applied: half a consultation presented
-  // as a whole one is worse than none.
+  
   check('C3.6 no partial text is returned', result.text, '');
 }
 
-// ── 4. Retry re-sends only what is missing ──────────────────────────────────
 {
   const send = service(TEXTS);
   const readChunk = reader();
@@ -136,7 +118,6 @@ let afterFailure = null;
   );
 }
 
-// ── 5. A failure on the FIRST chunk keeps nothing ───────────────────────────
 {
   const send = service(TEXTS, { failAt: 0, failWith: ERROR_KIND.TIMEOUT });
   const { result, progress } = await uploadChunks({
@@ -152,7 +133,6 @@ let afterFailure = null;
   check('C5.4 nothing was kept', progress.texts.filter(Boolean).length, 0);
 }
 
-// ── 6. Unreadable audio fails the pass rather than sending nothing ──────────
 {
   const send = service(TEXTS);
   const { result } = await uploadChunks({
@@ -167,9 +147,6 @@ let afterFailure = null;
   check('C6.3 as missing audio', result.errorKind, ERROR_KIND.NO_AUDIO);
 }
 
-// ── 7. A superseded pass applies nothing ────────────────────────────────────
-// A newer attempt owns the transcript; an older one landing afterwards must not
-// overwrite it with staler text.
 {
   const send = service(TEXTS);
   let live = true;
@@ -190,7 +167,6 @@ let afterFailure = null;
   check('C7.3 returning what it saw, unjoined', result.ok, true);
 }
 
-// ── 8. Cancellation is carried out, not swallowed ───────────────────────────
 {
   const send = service(TEXTS, { failAt: 1, failWith: ERROR_KIND.CANCELLED });
   const { result, progress } = await uploadChunks({
@@ -204,7 +180,6 @@ let afterFailure = null;
   check('C8.2 and the first chunk is still retryable', progress.texts[0], TEXTS[0]);
 }
 
-// ── 9. Joining ──────────────────────────────────────────────────────────────
 check('C9.1 joins by index, not arrival', joinChunks(CHUNKS, TEXTS), TEXTS.join(' '));
 check(
   'C9.2 a chunk the service heard nothing in is skipped, not padded',
@@ -219,7 +194,6 @@ check(
   false,
 );
 
-// ── 10. Re-running a finished pass costs nothing ────────────────────────────
 {
   const send = service(TEXTS);
   const { result } = await uploadChunks({
@@ -234,11 +208,6 @@ check(
   check('C10.3 reported as a success', result.ok, true);
 }
 
-// ── 11. Resuming is only safe against the same cut points ───────────────────
-// The plan is deterministic, but the native silence search is allowed to fail
-// and fall back to the arithmetic plan — which shifts a boundary by up to a
-// second under the same index. Carrying text across that would drop or
-// duplicate the speech at the join.
 {
   const finished = { path: '/rec.wav', plan: planSignature(CHUNKS), texts: TEXTS.slice() };
 
@@ -271,12 +240,6 @@ check(
   );
 }
 
-// ── 12. What the doctor is told while they wait ─────────────────────────────
-//
-// The refining overlay used to state only that something was happening. On a
-// long consultation that is a blank wait of unknown length, which is the one
-// thing a doctor with a patient in front of them cannot judge. These pin the
-// counts the overlay renders.
 {
   const seen = [];
   await uploadChunks({
@@ -298,8 +261,6 @@ check(
   });
   check('C12.3 a failed chunk does not advance the count', failed, [0, 1]);
 
-  // The resumed case is why this is counted rather than incremented: chunk 0
-  // is already in hand, so reporting zero would walk the count backwards.
   const resumed = [];
   await uploadChunks({
     chunks: CHUNKS,

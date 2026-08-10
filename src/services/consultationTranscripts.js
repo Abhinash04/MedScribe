@@ -30,7 +30,11 @@ export function normalizeAnuvadini(anuvadini) {
   if (!current.raw?.trim()) {
     return { ...current, passes: [] };
   }
-  return { ...current, passes: [{ index: 1, text: current.raw }], textBase: '' };
+  return {
+    ...current,
+    passes: [{ index: 1, text: current.raw }],
+    textBase: '',
+  };
 }
 
 export function activeText({ nativeText, anuvadini, source }) {
@@ -72,16 +76,22 @@ export function applyResult(anuvadini, result, options = {}) {
     };
   }
 
-  const highest = current.passes.reduce((max, pass) => Math.max(max, pass.index), 0);
+  const highest = current.passes.reduce(
+    (max, pass) => Math.max(max, pass.index),
+    0,
+  );
   const requested = Number(options.passIndex);
-  const index = Number.isFinite(requested) && requested > 0 ? requested : highest + 1;
+  const index =
+    Number.isFinite(requested) && requested > 0 ? requested : highest + 1;
   const textBase = index > highest ? current.text : current.textBase ?? '';
   const passes = upsertPass(current.passes, index, result.text);
   const newest = passes[passes.length - 1];
   const rebuilt = index < newest.index;
 
   return {
-    text: rebuilt ? passes.map(pass => pass.text).join(JOIN) : joined(textBase, newest.text),
+    text: rebuilt
+      ? passes.map(pass => pass.text).join(JOIN)
+      : joined(textBase, newest.text),
     textBase,
     raw: passes.map(pass => pass.text).join(JOIN),
     passes,

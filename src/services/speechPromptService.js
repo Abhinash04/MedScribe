@@ -6,28 +6,12 @@ import { missingFieldPrompt } from './missingFieldPrompt';
 
 let inFlight = null;
 let speaking = false;
-
-/**
- * Incremented by every request and every stop.
- *
- * Tearing down is asynchronous, so without this a caller that started earlier
- * could resume after the await and overwrite the newer request's state — the
- * stale prompt would win. The dangerous case is an external `stopPrompt()`
- * being overtaken: that is the call `handleResumeRecording` awaits before the
- * microphone opens, and a prompt that slipped past it would play into a live
- * `SharedMicModule` and be transcribed into the report as the doctor's words.
- *
- * A request captures the version it claimed and re-checks it after every await.
- * Losing the comparison means something newer happened, and the older one stops
- * without touching shared state.
- */
 let version = 0;
 
 export function isSpeaking() {
   return speaking;
 }
 
-/** Teardown alone, so a caller can claim a version without invalidating itself. */
 async function halt() {
   inFlight?.abort();
   inFlight = null;
@@ -73,8 +57,6 @@ export async function speakMissingFields(fields, options = {}) {
     return { spoken: false, reason: result.errorKind };
   }
 
-  // Re-checked immediately before playback: a stop issued while the synthesis
-  // was in the air means the microphone may already be opening.
   if (mine !== version) {
     return { spoken: false, reason: 'superseded' };
   }

@@ -1,16 +1,4 @@
-/**
- * Speech synthesis client fixtures.
- *
- *   node scripts/test-tts-client.mjs
- *
- * Mirrors `test-anuvadini-client.mjs`, because `speechClient` mirrors
- * `transcriptionClient`. The same three properties are load-bearing:
- *
- *   NEVER THROWS   a prompt that cannot be spoken must leave the consultation
- *                  untouched. Every failure is a returned `errorKind`.
- *   NO CREDENTIAL  the token appears in no result and no error.
- *   NO PATIENT DATA the request carries the prompt and nothing else.
- */
+
 import { synthesize, MAX_SPEECH_CHARS } from '../src/services/anuvadini/speechClient.js';
 import { ERROR_KIND } from '../src/services/anuvadini/proxyContract.js';
 import {
@@ -42,7 +30,6 @@ const fake = (status, body, { throws = null } = {}) => {
 const speak = (transport, extra = {}) =>
   synthesize({ text: TEXT, language: 'en', token: TOKEN, transport, ...extra });
 
-// ── 1. The happy path, direct ───────────────────────────────────────────────
 {
   const transport = fake(200, { audio: AUDIO });
   const result = await speak(transport);
@@ -66,7 +53,6 @@ const speak = (transport, extra = {}) =>
   check('T1.10 the prompt is sent verbatim', sent.body.text, TEXT);
 }
 
-// ── 2. Every response shape the service has been seen to use ────────────────
 for (const [label, body] of [
   ['audio', { audio: AUDIO }],
   ['audio_url', { audio_url: AUDIO }],
@@ -89,7 +75,6 @@ check(
   AUDIO,
 );
 
-// ── 3. Failure paths — none may throw ───────────────────────────────────────
 const failures = [
   ['T3.1 upstream 500', fake(500, {}), ERROR_KIND.SERVER_ERROR],
   ['T3.2 upstream 400', fake(400, {}), ERROR_KIND.CLIENT_ERROR],
@@ -121,7 +106,6 @@ for (const [label, transport, kind] of failures) {
   );
 }
 
-// ── 4. Refused before any request ───────────────────────────────────────────
 const guards = [
   ['T4.1 empty text', { text: '' }, ERROR_KIND.NO_TEXT],
   ['T4.2 whitespace text', { text: '   ' }, ERROR_KIND.NO_TEXT],
@@ -144,20 +128,16 @@ for (const [label, override, kind] of guards) {
   check(`${label} → nothing sent`, transport.calls.length, 0);
 }
 
-// ── 5. Cancellation is distinguishable from a timeout ───────────────────────
 {
   const controller = new AbortController();
   controller.abort();
-  // A transport that WOULD succeed, so the assertion is that it is never
-  // reached rather than that it happened to throw.
+  
   const transport = fake(200, { audio: AUDIO });
   const result = await speak(transport, { signal: controller.signal });
   check('T5.1 an aborted signal reads as cancelled', result.errorKind, ERROR_KIND.CANCELLED);
   check('T5.2 and the request is never sent', transport.calls.length, 0);
 }
 
-// A link where base64 was expected. Decoding it yields noise that reaches the
-// player, so it is refused rather than forwarded.
 for (const value of ['https://cdn.example.com/a.wav', 'http://x/y.wav']) {
   const result = await speak(fake(200, { audio_url: value }));
   check(`T3.10 "${value}" is refused`, result.errorKind, ERROR_KIND.MALFORMED);
@@ -169,9 +149,6 @@ check(
   AUDIO,
 );
 
-// ── 6. The proxy shape ──────────────────────────────────────────────────────
-// Direct mode speaks Anuvadini's contract, proxy mode speaks ours. Asserted on
-// the builders directly, since the transport is chosen by a declared constant.
 {
   const config = voiceFor('en-IN');
   check('T6.1 en-IN has a voice', config.voice, 'en-IN-PrabhatNeural');

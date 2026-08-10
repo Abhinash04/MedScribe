@@ -7,19 +7,9 @@ import {
 } from '../../constants/clinicalCues.js';
 import { CONFIDENCE } from '../../constants/fieldMarkers.js';
 
-/**
- * Evidence that does not open a segment.
- *
- * Precedence: an explicit "gender female" marker (handled upstream as a normal
- * segment) beats a patient noun, which beats a pronoun. Conflicting evidence at
- * the same level yields nothing — a wrong gender in a patient record is worse
- * than a blank one.
- */
-
 const RELATIVE_WINDOW = 24;
 const SENTENCE_END = /[.;?!]/;
 
-/** Trims a window at the first sentence boundary, scanning outward from the match. */
 const untilBoundary = (slice, fromEnd) => {
   const index = fromEnd ? slice.search(SENTENCE_END) : slice.split('').reverse().join('').search(SENTENCE_END);
   if (index === -1) {
@@ -28,14 +18,6 @@ const untilBoundary = (slice, fromEnd) => {
   return fromEnd ? slice.slice(0, index) : slice.slice(slice.length - index);
 };
 
-/**
- * True when a companion noun sits beside the match — "her mother" puts it
- * after, "the husband says she" puts it before.
- *
- * The window stops at a sentence boundary. Without that, "This lady presented
- * with fever. His attendant waited outside." let the attendant in the NEXT
- * sentence veto the patient noun in this one.
- */
 function refersToCompanion(text, index, length) {
   const before = untilBoundary(
     text.slice(Math.max(0, index - RELATIVE_WINDOW), index),
@@ -62,19 +44,6 @@ function countMatches(text, pattern, { skipCompanions = true } = {}) {
   return hits;
 }
 
-/**
- * Drops hits that another field genuinely kept.
- *
- * A segment SPANS from its marker to the next one, which is far wider than the
- * text it ends up keeping: "age 38 years male patient address…" gives the age
- * segment the whole of "38 years male patient" while its value is "38 Years".
- * Excluding on the span alone therefore threw away the only gender evidence in
- * the dictation.
- *
- * The test is whether the field's own value contains the word. An address of
- * "Male Street" keeps it and is still excluded; an age that discarded it is
- * not, so the word is free-standing evidence again.
- */
 function claimedByValue(hits, segments) {
   const keeps = (segment, word) => {
     const value = Array.isArray(segment.value)

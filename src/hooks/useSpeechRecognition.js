@@ -305,11 +305,7 @@ export default function useSpeechRecognition({
     setStatus(RECORDING_STATE.PROCESSING);
     try {
       await speech.stop();
-    } catch {
-      // Expected: stopListening() resolves "Not listening" or rejects outright
-      // when the recognizer already ended on its own. The finalize timer below
-      // settles the session either way, so there is nothing to recover from.
-    }
+    } catch {  }
     clearFinalizeTimer();
     finalizeTimerRef.current = setTimeout(() => {
       finalizeTimerRef.current = null;
@@ -362,10 +358,6 @@ export default function useSpeechRecognition({
       unsubscribe();
       dictationSessionManager.dispose();
       audioFeedbackService.restoreNow();
-      // This stop() IS the microphone release on unmount — destroy() is
-      // deliberately never called here (see handoff §7). A rejection means the
-      // recognizer had already ended on its own, which is the same end state,
-      // and startListening() re-initialises it on the next session regardless.
       speech.stop().catch(() => { });
     };
   }, []);

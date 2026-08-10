@@ -1,11 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  BackHandler,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, BackHandler, Text, View } from 'react-native';
 import AppHeader from '../components/AppHeader';
 import ListeningVisualizer from '../components/ListeningVisualizer';
 import PermissionGate from '../components/PermissionGate';
@@ -19,8 +13,12 @@ import SessionRecoveryModal from '../components/SessionRecoveryModal';
 import { RECORDING_STATE } from '../constants/recordingStates';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import useRecordingStore from '../store/useRecordingStore';
-import { getActiveSession, clearActiveSession } from '../services/sessionPersistenceService';
-import { colors, spacing, typography } from '../theme';
+import {
+  getActiveSession,
+  clearActiveSession,
+} from '../services/sessionPersistenceService';
+import { colors, typography } from '../theme';
+import styles from './styles/RecordingScreen.styles';
 
 const HEADLINE = {
   [RECORDING_STATE.IDLE]: {
@@ -62,16 +60,13 @@ const PERMISSION_STATES = [
 function formatDuration(totalSeconds = 0) {
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  return `${mins.toString().padStart(2, '0')}:${secs
+    .toString()
+    .padStart(2, '0')}`;
 }
 
 const RecordingScreen = ({ navigation, route }) => {
   const resumeRequested = route?.params?.resume === true;
-
-  // Recovery is answered before the recognizer is allowed to start. Starting
-  // first would run beginSession's reset() against the very transcript being
-  // restored, and whichever won the race would decide whether the doctor keeps
-  // their dictation.
   const [recoveryState, setRecoveryState] = useState(
     resumeRequested ? 'settled' : 'checking',
   );
@@ -101,11 +96,6 @@ const RecordingScreen = ({ navigation, route }) => {
 
   const [showStopModal, setShowStopModal] = useState(false);
 
-  // Check for an interrupted session before the first start.
-  //
-  // The latch makes this run at most once per mount. Without it, the resume
-  // effect below clearing its own param flips `resumeRequested` back to false,
-  // re-runs this, and it offers to recover the session being dictated right now.
   const probedRef = useRef(false);
 
   useEffect(() => {
@@ -125,9 +115,6 @@ const RecordingScreen = ({ navigation, route }) => {
       if (cancelled) {
         return;
       }
-      // A row whose id matches the store's is this session's own autosave, not
-      // an interrupted one — recovering it would restore the doctor's dictation
-      // over itself.
       const isOwnAutosave =
         active?.id === useRecordingStore.getState().sessionId;
       if (active?.segments?.length > 0 && !isOwnAutosave) {
@@ -257,7 +244,9 @@ const RecordingScreen = ({ navigation, route }) => {
                 : 'Stopped'}
             </Text>
           </View>
-          <Text style={styles.timerText}>{formatDuration(durationSeconds)}</Text>
+          <Text style={styles.timerText}>
+            {formatDuration(durationSeconds)}
+          </Text>
         </View>
       </View>
 
@@ -288,8 +277,10 @@ const RecordingScreen = ({ navigation, route }) => {
         ) : null}
       </View>
 
-      {/* Live Extracted Fields Preview */}
-      <LiveFieldsPreview fields={liveExtractedFields} style={styles.livePreview} />
+      <LiveFieldsPreview
+        fields={liveExtractedFields}
+        style={styles.livePreview}
+      />
 
       {showTranscript ? (
         <TranscriptView
@@ -328,14 +319,12 @@ const RecordingScreen = ({ navigation, route }) => {
         ) : null}
       </View>
 
-      {/* Stop Confirmation Dialog */}
       <StopConfirmationModal
         visible={showStopModal}
         onCancel={() => setShowStopModal(false)}
         onConfirm={handleConfirmStop}
       />
 
-      {/* Crash Recovery Dialog */}
       <SessionRecoveryModal
         visible={recoveryState === 'prompting'}
         onRestore={handleRestoreSession}
@@ -349,101 +338,5 @@ const RecordingScreen = ({ navigation, route }) => {
     </ScreenContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'space-between',
-  },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 999,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    gap: 6,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statusPillListening: {
-    shadowColor: colors.success,
-  },
-  statusPillPaused: {
-    shadowColor: colors.secondaryAccent,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.textMuted,
-  },
-  dotListening: {
-    backgroundColor: colors.success,
-  },
-  dotPaused: {
-    backgroundColor: colors.secondaryAccent,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  timerText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primaryAccent,
-    fontVariant: ['tabular-nums'],
-  },
-  centerSection: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-  },
-  spinner: {
-    marginTop: spacing.lg,
-  },
-  livePreview: {
-    marginHorizontal: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  transcript: {
-    marginHorizontal: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  footer: {
-    paddingBottom: spacing.md,
-    gap: spacing.md,
-  },
-  hintRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  pulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.secondaryAccent,
-  },
-  hintText: {
-    color: colors.textSecondary,
-    textTransform: 'none',
-    letterSpacing: 0.3,
-  },
-});
 
 export default RecordingScreen;

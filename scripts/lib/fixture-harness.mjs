@@ -1,10 +1,3 @@
-/**
- * Shared harness for the fixture suites.
- *
- * Framework-free on purpose: the suites run under plain Node so the extraction
- * and report layers stay free of React Native imports. Each suite imports
- * `check` / `expectFields` and ends with `report()`, which sets the exit code.
- */
 
 let passed = 0;
 let failed = 0;
@@ -24,7 +17,6 @@ export function check(name, actual, expected) {
   }
 }
 
-/** Asserts every key of `expected` against the extracted record. */
 export function expectFields(extract, label, transcript, expected) {
   const record = extract(transcript);
   for (const [key, want] of Object.entries(expected)) {

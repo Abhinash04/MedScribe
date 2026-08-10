@@ -94,8 +94,14 @@ export async function snapChunkBoundaries(path, boundaries, windowBytes) {
     return null;
   }
   try {
-    const snapped = await module.snapChunkBoundaries(path, boundaries, windowBytes);
-    return Array.isArray(snapped) && snapped.length === boundaries.length ? snapped : null;
+    const snapped = await module.snapChunkBoundaries(
+      path,
+      boundaries,
+      windowBytes,
+    );
+    return Array.isArray(snapped) && snapped.length === boundaries.length
+      ? snapped
+      : null;
   } catch {
     return null;
   }

@@ -1,16 +1,7 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { colors } from '../theme';
+import styles from './styles/MicGlyph.styles';
 
-/**
- * Microphone icon drawn from plain Views, sized by a single `size` prop.
- *
- * The app ships no icon font — every glyph here is composed from Views, which
- * is why this exists: the mic appears in the dashboard hero, the round start
- * button and the quick actions, and three hand-rolled copies would drift.
- * `AnimatedMicButton` keeps its own larger, hand-tuned copy for the hero
- * animation; everything else should use this.
- */
 const MicGlyph = ({ size = 24, color = colors.textPrimary }) => {
   const capsuleWidth = size * 0.36;
   const capsuleHeight = size * 0.56;
@@ -30,8 +21,6 @@ const MicGlyph = ({ size = 24, color = colors.textPrimary }) => {
           backgroundColor: color,
         }}
       />
-      {/* Open half-circle cradle: a full circle with its top half clipped by
-          the wrapper's height, which is cheaper than a border-radius trick. */}
       <View
         style={[
           styles.cradleClip,
@@ -71,15 +60,5 @@ const MicGlyph = ({ size = 24, color = colors.textPrimary }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cradleClip: {
-    overflow: 'hidden',
-  },
-});
 
 export default MicGlyph;

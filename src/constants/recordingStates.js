@@ -1,7 +1,7 @@
 export const RECORDING_STATE = {
   IDLE: 'idle',
   CHECKING_PERMISSION: 'checkingPermission',
-  PERMISSION_DENIED: 'permissionDenied', 
+  PERMISSION_DENIED: 'permissionDenied',
   PERMISSION_BLOCKED: 'permissionBlocked',
   UNAVAILABLE: 'unavailable',
   LISTENING: 'listening',

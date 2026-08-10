@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, Text, View } from 'react-native';
 import AppHeader from '../components/AppHeader';
 import ScreenContainer from '../components/ScreenContainer';
 import { buildSpikeReport } from '../dev/spikeReport';
@@ -17,7 +17,7 @@ import {
 } from '../services/permissionService';
 import * as sharedMic from '../services/sharedMicService';
 import * as speech from '../services/speechService';
-import { colors, spacing, typography } from '../theme';
+import styles from './styles/MicSpikeScreen.styles';
 
 const PHASE_MS = 30000;
 const SAMPLE_RATE = 16000;
@@ -113,7 +113,9 @@ function scorePhase(phase, baselineRecall) {
     relative,
     degraded: relative !== null && relative < 0.7,
     silenced: stats ? stats.silencedSamples > 0 : null,
-    audible: stats ? stats.silentRatio < 0.5 && stats.peakAmplitude > 1500 : null,
+    audible: stats
+      ? stats.silentRatio < 0.5 && stats.peakAmplitude > 1500
+      : null,
   };
 }
 
@@ -134,15 +136,15 @@ const MicSpikeScreen = ({ navigation }) => {
   const capturingRef = useRef(false);
   const resolvePhaseRef = useRef(null);
   const abortedRef = useRef(false);
-  // Bumped by every run start, abort and unmount. Awaits taken inside a run
-  // compare against the token they started with, so a run that was abandoned
-  // while parked on the permission dialog or on startCapture cannot come back
-  // and open the microphone under the next run.
   const runTokenRef = useRef(0);
-
   const addLog = useCallback(line => {
     console.log('[SPIKE2]', line);
-    setLog(previous => [`${new Date().toISOString().slice(11, 19)} ${line}`, ...previous].slice(0, 80));
+    setLog(previous =>
+      [`${new Date().toISOString().slice(11, 19)} ${line}`, ...previous].slice(
+        0,
+        80,
+      ),
+    );
   }, []);
 
   const clearRestart = useCallback(() => {
@@ -260,11 +262,13 @@ const MicSpikeScreen = ({ navigation }) => {
       }
     }
 
-    const counters = { ...countersRef.current, errorsByCode: { ...countersRef.current.errorsByCode } };
+    const counters = {
+      ...countersRef.current,
+      errorsByCode: { ...countersRef.current.errorsByCode },
+    };
     return { counters, stats };
   }, [addLog, clearRestart]);
 
-  /** Releases a capture that finished starting after its run was abandoned. */
   const discardStaleCapture = useCallback(
     async label => {
       addLog(`${label} discarded — run no longer current`);
@@ -285,7 +289,10 @@ const MicSpikeScreen = ({ navigation }) => {
 
       if (phase.capture && phase.captureDelayMs === 0) {
         try {
-          const started = await capture.startCapture(SAMPLE_RATE, phase.capture);
+          const started = await capture.startCapture(
+            SAMPLE_RATE,
+            phase.capture,
+          );
           if (runTokenRef.current !== token) {
             await discardStaleCapture('capture');
             return null;
@@ -304,9 +311,6 @@ const MicSpikeScreen = ({ navigation }) => {
       activeRef.current = true;
       await safeStart();
 
-      // An abort landing during safeStart would otherwise arm the timers below
-      // and overwrite resolvePhaseRef, which belongs to whichever run is
-      // current by then.
       if (runTokenRef.current !== token) {
         return null;
       }
@@ -318,7 +322,10 @@ const MicSpikeScreen = ({ navigation }) => {
             return;
           }
           try {
-            const started = await capture.startCapture(SAMPLE_RATE, phase.capture);
+            const started = await capture.startCapture(
+              SAMPLE_RATE,
+              phase.capture,
+            );
             if (runTokenRef.current !== token) {
               await discardStaleCapture('delayed capture');
               return;
@@ -334,7 +341,10 @@ const MicSpikeScreen = ({ navigation }) => {
       const endsAt = Date.now() + PHASE_MS;
       tickRef.current = setInterval(() => {
         setRemaining(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
-        setLive({ ...countersRef.current, errorsByCode: { ...countersRef.current.errorsByCode } });
+        setLive({
+          ...countersRef.current,
+          errorsByCode: { ...countersRef.current.errorsByCode },
+        });
       }, 500);
 
       return new Promise(resolve => {
@@ -383,8 +393,6 @@ const MicSpikeScreen = ({ navigation }) => {
       return;
     }
 
-    // The permission prompt is an await: the screen may have unmounted or a
-    // newer run may have started while it was open.
     if (runTokenRef.current !== token) {
       return;
     }
@@ -397,8 +405,6 @@ const MicSpikeScreen = ({ navigation }) => {
     const collected = [];
     for (let index = 0; index < PHASES.length; index += 1) {
       const outcome = await runPhase(index, token);
-      // Abort and unmount both resolve the pending phase; without this check
-      // the loop would start the next phase and re-open the microphone.
       if (abortedRef.current || runTokenRef.current !== token || !outcome) {
         break;
       }
@@ -431,7 +437,10 @@ const MicSpikeScreen = ({ navigation }) => {
     // Resolve with the frozen snapshot stopPhase returns, not the live ref,
     // which later phases would keep mutating.
     const outcome = await stopPhase();
-    resolvePhaseRef.current?.({ phase: PHASES[Math.max(0, phaseIndex)], ...outcome });
+    resolvePhaseRef.current?.({
+      phase: PHASES[Math.max(0, phaseIndex)],
+      ...outcome,
+    });
     resolvePhaseRef.current = null;
     setRunning(false);
     setPhaseIndex(-1);
@@ -444,8 +453,6 @@ const MicSpikeScreen = ({ navigation }) => {
       abortedRef.current = true;
       runTokenRef.current += 1;
       clearRestart();
-      // Release the awaiting run loop, otherwise it stays parked on a promise
-      // that can never settle once this screen is gone.
       resolvePhaseRef.current?.(null);
       resolvePhaseRef.current = null;
       if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
@@ -459,111 +466,110 @@ const MicSpikeScreen = ({ navigation }) => {
   const baseline = results.find(item => item.phase.id === 'A');
   const baselineRecall = baseline ? wordRecall(baseline.counters.text) : 0;
   const current = phaseIndex >= 0 ? PHASES[phaseIndex] : null;
-
-  // The shared-microphone path is structurally different from the phases
-  // above: nothing contends, because one AudioRecord feeds both the recognizer
-  // and the recording. Scored with the same criteria so the numbers compare.
-  const handleRunSharedMic = useCallback(async (useSegmented = true) => {
-    let permission = await checkMicPermission();
-    if (permission === RESULTS.DENIED) {
-      permission = await requestMicPermission();
-    }
-    if (!isGranted(permission)) {
-      addLog(`permission not granted: ${permission}`);
-      return;
-    }
-
-    if (!(await sharedMic.isSupported())) {
-      addLog('SharedMic unsupported — needs Android 12+ and a recognition service.');
-      return;
-    }
-
-    setRunning(true);
-    addLog(`── shared mic start (${useSegmented ? 'segmented' : 'classic'})`);
-
-    try {
-      const started = await sharedMic.start(
-        SAMPLE_RATE,
-        'spike-shared',
-        'en-IN',
-        useSegmented,
-      );
-      addLog(`shared mic → ${started.path}`);
-    } catch (error) {
-      addLog(`shared mic start failed: ${error?.message ?? error}`);
-      setRunning(false);
-      return;
-    }
-
-    const endsAt = Date.now() + PHASE_MS;
-    const ticker = setInterval(async () => {
-      setRemaining(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
-      const state = await sharedMic.getState();
-      if (state) {
-        setLive({
-          ...emptyCounters(),
-          ready: state.ready,
-          begin: state.begin,
-          partials: state.partials,
-          finals: state.finals,
-          restarts: state.restarts,
-          text: state.text,
-        });
+  const handleRunSharedMic = useCallback(
+    async (useSegmented = true) => {
+      let permission = await checkMicPermission();
+      if (permission === RESULTS.DENIED) {
+        permission = await requestMicPermission();
       }
-    }, 500);
+      if (!isGranted(permission)) {
+        addLog(`permission not granted: ${permission}`);
+        return;
+      }
 
-    await new Promise(resolve => setTimeout(resolve, PHASE_MS));
-    clearInterval(ticker);
+      if (!(await sharedMic.isSupported())) {
+        addLog(
+          'SharedMic unsupported — needs Android 12+ and a recognition service.',
+        );
+        return;
+      }
 
-    const final = await sharedMic.stop();
-    addLog('── shared mic done');
+      setRunning(true);
+      addLog(`── shared mic start (${useSegmented ? 'segmented' : 'classic'})`);
 
-    if (final) {
-      setResults(collected => [
-        ...collected,
-        {
-          phase: {
-            id: useSegmented ? 'G' : 'H',
-            label: useSegmented
-              ? 'G · Shared mic (segmented)'
-              : 'H · Shared mic (classic per-utterance)',
-            capture: 'sharedMic',
-            captureDelayMs: 0,
-          },
-          counters: {
+      try {
+        const started = await sharedMic.start(
+          SAMPLE_RATE,
+          'spike-shared',
+          'en-IN',
+          useSegmented,
+        );
+        addLog(`shared mic → ${started.path}`);
+      } catch (error) {
+        addLog(`shared mic start failed: ${error?.message ?? error}`);
+        setRunning(false);
+        return;
+      }
+
+      const endsAt = Date.now() + PHASE_MS;
+      const ticker = setInterval(async () => {
+        setRemaining(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
+        const state = await sharedMic.getState();
+        if (state) {
+          setLive({
             ...emptyCounters(),
-            ready: final.ready,
-            begin: final.begin,
-            partials: final.partials,
-            finals: final.finals,
-            restarts: final.restarts,
-            text: final.text,
-            errorsByCode: final.errorsByCode ?? {},
-            firstPartialAtMs: final.firstPartialAtMs,
-          },
-          stats: {
-            source: 'sharedMic',
-            path: final.path,
-            peakAmplitude: final.peakAmplitude,
-            averageRms: final.averageRms,
-            silentRatio: final.silentRatio,
-            // Nothing contends here — we are the only client — so the
-            // platform-silencing counters have nothing to report.
-            silencedSamples: 0,
-            configSamples: 0,
-            maxConcurrentClients: 1,
-            readErrors: final.droppedFrames,
-            gapCount: 0,
-            longestGapMs: 0,
-            bytes: final.bytes,
-          },
-        },
-      ]);
-    }
+            ready: state.ready,
+            begin: state.begin,
+            partials: state.partials,
+            finals: state.finals,
+            restarts: state.restarts,
+            text: state.text,
+          });
+        }
+      }, 500);
 
-    setRunning(false);
-    setRemaining(0);
-  }, [addLog]);
+      await new Promise(resolve => setTimeout(resolve, PHASE_MS));
+      clearInterval(ticker);
+
+      const final = await sharedMic.stop();
+      addLog('── shared mic done');
+
+      if (final) {
+        setResults(collected => [
+          ...collected,
+          {
+            phase: {
+              id: useSegmented ? 'G' : 'H',
+              label: useSegmented
+                ? 'G · Shared mic (segmented)'
+                : 'H · Shared mic (classic per-utterance)',
+              capture: 'sharedMic',
+              captureDelayMs: 0,
+            },
+            counters: {
+              ...emptyCounters(),
+              ready: final.ready,
+              begin: final.begin,
+              partials: final.partials,
+              finals: final.finals,
+              restarts: final.restarts,
+              text: final.text,
+              errorsByCode: final.errorsByCode ?? {},
+              firstPartialAtMs: final.firstPartialAtMs,
+            },
+            stats: {
+              source: 'sharedMic',
+              path: final.path,
+              peakAmplitude: final.peakAmplitude,
+              averageRms: final.averageRms,
+              silentRatio: final.silentRatio,
+              silencedSamples: 0,
+              configSamples: 0,
+              maxConcurrentClients: 1,
+              readErrors: final.droppedFrames,
+              gapCount: 0,
+              longestGapMs: 0,
+              bytes: final.bytes,
+            },
+          },
+        ]);
+      }
+
+      setRunning(false);
+      setRemaining(0);
+    },
+    [addLog],
+  );
 
   const handleShareResults = async () => {
     if (!results.length) {
@@ -579,8 +585,15 @@ const MicSpikeScreen = ({ navigation }) => {
 
   return (
     <ScreenContainer>
-      <AppHeader showBack onBackPress={() => navigation.goBack()} title="Mic Spike v2" />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <AppHeader
+        showBack
+        onBackPress={() => navigation.goBack()}
+        title="Mic Spike v2"
+      />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.script} selectable>
           Read this continuously, in every phase:{'\n'}
           {SCRIPT}
@@ -637,12 +650,13 @@ const MicSpikeScreen = ({ navigation }) => {
         ) : null}
 
         {results.map(item => {
-          const score = scorePhase(item, item.phase.id === 'A' ? 0 : baselineRecall);
+          const score = scorePhase(
+            item,
+            item.phase.id === 'A' ? 0 : baselineRecall,
+          );
           const errors = Object.entries(item.counters.errorsByCode ?? {})
             .map(([code, count]) => `${code}×${count}`)
             .join(' ');
-          // A diagnostic screen that crashes while reporting a result is worse
-          // than useless, so every number is read defensively.
           const num = (value, digits = 0) => (value ?? 0).toFixed(digits);
           return (
             <View key={item.phase.id} style={styles.phaseCard}>
@@ -660,20 +674,35 @@ const MicSpikeScreen = ({ navigation }) => {
               <Text style={styles.mono}>
                 {`recall ${num(score.recall * 100)}%` +
                   (score.relative !== null
-                    ? ` · vs baseline ${num(score.relative * 100)}%${score.degraded ? ' (DEGRADED)' : ''}`
+                    ? ` · vs baseline ${num(score.relative * 100)}%${
+                        score.degraded ? ' (DEGRADED)' : ''
+                      }`
                     : ' (baseline)') +
-                  `\nready ${item.counters.ready} · begin ${item.counters.begin} (${num(score.beginRatio * 100)}%)` +
+                  `\nready ${item.counters.ready} · begin ${
+                    item.counters.begin
+                  } (${num(score.beginRatio * 100)}%)` +
                   ` · partials ${item.counters.partials} · finals ${item.counters.finals}` +
-                  `\nrestarts ${item.counters.restarts} · errors ${errors || 'none'} · fatal ${item.counters.fatal ?? 0}` +
-                  `\nlongest silence ${num((item.counters.longestSilenceMs ?? 0) / 1000, 1)}s`}
+                  `\nrestarts ${item.counters.restarts} · errors ${
+                    errors || 'none'
+                  } · fatal ${item.counters.fatal ?? 0}` +
+                  `\nlongest silence ${num(
+                    (item.counters.longestSilenceMs ?? 0) / 1000,
+                    1,
+                  )}s`}
               </Text>
               {item.stats ? (
                 <Text style={styles.mono}>
-                  {`capture ${item.stats.source ?? '—'} · peak ${item.stats.peakAmplitude ?? 0} · avgRMS ${num(item.stats.averageRms)}` +
+                  {`capture ${item.stats.source ?? '—'} · peak ${
+                    item.stats.peakAmplitude ?? 0
+                  } · avgRMS ${num(item.stats.averageRms)}` +
                     ` · silent ${num((item.stats.silentRatio ?? 0) * 100)}%` +
-                    `\nplatform silencing: ${item.stats.silencedSamples ?? 0}/${item.stats.configSamples ?? 0} samples` +
+                    `\nplatform silencing: ${item.stats.silencedSamples ?? 0}/${
+                      item.stats.configSamples ?? 0
+                    } samples` +
                     ` · max clients ${item.stats.maxConcurrentClients ?? 0}` +
-                    `\nreadErrors ${item.stats.readErrors ?? 0} · gaps ${item.stats.gapCount ?? 0}`}
+                    `\nreadErrors ${item.stats.readErrors ?? 0} · gaps ${
+                      item.stats.gapCount ?? 0
+                    }`}
                 </Text>
               ) : null}
               {item.stats?.path ? (
@@ -698,63 +727,5 @@ const MicSpikeScreen = ({ navigation }) => {
     </ScreenContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  content: { paddingBottom: spacing.xl, gap: spacing.xs },
-  script: {
-    ...typography.body,
-    fontSize: 13,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    borderRadius: 12,
-    padding: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  row: { flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.sm },
-  button: {
-    backgroundColor: colors.primaryAccent,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 999,
-  },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: colors.onPrimary, fontWeight: '700', fontSize: 13 },
-  currentBox: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: 12,
-    padding: spacing.sm,
-    gap: 2,
-  },
-  currentTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  currentHint: { fontSize: 12, color: colors.textSecondary },
-  phaseCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    borderRadius: 12,
-    padding: spacing.sm,
-    marginTop: spacing.sm,
-    gap: 4,
-  },
-  phaseHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  phaseTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, flex: 1 },
-  badge: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.onPrimary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  pass: { backgroundColor: colors.success },
-  fail: { backgroundColor: colors.danger },
-  sectionTitle: { ...typography.body, fontWeight: '700', marginTop: spacing.md },
-  mono: { fontSize: 11, color: colors.textSecondary, lineHeight: 16 },
-  file: { fontSize: 10, color: colors.secondaryAccent },
-  transcript: { fontSize: 12, color: colors.textPrimary, fontStyle: 'italic' },
-  logLine: { fontSize: 10, color: colors.textMuted },
-});
 
 export default MicSpikeScreen;
