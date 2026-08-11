@@ -1,6 +1,8 @@
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
+import { ensureHydrated } from './src/store/useSettingsStore';
 import { colors } from './src/theme';
 
 const MedScribeTheme = {
@@ -18,6 +20,10 @@ const MedScribeTheme = {
 };
 
 function App() {
+  useEffect(() => {
+    ensureHydrated();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <NavigationContainer theme={MedScribeTheme}>

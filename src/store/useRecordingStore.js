@@ -9,6 +9,15 @@ import {
   switchSource,
   TRANSCRIPT_SOURCE,
 } from '../services/consultationTranscripts';
+import {
+  applyTranslation,
+  editTranslation,
+  emptyTranslation,
+  markTranslationPending,
+  needsTranslation,
+  normalizeTranslation,
+  setTranslationProgress,
+} from '../services/consultationTranslation';
 
 export const CONSULTATION_STAGE = {
   RECORDING: 'recording',
@@ -61,6 +70,9 @@ const initialState = {
   nativeRaw: '',
   refineProgress: { done: 0, total: 0 },
   captureUnavailable: false,
+  language: null,
+  recognizerFellBack: false,
+  translation: emptyTranslation(),
 };
 
 const useRecordingStore = create((set, get) => ({
@@ -155,6 +167,32 @@ const useRecordingStore = create((set, get) => ({
   setCaptureUnavailable: captureUnavailable =>
     set({ captureUnavailable: !!captureUnavailable }),
 
+  setSessionLanguage: language => set({ language: language ?? null }),
+
+  setRecognizerFellBack: recognizerFellBack =>
+    set({ recognizerFellBack: !!recognizerFellBack }),
+
+  setTranslationPending: ({ sourceText, sourceKind } = {}) =>
+    set(state => ({
+      translation: markTranslationPending(state.translation, {
+        sourceText,
+        sourceKind,
+      }),
+    })),
+
+  setTranslationResult: (result, options) =>
+    set(state => ({
+      translation: applyTranslation(state.translation, result, options),
+    })),
+
+  setTranslationText: text =>
+    set(state => ({ translation: editTranslation(state.translation, text) })),
+
+  setTranslationProgress: progress =>
+    set(state => ({
+      translation: setTranslationProgress(state.translation, progress),
+    })),
+
   setAnuvadiniText: text =>
     set(state => ({ anuvadini: { ...state.anuvadini, text: text ?? '' } })),
 
@@ -196,6 +234,9 @@ const useRecordingStore = create((set, get) => ({
       transcriptSource:
         sessionData.transcriptSource || TRANSCRIPT_SOURCE.NATIVE,
       nativeRaw: sessionData.nativeRaw || '',
+      language: sessionData.language || null,
+      recognizerFellBack: false,
+      translation: normalizeTranslation(sessionData.translation),
       status: RECORDING_STATE.IDLE,
     });
   },
@@ -216,6 +257,9 @@ const useRecordingStore = create((set, get) => ({
       nativeRaw: '',
       refineProgress: { done: 0, total: 0 },
       captureUnavailable: false,
+      language: null,
+      recognizerFellBack: false,
+      translation: emptyTranslation(),
     }),
 }));
 
@@ -228,5 +272,15 @@ export const selectActiveTranscript = state =>
     anuvadini: state.anuvadini,
     source: state.transcriptSource,
   });
+
+export const selectSourceTranscript = selectActiveTranscript;
+
+export const selectEnglishTranscript = state =>
+  needsTranslation(state.language)
+    ? state.translation?.text || ''
+    : selectActiveTranscript(state);
+
+export const selectReportTranscript = state =>
+  selectEnglishTranscript(state) || selectActiveTranscript(state);
 
 export default useRecordingStore;

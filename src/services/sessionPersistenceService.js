@@ -46,6 +46,8 @@ export async function saveSessionImmediate({
   transcriptSource,
   stage,
   createdAt,
+  language,
+  translation,
 }) {
   if (!id) return;
   try {
@@ -54,9 +56,10 @@ export async function saveSessionImmediate({
     await db.execute(
       `INSERT INTO active_sessions (
          id, segments_json, live_fields_json, duration_seconds, updated_at,
-         draft_json, native_json, anuvadini_json, transcript_source, stage, created_at
+         draft_json, native_json, anuvadini_json, transcript_source, stage, created_at,
+         language, translation_json
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          segments_json = excluded.segments_json,
          live_fields_json = excluded.live_fields_json,
@@ -67,7 +70,9 @@ export async function saveSessionImmediate({
          anuvadini_json = excluded.anuvadini_json,
          transcript_source = excluded.transcript_source,
          stage = excluded.stage,
-         created_at = COALESCE(active_sessions.created_at, excluded.created_at);`,
+         created_at = COALESCE(active_sessions.created_at, excluded.created_at),
+         language = COALESCE(excluded.language, active_sessions.language),
+         translation_json = excluded.translation_json;`,
       [
         id,
         JSON.stringify(segments ?? []),
@@ -80,6 +85,8 @@ export async function saveSessionImmediate({
         transcriptSource || 'native',
         stage || 'recording',
         createdAt ?? now,
+        language || null,
+        translation ? JSON.stringify(translation) : null,
       ],
     );
     await db.execute('DELETE FROM active_sessions WHERE id <> ?;', [id]);
@@ -120,6 +127,8 @@ export async function getActiveSession() {
       anuvadiniTranscript: parse(row.anuvadini_json, null),
       transcriptSource: row.transcript_source || 'native',
       stage: row.stage || 'recording',
+      language: row.language || null,
+      translation: parse(row.translation_json, null),
     };
   } catch (error) {
     console.warn('[sessionPersistenceService] Load error:', error);
