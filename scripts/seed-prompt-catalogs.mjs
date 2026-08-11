@@ -1,0 +1,257 @@
+
+// Drafts a spoken-prompt catalog for one language by translating the English
+// one through the Pravah API.
+//
+// This is a GENERATOR, not a test, and deliberately NOT named test-*.mjs:
+// scripts/run-all.mjs collects only test-*.mjs, so a full test sweep can never
+// reach the network.
+//
+// It prints a catalog file to STDOUT for a human to paste into
+// src/constants/prompts/<code>.js. It does not write into src/ on purpose: the
+// doctor HEARS these sentences read aloud, so a machine draft gets a native
+// speaker's eyes before it is committed. `reviewed: false` is hard-coded for
+// exactly that reason — flip it by hand after review.
+//
+// Usage:
+//   PRAVAH_API_KEY=apk_... npm run seed:prompts -- --lang=or
+//   PRAVAH_API_KEY=apk_... PRAVAH_API_URL=http://localhost:8787/translate \
+//     npm run seed:prompts -- --lang=or
+//
+// It reuses translateTexts, the same client the app uses. That is the strongest
+// integration test of the client short of running the app, and it makes
+// seeder/runtime drift impossible.
+
+import { LANGUAGE_BY_CODE } from '../src/constants/languages.js';
+import en from '../src/constants/prompts/en.js';
+import { translateTexts } from '../src/services/pravah/translationClient.js';
+import {
+  ERROR_KIND,
+  isPravahLanguage,
+} from '../src/services/pravah/translationContract.js';
+
+const flag = name => {
+  const match = process.argv.find(arg => arg.startsWith(`--${name}=`));
+  return match ? match.slice(name.length + 3) : null;
+};
+
+const die = message => {
+  console.error(message);
+  process.exit(1);
+};
+
+const code = flag('lang');
+const language = code ? LANGUAGE_BY_CODE[code] : null;
+
+if (!language) {
+  die('Pass --lang=<code>, where <code> is a row in src/constants/languages.js.');
+}
+if (language.code === 'en') {
+  die('English is the reference catalog and is not generated.');
+}
+if (!isPravahLanguage(language.translationCode)) {
+  die(
+    `"${language.translationCode}" is not a language the Pravah API accepts.\n` +
+      'Check translationCode in src/constants/languages.js.',
+  );
+}
+
+const key = process.env.PRAVAH_API_KEY || '';
+if (!key) {
+  die(
+    'PRAVAH_API_KEY is not set. Export it before running this seeder.\n' +
+      'The key is never printed by this script.',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Placeholder protection
+//
+// {names}, {count} and {detailWord} are substituted at runtime and MUST survive
+// translation intact. Braces are exactly what MT breaks: it will happily return
+// {नाम}, { names }, {names) or drop the token entirely.
+//
+// So we never send braces. Each placeholder becomes an opaque, translation-inert
+// sentinel — uppercase ASCII with a digit, no translatable word — restored
+// afterwards and then VERIFIED.
+// ---------------------------------------------------------------------------
+const PLACEHOLDERS = ['{names}', '{count}', '{detailWord}'];
+const sentinelFor = index => `XX${index + 1}XX`;
+
+const toSentinels = frame =>
+  PLACEHOLDERS.reduce(
+    (text, token, index) => text.split(token).join(sentinelFor(index)),
+    frame,
+  );
+
+// Tolerant restoration: MT changes case and inserts spacing inside the
+// sentinel, and Indic shaping can leave a ZWJ/ZWNJ against it.
+const restore = translated => {
+  let text = String(translated ?? '').replace(/[‌‍]/g, '');
+  PLACEHOLDERS.forEach((token, index) => {
+    const loose = new RegExp(`x\\s*x\\s*${index + 1}\\s*x\\s*x`, 'gi');
+    text = text.replace(loose, token);
+  });
+  return text;
+};
+
+const countOf = (text, token) => text.split(token).length - 1;
+
+// ---------------------------------------------------------------------------
+// One request, index-keyed
+//
+// join.separator is NOT sent: it is ', ', meaningless to translate, and MT
+// strips the surrounding whitespace. English is carried verbatim and a native
+// reviewer can change it.
+//
+// join.and is sent as the BARE WORD, because MT drops leading and trailing
+// spaces; the generator re-wraps it below.
+// ---------------------------------------------------------------------------
+const FRAME_NAMES = ['one', 'few', 'many'];
+
+const ENTRIES = [
+  ...Object.entries(en.labels).map(([name, value]) => [`labels.${name}`, value]),
+  ['join.and', en.join.and.trim()],
+  ...FRAME_NAMES.map(name => [`frames.${name}`, toSentinels(en.frames[name])]),
+  ['detailWord.one', en.detailWord.one],
+  ['detailWord.other', en.detailWord.other],
+];
+
+const FAILURE_HELP = {
+  [ERROR_KIND.UNAUTHORIZED]: 'PRAVAH_API_KEY is missing or was rejected.',
+  [ERROR_KIND.QUOTA_EXCEEDED]:
+    "This key's translation quota is exhausted; try again after it resets.",
+  [ERROR_KIND.UNSUPPORTED_LANGUAGE]: `"${language.translationCode}" is not a language this API accepts — check translationCode in src/constants/languages.js.`,
+  [ERROR_KIND.SERVER_ERROR]: 'Upstream error. Retry.',
+  [ERROR_KIND.NOT_CONFIGURED]: 'No API key, and no proxy URL to fall back to.',
+  [ERROR_KIND.COUNT_MISMATCH]:
+    'The API returned a different number of items than were sent, so results cannot be matched to their keys.',
+};
+
+const result = await translateTexts({
+  texts: ENTRIES.map(entry => entry[1]),
+  to: language.translationCode,
+  from: 'en',
+  key,
+  url: process.env.PRAVAH_API_URL || undefined,
+});
+
+if (!result.ok) {
+  die(
+    `Translation failed (${result.errorKind}).\n` +
+      (FAILURE_HELP[result.errorKind] ?? 'See the error kind above.'),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Repair, verify, report
+// ---------------------------------------------------------------------------
+const stripQuotes = value =>
+  String(value ?? '')
+    .trim()
+    .replace(/^["'“‘](.*)["'”’]$/s, '$1')
+    .trim();
+
+const isLatin = language.script === 'latin';
+const out = {};
+const warnings = [];
+let restored = 0;
+let expected = 0;
+let untranslated = 0;
+
+ENTRIES.forEach(([name, source], index) => {
+  let value = stripQuotes(result.texts[index]);
+
+  if (!value) {
+    warnings.push(`${name}: empty result — kept the English original`);
+    out[name] = source;
+    return;
+  }
+
+  // Byte-identical output for a non-Latin target almost certainly means the
+  // string was passed through untranslated. Catch it here, where it is
+  // fixable, rather than in test-prompt-catalogs' Latin-run assertion.
+  if (!isLatin && value === source) {
+    untranslated += 1;
+    warnings.push(`${name}: came back unchanged — probably not translated`);
+  }
+
+  if (name.startsWith('frames.')) {
+    const frameName = name.slice('frames.'.length);
+    const wanted = PLACEHOLDERS.filter(token =>
+      en.frames[frameName].includes(token),
+    );
+
+    value = restore(value);
+    expected += wanted.length;
+
+    const broken = wanted.filter(token => countOf(value, token) !== 1);
+    if (broken.length) {
+      // Never emit a catalog with a broken placeholder: at runtime it would
+      // substitute wrongly, or read a literal "{names}" aloud to the doctor.
+      // Fall back to English and make it impossible to miss in review.
+      warnings.push(
+        `${name}: ${broken.join(', ')} did not survive translation — kept the English original`,
+      );
+      out[name] = en.frames[frameName];
+      return;
+    }
+    restored += wanted.length;
+  }
+
+  out[name] = value;
+});
+
+const quote = value =>
+  `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+
+const labelLines = Object.keys(en.labels)
+  .map(name => `    ${name}: ${quote(out[`labels.${name}`])},`)
+  .join('\n');
+
+const todo = warnings.length
+  ? `${warnings
+      .map(warning => `// TODO(${language.code}): ${warning}`)
+      .join('\n')}\n`
+  : '';
+
+console.log(`// DRAFT — generated by scripts/seed-prompt-catalogs.mjs.
+// reviewed: false until a native ${language.englishName} speaker has checked
+// every sentence below. The doctor hears these read aloud.
+${todo}export default {
+  code: '${language.code}',
+  reviewed: false,
+
+  labels: {
+${labelLines}
+  },
+
+  join: {
+    // Not translated: a list separator carries no meaning across languages.
+    separator: ${quote(en.join.separator)},
+    and: ${quote(` ${out['join.and'].trim()} `)},
+  },
+
+  frames: {
+    one: ${quote(out['frames.one'])},
+    few: ${quote(out['frames.few'])},
+    many: ${quote(out['frames.many'])},
+  },
+
+  detailWord: {
+    one: ${quote(out['detailWord.one'])},
+    other: ${quote(out['detailWord.other'])},
+  },
+};`);
+
+// stdout is the catalog, so the summary goes to stderr.
+console.error(
+  `\n${ENTRIES.length} items · placeholders restored ${restored}/${expected} · ` +
+    `untranslated ${untranslated} · warnings ${warnings.length}`,
+);
+for (const warning of warnings) {
+  console.error(`  ! ${warning}`);
+}
+console.error(
+  `\nPaste into src/constants/prompts/${language.code}.js, register it in ` +
+    `src/constants/prompts/index.js, then run: npm run test:prompts`,
+);

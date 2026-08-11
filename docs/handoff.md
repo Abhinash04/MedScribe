@@ -782,6 +782,88 @@ MedScribe/
 
 > Each item below cost real debugging time. Several look like defects and are not.
 
+### Multilingual: English must stay a byte-identical no-op
+
+Every multilingual change is gated so that `language === 'en'` behaves exactly as it did before. The acceptance gate is that `scripts/test-tts-prompt.mjs` and the ten extraction suites pass **unedited**. If a change to the prompt catalogs or the language table requires editing one of those files, the change is wrong.
+
+The English catalog in `src/constants/prompts/en.js` reproduces the previous hardcoded wording verbatim, including a subtlety worth stating: the 2–4 field frame joins with `', '` plus `' and '` before the last name, while the 5-or-more frame joins with `', '` only and supplies its own `", and N other…"` tail. Both are modelled — `join.and` is used by the `few` frame and deliberately not by `many`.
+
+### `src/constants/languages.js` is the only language table
+
+Codes, BCP-47 tags, native and English display names, scripts and TTS voice ids all live in that one file. `services/anuvadini/language.js` and `services/anuvadini/speechContract.js` **derive** their tables from it and keep their previous exported surface. Adding a language is one row there plus one catalog file — never a second list somewhere else.
+
+Never admit a non-Indian code to that table. `scripts/test-tts-client.mjs` asserts `'fr'` and `'fr-FR'` stay unsupported, and `normalizeAnuvadiniLanguage` accepting a tag the service cannot serve would turn a clear `UNSUPPORTED_LANGUAGE` into an upstream 4xx.
+
+### Code vs tag: `normalizeAnuvadiniLanguage` returns a **tag**, not a code
+
+The app carries the code (`'hi'`); the boundaries want the tag (`'hi-IN'`). Settings, session rows and prompt-catalog lookups are keyed by code; the TTS `VOICES` table and `RecognizerIntent.EXTRA_LANGUAGE` are keyed by tag. Routing a catalog lookup or a display name through `normalizeAnuvadiniLanguage` returns a tag, misses every lookup and fails **silently**. Use `recognizerTag(code)` and `displayFor(code)`.
+
+### A session pins its language at start; Settings is only read for a new one
+
+`dictationSessionManager.startSession` resolves `store.language ?? getDictationLanguage()`. Because `beginSession({ keepTranscript: true })` — the Add More Speech path and the crash-recovery path — does not call `reset()`, `store.language` survives and is reused. A consultation resumed tomorrow, after the doctor switched Settings to another language, still records and translates as the language it began in. `active_sessions.language` carries this across a restart.
+
+### `RecognizerIntent.EXTRA_LANGUAGE` fails silently
+
+Android does not error when the language pack is missing; it quietly recognises in the device locale instead. For a non-Latin script the only available signal is that the text came back in ASCII, which is what `checkRecognizerFallback` looks for over the first 40 characters. It sets `recognizerFellBack`, and the review screen tells the doctor to install the pack. There is no better signal available without a native change.
+
+### Live extraction is skipped for a non-English dictation — deliberately
+
+`fieldMarkers.js` carries bare-digit fallbacks: a six-digit run becomes `pinCode`, a ten-digit run becomes `contactNumber`. Indic transcripts routinely carry Latin digits, so running the English extractor over untranslated text does not merely under-perform — it writes **false values into a medical record**. `runLiveExtraction` returns early when `needsTranslation(store.language)`, and `LiveFieldsPreview` says so rather than showing an empty panel.
+
+### `MAX_SPEECH_CHARS = 600` is duplicated, and non-Latin prompts are longer
+
+The cap is enforced in `services/anuvadini/speechClient.js` and again in `server/index.mjs`. Devanagari, Bengali and Tamil sentences run materially longer than their English equivalents, and the all-ten-required-fields prompt is a real overflow candidate that surfaces as a bare `NO_TEXT`. `scripts/test-prompt-catalogs.mjs` asserts the worst case per catalog. If you add a language, that assertion is what protects you.
+
+### A language with no TTS voice stays silent
+
+`voiceFor` returns `null`, `synthesize` returns `UNSUPPORTED_LANGUAGE`, and `MissingFieldsModal` already renders "this language has no voice" while listing every missing field visually. Speaking English at a doctor who chose Marathi is worse than saying nothing. The policy is overridable in one line — `speakMissingFields(fields, { language, fallbackLanguage })` — if that judgement changes.
+
+### `probe:*` and `seed:*` are not tests
+
+`scripts/run-all.mjs` collects only `test-*.mjs`. The probe and seed scripts make real network calls and are named outside that pattern so a full test sweep cannot reach the network. Pravah is never called live from any test; the injected `transport` parameter is the only path, and each translation suite additionally replaces `globalThis.fetch` with a thrower so the guarantee is mechanical rather than a promise.
+
+### Translation: the API is machine translation, not an LLM
+
+`POST https://pravahai.aicte-india.org/api/translatebulk` takes a **bare JSON array** of `{text, to, from?}` and returns a parallel array of `{translations:[{text}]}` in the same order. There is **no system prompt and no model parameter**. You cannot steer its output toward the phrasings `fieldMarkers.js` matches — an earlier design assumed you could, and that assumption is dead.
+
+The consequence is that **extraction recall on plain MT English is the dominant risk**, not translation failure. `scripts/test-translated-extraction.mjs` measures it (currently 55/58, with three documented gaps) and prints a per-field table. It gates on floors rather than 100% because MT output is not something this repo controls; a hard gate would break CI whenever Pravah retrains, for a reason nobody here can fix.
+
+**When a case there fails, the fix is a new marker in `src/constants/fieldMarkers.js`** — never a change to the extraction engine, never to the translation pipeline. Add markers **one at a time** and run `npm run test:all` between each: the marker arrays are ordered and a broad new pattern can steal text from a higher-priority field. If a widening cannot be made regression-free, record it as a known gap and leave the markers alone. A half-filled report the doctor completes is strictly better than a confidently wrong one.
+
+### Index-parallel reassembly is the correctness story of a bulk API
+
+The response array is positional. Silently padding or truncating a mismatched response would put the wrong English under the wrong sentence, and the extractor would emit a **plausible but wrong report** — the worst failure this app has. `readTranslations` therefore treats a length mismatch as its own `COUNT_MISMATCH` error rather than coping with it.
+
+Related: an over-long array item risks **silent truncation** against an undocumented per-item cap, which `readTranslations` cannot detect — it would return `ok` with a short string and half the consultation would vanish. That is why chunks are 900 characters, and why `runTranslation` warns (dev only, never fails) when a translation comes back under a quarter of its source length.
+
+### A translation code is not a recogniser tag
+
+`languages.js` carries three identifiers per row. Four languages disagree between them — `kok`→`gom-IN`, `ks-deva`→`ks-dn-IN`, `ks-arab`→`ks-ar-IN`, `sd`→`sd-dn-IN` — and those four are pinned literally in `test-languages.mjs` because normalising them back to `${code}-IN` would kill translation with no other test failing. Use `translationCodeFor(code)`, never string arithmetic.
+
+Two consequences: `LANGUAGE_BY_TAG` is **not a bijection** (both Kashmiri rows share `ks-IN`, so it is built first-wins), and `normalizeAnuvadiniLanguage` needed an exact-match branch before its base-tag split, or a hyphenated code like `ks-deva` reduces to `ks` and returns `null`.
+
+### The 429 quota latch must outlive `reset()`
+
+A 429 means the key's allowance is spent. Retrying cannot help and neither can the next consultation, so translation switches off for the rest of the session. The latch is **module state in `transcriptTranslation.js`** — not the recording store, because it must survive `reset()` and "remember to exempt this one field" is the invariant a refactor loses; not persisted, because the quota resets on the server's schedule and a stored flag would leave translation dead after it came back. It dies on app restart, which is the honest reset.
+
+⚠️ **`clearTranslationState()` must not clear it.** That function has no callers today, and its obvious future home is `clearSession()`, which runs per consultation — clearing there would defeat the requirement entirely. The reset is deliberately named `resetTranslationQuota` so it cannot be picked up by accident.
+
+⚠️ The proxy passes a 429 straight through as a 429 rather than folding it into 502, **precisely so the latch fires identically on both transports**. Fold it and the proxy path silently never latches.
+
+### `from` is deliberately never sent at runtime
+
+We think we know the dictation language, but `recognizerFellBack` is exactly the case where that belief is wrong — the store says Hindi and the text is English. Recognisers also emit code-mixed output, and `sd` is tagged `sd-IN` (Perso-Arabic) while the only Pravah Sindhi code is Devanagari, so a pinned `from` would be provably wrong there. Every `from` is also another chance at a 422, which is never retried. Auto-detection on 900-character chunks is reliable. The policy lives in `shouldSendFrom()` so making it conditional is one line, not a client change. **The seeder is the opposite** and must send both `from:'en'` and an exact `to`.
+
+### `captureOutcome.isRetryableFailure` is a deny-list
+
+Every new `ERROR_KIND` becomes "retryable" there by default. It is only wired to the STT refinement Retry button and STT never produces the translation kinds, so there is no live regression — **but do not reuse it for translation.** Translation uses an explicit allow-list in `transcriptTranslation.js`, which is what keeps 429, 401 and 422 from being retried.
+
+### Translation is keyed to its source text, not merged in passes
+
+`consultationTranslation` records the exact source text a translation was produced from. `isStale` compares that against the current transcript, which answers "re-translate?" uniformly for every trigger — refinement landed, the doctor toggled Original/AI, the doctor edited the original. There is deliberately no second multi-pass merge to keep in step with `consultationTranscripts.applyResult`.
+
+The failure contract is the `|| selectActiveTranscript(state)` tail in `selectReportTranscript`: if translation never succeeded, the report is built from the **original-language** transcript. Extraction finds little, the completeness gate lists every missing field, and the doctor fills them by hand — but the consultation text is never lost and the report is never silently empty.
+
 ### File extensions
 `.jsx` for any file containing JSX, `.js` for everything else. Application code is **JavaScript** — TypeScript was removed and `tsconfig.json` deleted. The single exception is `src/specs/**`, which is TypeScript because React Native codegen requires a typed spec; those five files are codegen input, never application code, and there is still no `tsconfig.json`. The TS devDependencies (`typescript`, `@types/*`, `@react-native/typescript-config`) remain in `package.json` but are inert; removing them requires an `npm install` and lockfile churn.
 
