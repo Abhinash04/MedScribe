@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { synthesize, transcribe, UPSTREAM_ERROR } from './anuvadini.mjs';
+import { PRAVAH_ERROR, translateBulk } from './pravah.mjs';
 
 export const PORT = Number(process.env.PORT || 8787);
 
@@ -14,10 +15,13 @@ export const REQUEST_ERROR = {
   MISSING_TEXT: 'missing_text',
   MISSING_VOICE: 'missing_voice',
   INVALID_GENDER: 'invalid_gender',
+  MISSING_ITEMS: 'missing_items',
   TOO_LARGE: 'too_large',
 };
 
 export const MAX_SPEECH_CHARS = 600;
+export const MAX_TRANSLATE_ITEMS = 25;
+export const MAX_TRANSLATE_CHARS = 12000;
 
 const STATUS_FOR = {
   [UPSTREAM_ERROR.NOT_CONFIGURED]: 503,
@@ -127,9 +131,82 @@ export async function handleTextToSpeech(body, deps = {}) {
   };
 }
 
+// 429 is passed straight through, not folded into 502, precisely so the app's
+// classifyStatus maps it back to QUOTA_EXCEEDED and the session latch fires
+// identically on both transports. Without this the proxy path would silently
+// never latch.
+const TRANSLATE_STATUS_FOR = {
+  [PRAVAH_ERROR.NOT_CONFIGURED]: 503,
+  [PRAVAH_ERROR.UNAUTHORIZED]: 502,
+  [PRAVAH_ERROR.QUOTA_EXCEEDED]: 429,
+  [PRAVAH_ERROR.UNSUPPORTED_LANGUAGE]: 422,
+  // The proxy built the upstream body, so a 400 from upstream is our bug, not
+  // the app's request being malformed.
+  [PRAVAH_ERROR.BAD_REQUEST]: 502,
+  [PRAVAH_ERROR.UPSTREAM_ERROR]: 502,
+  [PRAVAH_ERROR.TIMEOUT]: 504,
+  [PRAVAH_ERROR.NETWORK]: 502,
+  [PRAVAH_ERROR.MALFORMED]: 502,
+  [PRAVAH_ERROR.COUNT_MISMATCH]: 502,
+  [PRAVAH_ERROR.EMPTY_TRANSLATION]: 422,
+};
+
+const reject = (status, error) => ({ status, body: { success: false, error } });
+
+export async function handleTranslate(body, deps = {}) {
+  const items = body?.items;
+
+  // Every rejection returns before any upstream call, so a fixture can assert
+  // fetchImpl was never invoked.
+  if (!Array.isArray(items) || items.length === 0) {
+    return reject(400, REQUEST_ERROR.MISSING_ITEMS);
+  }
+  if (items.length > MAX_TRANSLATE_ITEMS) {
+    return reject(413, REQUEST_ERROR.TOO_LARGE);
+  }
+  if (items.some(item => typeof item?.text !== 'string' || !item.text.trim())) {
+    return reject(400, REQUEST_ERROR.MISSING_TEXT);
+  }
+  if (items.some(item => typeof item?.to !== 'string' || !item.to)) {
+    return reject(400, REQUEST_ERROR.MISSING_LANGUAGE);
+  }
+  if (
+    items.some(item => item.from !== undefined && typeof item.from !== 'string')
+  ) {
+    return reject(400, REQUEST_ERROR.MISSING_LANGUAGE);
+  }
+  if (
+    items.reduce((sum, item) => sum + item.text.length, 0) > MAX_TRANSLATE_CHARS
+  ) {
+    return reject(413, REQUEST_ERROR.TOO_LARGE);
+  }
+
+  const result = await translateBulk({ items }, deps);
+
+  if (result.ok) {
+    // Shaped so the app's readTranslations handles proxy and direct with one
+    // branch and no special-casing.
+    return {
+      status: 200,
+      body: {
+        success: true,
+        results: result.texts.map(text => ({ translations: [{ text }] })),
+      },
+      ms: result.ms,
+    };
+  }
+
+  return {
+    status: TRANSLATE_STATUS_FOR[result.error] ?? 502,
+    body: { success: false, error: result.error },
+    ms: result.ms,
+  };
+}
+
 const ROUTES = {
   '/voice-to-text': { handle: handleVoiceToText },
   '/text-to-speech': { handle: handleTextToSpeech },
+  '/translate': { handle: handleTranslate },
 };
 
 export function createProxyServer(deps = {}) {

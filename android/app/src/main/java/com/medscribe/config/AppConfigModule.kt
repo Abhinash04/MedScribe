@@ -9,4 +9,6 @@ class AppConfigModule(reactContext: ReactApplicationContext) :
   NativeAppConfigSpec(reactContext) {
 
   override fun getAnuvadiniToken(): String = BuildConfig.ANUVADINI_STT_TOKEN
+
+  override fun getPravahKey(): String = BuildConfig.PRAVAH_API_KEY
 }

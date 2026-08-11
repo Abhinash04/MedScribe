@@ -32,9 +32,18 @@ android {
         if (localPropertiesFile.exists()) {
             localPropertiesFile.withInputStream { localProperties.load(it) }
         }
+        // Defaults are the empty string on purpose: '' resolves to
+        // NOT_CONFIGURED, which is the honest state and lets a fresh clone build
+        // with no local.properties at all. A placeholder that looked like a real
+        // key would 401 at runtime AND flip isTranslationAvailable() to true,
+        // making the UI promise what it cannot deliver.
+        // See android/local.properties.example.
         buildConfigField "String",
             "ANUVADINI_STT_TOKEN",
             "\"${localProperties.getProperty('ANUVADINI_STT_TOKEN', '')}\""
+        buildConfigField "String",
+            "PRAVAH_API_KEY",
+            "\"${localProperties.getProperty('PRAVAH_API_KEY', '')}\""
     }
     signingConfigs {
         debug {
