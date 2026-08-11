@@ -9,7 +9,19 @@ const PREVIEW_FIELDS = [
   ['diagnosis', 'Diagnosis'],
 ];
 
-const LiveFieldsPreview = ({ fields = {}, style }) => {
+const LiveFieldsPreview = ({ fields = {}, style, deferred = false }) => {
+  if (deferred) {
+    return (
+      <View style={[styles.container, style]}>
+        <Text style={styles.headerLabel}>LIVE EXTRACTED DETAILS</Text>
+        <Text style={styles.deferredNote}>
+          Details are extracted once this dictation has been translated to
+          English.
+        </Text>
+      </View>
+    );
+  }
+
   const entries = PREVIEW_FIELDS.map(([key, label]) => [
     key,
     label,

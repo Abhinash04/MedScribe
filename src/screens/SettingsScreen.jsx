@@ -3,9 +3,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import BottomDock, { useDockClearance } from '../components/BottomDock';
+import LanguagePickerModal from '../components/LanguagePickerModal';
 import ScreenContainer from '../components/ScreenContainer';
 import { isTranscriptionAvailable } from '../config/features';
+import { displayFor } from '../constants/languages';
+import { RECORDING_STATE } from '../constants/recordingStates';
 import { purgeAbandoned } from '../services/consultationAudio';
+import { capabilityList } from '../services/languageCapabilities';
 import * as sharedMic from '../services/sharedMicService';
 import {
   clearActiveSession,
@@ -13,6 +17,7 @@ import {
 } from '../services/sessionPersistenceService';
 import { clearRefinementState } from '../services/transcriptRefinement';
 import useRecordingStore from '../store/useRecordingStore';
+import useSettingsStore, { ensureHydrated } from '../store/useSettingsStore';
 import { colors } from '../theme';
 import packageJson from '../../package.json';
 import styles from './styles/SettingsScreen.styles';
@@ -77,10 +82,25 @@ const StatusBadge = ({ on, onLabel, offLabel }) => (
 
 const SettingsScreen = ({ navigation }) => {
   const resetRecording = useRecordingStore(state => state.reset);
+  const recordingStatus = useRecordingStore(state => state.status);
+  const dictationLanguage = useSettingsStore(state => state.dictationLanguage);
+  const setDictationLanguage = useSettingsStore(
+    state => state.setDictationLanguage,
+  );
+  const deviceLocales = useSettingsStore(
+    state => state.deviceRecognizerLocales,
+  );
   const [captureSupported, setCaptureSupported] = useState(null);
   const [unfinished, setUnfinished] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const clearance = useDockClearance();
   const transcriptionOn = isTranscriptionAvailable();
+  const language = displayFor(dictationLanguage);
+  const isEnglish = dictationLanguage === 'en';
+
+  useEffect(() => {
+    ensureHydrated();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +128,30 @@ const SettingsScreen = ({ navigation }) => {
         cancelled = true;
       };
     }, []),
+  );
+
+  const handleSelectLanguage = useCallback(
+    async code => {
+      setPickerOpen(false);
+      if (code === dictationLanguage) {
+        return;
+      }
+
+      await setDictationLanguage(code);
+
+      const inProgress =
+        recordingStatus === RECORDING_STATE.LISTENING ||
+        recordingStatus === RECORDING_STATE.PAUSED ||
+        Boolean(unfinished);
+
+      if (inProgress) {
+        Alert.alert(
+          'Applies to your next dictation',
+          'The consultation in progress keeps the language it was started in.',
+        );
+      }
+    },
+    [dictationLanguage, setDictationLanguage, recordingStatus, unfinished],
   );
 
   const handleClearAudio = useCallback(() => {
@@ -175,8 +219,21 @@ const SettingsScreen = ({ navigation }) => {
               first
               icon="globe"
               label="Language"
-              value="English (India) · en-IN"
-              trailing={<Text style={styles.rowTrailing}>Fixed</Text>}
+              value={`${language.nativeName} · ${language.tag}`}
+              onPress={() => setPickerOpen(true)}
+              accessibilityHint="Choose the language you dictate in"
+              trailing={
+                <Icon name="chevron-right" size={18} color={colors.textMuted} />
+              }
+            />
+            <SettingRow
+              icon="help-circle"
+              label="How it works"
+              value={
+                isEnglish
+                  ? 'Dictation is recognised on this device and refined by Anuvadini.'
+                  : `Dictation is recognised in ${language.englishName}, then translated to English for the report. Prompts for missing details are spoken back in ${language.englishName}.`
+              }
             />
             <SettingRow
               icon="cpu"
@@ -270,11 +327,20 @@ const SettingsScreen = ({ navigation }) => {
           </View>
 
           <Text style={styles.footnote}>
-            Patient data never leaves this device except for transcription.
+            {isEnglish
+              ? 'Patient data never leaves this device except for transcription.'
+              : 'Patient data never leaves this device except for transcription and translation.'}
           </Text>
         </ScrollView>
       </ScreenContainer>
       <BottomDock active="Settings" />
+      <LanguagePickerModal
+        visible={pickerOpen}
+        languages={capabilityList({ deviceLocales })}
+        selected={dictationLanguage}
+        onSelect={handleSelectLanguage}
+        onDismiss={() => setPickerOpen(false)}
+      />
     </>
   );
 };

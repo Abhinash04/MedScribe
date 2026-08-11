@@ -18,6 +18,7 @@ import ScreenContainer from '../components/ScreenContainer';
 import MissingFieldsModal from '../components/MissingFieldsModal';
 import TranscriptDiffView from '../components/TranscriptDiffView';
 import { isTranscriptionAvailable } from '../config/features';
+import { displayFor } from '../constants/languages';
 import { refineTranscript } from '../services/transcriptRefinement';
 import { ERROR_KIND } from '../services/anuvadini/proxyContract';
 import {
@@ -27,9 +28,14 @@ import {
 } from '../services/consultationTranscripts';
 import useRecordingStore, {
   CONSULTATION_STAGE,
-  selectActiveTranscript,
   selectFullTranscript,
+  selectReportTranscript,
 } from '../store/useRecordingStore';
+import {
+  TRANSLATION_STATUS,
+  needsTranslation,
+} from '../services/consultationTranslation';
+import { ensureTranslation } from '../services/transcriptTranslation';
 import styles from './styles/TranscriptReviewScreen.styles';
 import dictationSessionManager from '../services/dictationSessionManager';
 import { isRetryableFailure } from '../services/captureOutcome';
@@ -57,6 +63,29 @@ const LABEL = {
   [TRANSCRIPT_SOURCE.ANUVADINI]: 'AI Transcription',
 };
 
+const TRANSLATION_ERROR_TEXT = {
+  [ERROR_KIND.NOT_CONFIGURED]: 'translation is not configured in this build',
+  [ERROR_KIND.NETWORK]: 'the network could not be reached',
+  [ERROR_KIND.TIMEOUT]: 'the translation service timed out',
+  [ERROR_KIND.CLIENT_ERROR]: 'the translation service rejected the request',
+  [ERROR_KIND.SERVER_ERROR]: 'the translation service is unavailable',
+  [ERROR_KIND.MALFORMED]: 'the translation service returned no usable text',
+  [ERROR_KIND.UNSUPPORTED_LANGUAGE]: 'this language is not supported',
+  [ERROR_KIND.NO_TEXT]: 'there was nothing to translate',
+  [ERROR_KIND.CANCELLED]: 'it was interrupted',
+  [ERROR_KIND.QUOTA_EXCEEDED]:
+    'this API key has used up its translation quota',
+  [ERROR_KIND.UNAUTHORIZED]: 'the translation API key was rejected',
+  [ERROR_KIND.TEXT_TOO_LARGE]:
+    'this dictation is too long to translate in one request',
+  [ERROR_KIND.EMPTY_TRANSLATION]: 'the translation service returned nothing',
+  [ERROR_KIND.COUNT_MISMATCH]:
+    'the translation service returned an unusable response',
+};
+
+const describeTranslationError = reason =>
+  TRANSLATION_ERROR_TEXT[reason] || `an unexpected error: ${reason}`;
+
 const TranscriptReviewScreen = ({ navigation }) => {
   const fullTranscript = useRecordingStore(selectFullTranscript);
   const durationSeconds = useRecordingStore(state => state.durationSeconds);
@@ -75,6 +104,17 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const captureUnavailable = useRecordingStore(
     state => state.captureUnavailable,
   );
+  const language = useRecordingStore(state => state.language);
+  const recognizerFellBack = useRecordingStore(
+    state => state.recognizerFellBack,
+  );
+  const translation = useRecordingStore(state => state.translation);
+  const setTranslationText = useRecordingStore(
+    state => state.setTranslationText,
+  );
+  const multilingual = needsTranslation(language);
+  const languageName = displayFor(language).englishName;
+  const [languageNoticeDismissed, setLanguageNoticeDismissed] = useState(false);
   const [viewedSource, setViewedSource] = useState(selectedSource);
   const [blocked, setBlocked] = useState(null);
   const [promptReason, setPromptReason] = useState(null);
@@ -185,6 +225,13 @@ const TranscriptReviewScreen = ({ navigation }) => {
     dictationSessionManager.persistCurrentSession();
   }, [setStage]);
 
+  useEffect(() => {
+    if (!multilingual || anuvadini.status !== ANUVADINI_STATUS.READY) {
+      return;
+    }
+    ensureTranslation().catch(() => {});
+  }, [multilingual, anuvadini.status, anuvadini.updatedAt]);
+
   const commitEditor = useCallback(
     text => {
       if (text === viewedText) return viewedText;
@@ -217,23 +264,30 @@ const TranscriptReviewScreen = ({ navigation }) => {
     navigation.navigate('Recording', { resume: true });
   }, [navigation, editableText, commitEditor, setStage]);
 
-  const playPrompt = useCallback(async completeness => {
-    setPromptReason(null);
-    const outcome = await speakMissingFields(blockingFields(completeness));
-    if (outcome.spoken) {
-      return;
-    }
-    if (__DEV__) {
-      console.warn('[speechPrompt] not spoken:', outcome.reason);
-    }
-    setPromptReason(outcome.reason ?? 'unknown');
-  }, []);
+  const playPrompt = useCallback(
+    async completeness => {
+      setPromptReason(null);
+      // The doctor is prompted in the language they dictated in.
+      const outcome = await speakMissingFields(blockingFields(completeness), {
+        language: language ?? undefined,
+      });
+      if (outcome.spoken) {
+        return;
+      }
+      if (__DEV__) {
+        console.warn('[speechPrompt] not spoken:', outcome.reason);
+      }
+      setPromptReason(outcome.reason ?? 'unknown');
+    },
+    [language],
+  );
 
   const handleGenerateReport = useCallback(async () => {
     if (!beginSubmit()) return;
     try {
       commitEditor(editableText);
-      const text = selectActiveTranscript(useRecordingStore.getState());
+      await ensureTranslation();
+      const text = selectReportTranscript(useRecordingStore.getState());
       const { record, residue } = extractForReport(text);
       const draft = reportDraft
         ? mergeExtraction(reportDraft, record, residue)
@@ -280,8 +334,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
       const next = useRecordingStore.getState();
       const { record, residue } = extractForReport(
-        selectActiveTranscript(next),
+        selectReportTranscript(next),
       );
+      ensureTranslation().catch(() => {});
       const previous = next.reportDraft;
       const kept = previous
         ? Object.keys(previous).filter(key => previous[key]?.edited).length
@@ -362,7 +417,11 @@ const TranscriptReviewScreen = ({ navigation }) => {
   }, []);
 
   const handleRetryRefinement = useCallback(() => {
-    refineTranscript().catch(() => {});
+    refineTranscript({ language: language ?? undefined }).catch(() => {});
+  }, [language]);
+
+  const handleRetryTranslation = useCallback(() => {
+    ensureTranslation({ force: true }).catch(() => {});
   }, []);
 
   const handleAddMoreSpeech = useCallback(() => {
@@ -527,7 +586,13 @@ const TranscriptReviewScreen = ({ navigation }) => {
               </View>
               <View style={styles.summaryTextCol}>
                 <Text style={styles.summaryTitle}>Report Uses</Text>
-                <Text style={styles.summaryValue}>{LABEL[selectedSource]}</Text>
+                <Text style={styles.summaryValue}>
+                  {multilingual
+                    ? translation.status === TRANSLATION_STATUS.READY
+                      ? 'English translation'
+                      : 'Original (untranslated)'
+                    : LABEL[selectedSource]}
+                </Text>
               </View>
             </View>
           </View>
@@ -562,7 +627,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
                           isSelectedTab && styles.segmentTabTextActive,
                         ]}
                       >
-                        {LABEL[source]}
+                        {multilingual
+                          ? `${LABEL[source]} (${displayFor(language).nativeName})`
+                          : LABEL[source]}
                       </Text>
                       {isUsed && (
                         <Icon
@@ -587,6 +654,26 @@ const TranscriptReviewScreen = ({ navigation }) => {
               },
             )}
           </View>
+
+          {recognizerFellBack && !languageNoticeDismissed ? (
+            <View style={styles.fallbackNotice}>
+              <Text style={styles.fallbackText}>
+                This device does not appear to have the{' '}
+                {displayFor(language).englishName} speech pack installed —
+                recognition fell back to English. Install it from Settings ›
+                Google › Voice, or rely on AI transcription for this
+                consultation.
+              </Text>
+              <Pressable
+                onPress={() => setLanguageNoticeDismissed(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss"
+                hitSlop={8}
+              >
+                <Text style={styles.fallbackDismiss}>✕</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {showFailureNotice ? (
             <View style={styles.fallbackNotice}>
@@ -704,6 +791,69 @@ const TranscriptReviewScreen = ({ navigation }) => {
               </View>
             </View>
           </View>
+
+          {multilingual ? (
+            <View style={styles.editorCard}>
+              <View style={styles.editorHeader}>
+                <View style={styles.editorHeaderLeft}>
+                  <Icon name="globe" size={16} color="#2F6BFF" />
+                  <Text style={styles.editorHeaderTitle}>
+                    English Translation
+                  </Text>
+                </View>
+                <View style={styles.selectedBadge}>
+                  <Icon name="check" size={12} color="#FFFFFF" />
+                  <Text style={styles.selectedBadgeText}>Used for report</Text>
+                </View>
+              </View>
+
+              {translation.status === TRANSLATION_STATUS.PENDING ? (
+                <View style={styles.pendingBlock}>
+                  <ActivityIndicator size="small" color="#2F6BFF" />
+                  <Text style={styles.pendingTitle}>
+                    Translating to English…
+                  </Text>
+                  <Text style={styles.pendingDetail}>
+                    {translation.progress.total > 1
+                      ? `Part ${translation.progress.done} of ${translation.progress.total}.`
+                      : 'This usually takes a few seconds.'}
+                  </Text>
+                </View>
+              ) : translation.status === TRANSLATION_STATUS.READY ? (
+                <TextInput
+                  style={styles.editorInput}
+                  multiline
+                  value={translation.text}
+                  onChangeText={setTranslationText}
+                  placeholder="The English translation will appear here..."
+                  placeholderTextColor="#94A3B8"
+                />
+              ) : (
+                <View style={styles.pendingBlock}>
+                  <Text style={styles.placeholder}>
+                    {translation.status === TRANSLATION_STATUS.FAILED
+                      ? `The English translation could not be produced (${describeTranslationError(
+                          translation.error,
+                        )}). The report will be built from the ${languageName} transcript, so most fields will need filling in by hand.`
+                      : `This dictation has not been translated yet. It is translated to English before the report is generated.`}
+                  </Text>
+                  {translation.error === ERROR_KIND.QUOTA_EXCEEDED ? (
+                    <Text style={styles.pendingDetail}>
+                      Translation is unavailable for the rest of this session.
+                    </Text>
+                  ) : (
+                    <Pressable
+                      onPress={handleRetryTranslation}
+                      accessibilityRole="button"
+                      accessibilityLabel="Translate again"
+                    >
+                      <Text style={styles.retry}>Translate again</Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+            </View>
+          ) : null}
 
           {canSelectViewed && !viewedIsSelected ? (
             <Pressable

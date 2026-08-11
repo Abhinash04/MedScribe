@@ -49,8 +49,10 @@ import {
 } from '../dev/diagnostics';
 import useRecordingStore, {
   CONSULTATION_STAGE,
-  selectActiveTranscript,
+  selectReportTranscript,
+  selectSourceTranscript,
 } from '../store/useRecordingStore';
+import { needsTranslation } from '../services/consultationTranslation';
 import dictationSessionManager from '../services/dictationSessionManager';
 import useReportsStore from '../store/useReportsStore';
 import { colors } from '../theme';
@@ -65,10 +67,6 @@ const SECTION_TINTS = {
   additional: { fill: colors.warningSoft, glyph: colors.warningText },
 };
 
-/**
- * One card per group of fields. The short fields listed in HALF_WIDTH pair up
- * two to a row; everything else takes the full width.
- */
 const ReportSection = ({ section, draft, onChange }) => {
   const tint = SECTION_TINTS[section.key] ?? SECTION_TINTS.patient;
   const required = section.fields.filter(field => field.required);
@@ -90,7 +88,6 @@ const ReportSection = ({ section, draft, onChange }) => {
     />
   );
 
-  // Walk the section once, collapsing runs of short fields into paired rows.
   const rows = [];
   for (let index = 0; index < section.fields.length; index += 1) {
     const field = section.fields[index];
@@ -152,7 +149,7 @@ const ReportSection = ({ section, draft, onChange }) => {
 const ReportScreen = ({ route }) => {
   const navigation = useNavigation();
   const openedId = route?.params?.reportId ?? null;
-  const transcriptFromStore = useRecordingStore(selectActiveTranscript);
+  const transcriptFromStore = useRecordingStore(selectReportTranscript);
   const resetRecording = useRecordingStore(state => state.reset);
   const setReportDraft = useRecordingStore(state => state.setReportDraft);
   const setStage = useRecordingStore(state => state.setStage);
@@ -282,7 +279,16 @@ const ReportScreen = ({ route }) => {
       return reportId;
     }
 
-    const id = await saveNew({ transcript, extracted, edited: draft });
+    const state = useRecordingStore.getState();
+    const id = await saveNew({
+      transcript,
+      extracted,
+      edited: draft,
+      language: state.language,
+      sourceTranscript: needsTranslation(state.language)
+        ? selectSourceTranscript(state)
+        : '',
+    });
     setReportId(id);
     setSavedDraft(draft);
     const now = Date.now();
@@ -446,9 +452,6 @@ const ReportScreen = ({ route }) => {
     ? Math.round((captured / TOTAL_REQUIRED) * 100)
     : 0;
 
-  // The dock points at whatever comes next: bank the edits, then finalize a
-  // complete draft, then export. Nothing is emphasised while the report is
-  // saved but still missing details — the next step there is editing a field.
   const emphasis = dirty
     ? 'save'
     : isFinal

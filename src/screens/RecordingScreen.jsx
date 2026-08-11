@@ -15,6 +15,7 @@ import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import useRecordingStore from '../store/useRecordingStore';
 import { CAPTURE_OUTCOME } from '../services/captureOutcome';
 import { ANUVADINI_STATUS } from '../services/consultationTranscripts';
+import { needsTranslation } from '../services/consultationTranslation';
 import {
   getActiveSession,
   clearActiveSession,
@@ -97,6 +98,7 @@ const RecordingScreen = ({ navigation, route }) => {
   const restoreSession = useRecordingStore(state => state.restoreSession);
   const anuvadiniStatus = useRecordingStore(state => state.anuvadini.status);
   const refineProgress = useRecordingStore(state => state.refineProgress);
+  const sessionLanguage = useRecordingStore(state => state.language);
 
   const [awaitingRefinement, setAwaitingRefinement] = useState(false);
 
@@ -295,6 +297,7 @@ const RecordingScreen = ({ navigation, route }) => {
 
       <LiveFieldsPreview
         fields={liveExtractedFields}
+        deferred={needsTranslation(sessionLanguage)}
         style={styles.livePreview}
       />
 
