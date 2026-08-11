@@ -1,20 +1,13 @@
-const LANGUAGES = {
-  en: 'en-IN',
-  hi: 'hi-IN',
-  mr: 'mr-IN',
-  bn: 'bn-IN',
-  ta: 'ta-IN',
-  te: 'te-IN',
-  kn: 'kn-IN',
-  ml: 'ml-IN',
-  gu: 'gu-IN',
-  pa: 'pa-IN',
-  or: 'or-IN',
-  as: 'as-IN',
-  ur: 'ur-IN',
-};
+import {
+  DEFAULT_LANGUAGE_CODE,
+  DICTATION_LANGUAGES,
+} from '../../constants/languages.js';
 
-export const DEFAULT_LANGUAGE = 'en';
+const LANGUAGES = Object.fromEntries(
+  DICTATION_LANGUAGES.map(language => [language.code, language.tag]),
+);
+
+export const DEFAULT_LANGUAGE = DEFAULT_LANGUAGE_CODE;
 
 export function normalizeAnuvadiniLanguage(language = DEFAULT_LANGUAGE) {
   const value = String(language || '').trim();
@@ -22,7 +15,14 @@ export function normalizeAnuvadiniLanguage(language = DEFAULT_LANGUAGE) {
     return LANGUAGES[DEFAULT_LANGUAGE];
   }
 
-  const base = value.toLowerCase().split(/[-_]/)[0];
+  // Exact match first. Script-variant codes are hyphenated ('ks-deva'), and the
+  // base-tag split below would reduce them to 'ks', which is not a row.
+  const lowered = value.toLowerCase();
+  if (LANGUAGES[lowered]) {
+    return LANGUAGES[lowered];
+  }
+
+  const base = lowered.split(/[-_]/)[0];
   return LANGUAGES[base] || null;
 }
 

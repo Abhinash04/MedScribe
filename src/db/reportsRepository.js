@@ -38,6 +38,8 @@ function toReport(row) {
   return {
     ...toSummary(row),
     transcript: row.transcript || '',
+    language: row.language || null,
+    sourceTranscript: row.transcript_source_text || '',
     extracted: parseJson(row.extracted_json, {}, 'extracted_json'),
     edited: parseJson(row.edited_json, {}, 'edited_json'),
   };
@@ -64,6 +66,8 @@ export async function createReport({
   extracted,
   edited,
   status = REPORT_STATUS.DRAFT,
+  language = null,
+  sourceTranscript = '',
 }) {
   const db = getDb();
   const id = makeId();
@@ -73,8 +77,9 @@ export async function createReport({
   await db.execute(
     `INSERT INTO reports (
        id, patient_name, diagnosis, transcript,
-       extracted_json, edited_json, status, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+       extracted_json, edited_json, status, created_at, updated_at,
+       language, transcript_source_text
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       id,
       patientName,
@@ -85,6 +90,8 @@ export async function createReport({
       status,
       now,
       now,
+      language,
+      sourceTranscript ?? '',
     ],
   );
 

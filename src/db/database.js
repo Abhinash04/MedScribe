@@ -53,6 +53,25 @@ const MIGRATIONS = [
       db.executeSync(`ALTER TABLE active_sessions ADD COLUMN ${column};`);
     }
   },
+  db => {
+    db.executeSync(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key        TEXT PRIMARY KEY,
+        value      TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    `);
+
+    const sessionColumns = ['language TEXT', 'translation_json TEXT'];
+    for (const column of sessionColumns) {
+      db.executeSync(`ALTER TABLE active_sessions ADD COLUMN ${column};`);
+    }
+
+    const reportColumns = ['language TEXT', 'transcript_source_text TEXT'];
+    for (const column of reportColumns) {
+      db.executeSync(`ALTER TABLE reports ADD COLUMN ${column};`);
+    }
+  },
 ];
 
 export function runMigrations() {
