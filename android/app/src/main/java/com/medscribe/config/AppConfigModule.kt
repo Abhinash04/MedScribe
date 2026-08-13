@@ -12,3 +12,4 @@ class AppConfigModule(reactContext: ReactApplicationContext) :
 
   override fun getPravahKey(): String = BuildConfig.PRAVAH_API_KEY
 }
+

@@ -1,3 +1,25 @@
 <resources>
     <string name="app_name">MedScribe</string>
+    <string name="dictation_channel_name">Dictation</string>
+    <string name="dictation_notification_title">MedScribe</string>
+    <string name="dictation_notification_ready">Ready to dictate</string>
+    <string name="dictation_notification_recording">Dictation in progress</string>
+    <string name="dictation_notification_stop">Stop dictation</string>
+    <string name="overlay_play">Play</string>
+    <string name="overlay_pause">Pause</string>
+    <string name="overlay_stop">Stop</string>
+    <string name="overlay_home">Home</string>
+    <string name="overlay_status_listening">LISTENING</string>
+    <string name="overlay_status_paused">PAUSED</string>
+
+    <string-array name="overlay_processing_messages">
+        <item>AI is working…</item>
+        <item>Processing audio…</item>
+        <item>Recognizing medical terminology…</item>
+        <item>Refining your speech…</item>
+        <item>Correcting spelling mistakes…</item>
+        <item>Improving punctuation…</item>
+        <item>Formatting transcript…</item>
+        <item>Finalizing transcription…</item>
+    </string-array>
 </resources>

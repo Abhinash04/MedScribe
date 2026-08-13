@@ -2,12 +2,13 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Lets AudioCueModule mute the streams the system recognizer plays its
-         per-utterance start/end tones on. Normal permission, granted at install. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Required on API 30+ so SpeechRecognizer.isRecognitionAvailable() can
-         see the system speech recognition service (package visibility). -->
     <queries>
       <intent>
         <action android:name="android.speech.RecognitionService" />
@@ -36,7 +37,25 @@
         </intent-filter>
       </activity>
 
-      <!-- Hands exported PDFs to the share sheet. Without it, sharing a file:// URI throws FileUriExposedException on API 24+. -->
+      <activity
+        android:name=".overlay.OverlayReviewActivity"
+        android:theme="@style/OverlayReviewTheme"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:launchMode="singleTop"
+        android:taskAffinity=""
+        android:excludeFromRecents="true"
+        android:windowSoftInputMode="adjustResize"
+        android:exported="false" />
+
+      <service
+        android:name=".overlay.DictationBubbleService"
+        android:exported="false"
+        android:foregroundServiceType="specialUse|microphone">
+        <property
+          android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+          android:value="floating_dictation_control" />
+      </service>
+
       <provider
         android:name="androidx.core.content.FileProvider"
         android:authorities="${applicationId}.fileprovider"

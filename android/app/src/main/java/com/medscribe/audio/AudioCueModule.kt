@@ -12,6 +12,7 @@ import android.util.Log
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.medscribe.overlay.DictationOverlayBridge
 import com.medscribe.specs.NativeAudioCueSpec
 import java.io.File
 
@@ -263,6 +264,9 @@ class AudioCueModule(reactContext: ReactApplicationContext) :
   override fun onHostResume() = Unit
 
   override fun onHostPause() {
+    if (DictationOverlayBridge.dictationActive) {
+      return
+    }
     stopSpeechInternal(resolveAs = false)
     restoreInternal()
   }
