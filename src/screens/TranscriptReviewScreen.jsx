@@ -13,6 +13,9 @@ import {
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import Icon from 'react-native-vector-icons/Feather';
+import MCIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
+
 import RefiningOverlay from '../components/RefiningOverlay';
 import ScreenContainer from '../components/ScreenContainer';
 import MissingFieldsModal from '../components/MissingFieldsModal';
@@ -54,8 +57,57 @@ function formatDuration(totalSeconds = 0) {
 
 const LABEL = {
   [TRANSCRIPT_SOURCE.NATIVE]: 'Original',
-  [TRANSCRIPT_SOURCE.ANUVADINI]: 'AI Transcription',
+  [TRANSCRIPT_SOURCE.ANUVADINI]: 'AI Version',
 };
+
+function GlassBtn({ children, onPress }) {
+  return (
+    <Pressable style={styles.glassBtn} onPress={onPress}>
+      {children}
+    </Pressable>
+  );
+}
+
+function StatCard({ gradient, shadowColor, icon, label, value, sub, subColor, badge, badgeColor }) {
+  return (
+    <LinearGradient colors={gradient} start={{x:0, y:0}} end={{x:1, y:1}} style={[styles.statCard, { shadowColor }]}>
+      <View style={styles.statCardBlob1} />
+      <View style={styles.statCardBlob2} />
+      <View style={styles.statCardHeader}>
+        <View style={styles.statCardIconBox}>
+          {icon}
+        </View>
+        <View style={[styles.statCardBadge, { backgroundColor: badgeColor }]}>
+          <Text style={styles.statCardBadgeText}>{badge}</Text>
+        </View>
+      </View>
+      <Text style={styles.statCardLabel}>{label}</Text>
+      <Text style={styles.statCardValue}>{value}</Text>
+      <Text style={[styles.statCardSub, subColor && { color: subColor }]}>{sub}</Text>
+    </LinearGradient>
+  );
+}
+
+function TabBtn({ active, gradient, shadow, onPress, label, sub, icon }) {
+  const inactiveColor = gradient[0];
+  return (
+    <Pressable onPress={onPress} style={{ flex: 1 }}>
+      <LinearGradient
+        colors={active ? gradient : ['transparent', 'transparent']}
+        start={{x:0, y:0}} end={{x:1, y:1}}
+        style={[styles.tabBtn, active && { shadowColor: shadow, elevation: 6 }]}
+      >
+        <View style={styles.tabBtnIconBox}>
+          {icon}
+        </View>
+        <View style={styles.tabBtnTextCol}>
+          <Text style={[styles.tabBtnLabel, { color: active ? '#fff' : inactiveColor }]}>{label}</Text>
+          <Text style={[styles.tabBtnSub, { color: active ? 'rgba(255,255,255,0.85)' : inactiveColor, opacity: active ? 1 : 0.7 }]}>{sub}</Text>
+        </View>
+      </LinearGradient>
+    </Pressable>
+  );
+}
 
 const TranscriptReviewScreen = ({ navigation }) => {
   const fullTranscript = useRecordingStore(selectFullTranscript);
@@ -84,10 +136,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const [skippedRefinement, setSkippedRefinement] = useState(false);
   const [dismissedAt, setDismissedAt] = useState(0);
   const [copied, setCopied] = useState(false);
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const floatAnim = useRef(new Animated.Value(0)).current;
   const editorFade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -120,24 +172,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
         }),
       ]),
     ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: -12,
-          duration: 3500,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 3500,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, [fadeAnim, slideAnim, pulseAnim, floatAnim]);
+  }, [fadeAnim, slideAnim, pulseAnim]);
 
   const beginSubmit = useCallback(() => {
     if (submittingRef.current) return false;
@@ -209,6 +244,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
   );
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  
   const handleResumeRecording = useCallback(async () => {
     await stopPrompt();
     commitEditor(editableText);
@@ -440,7 +476,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
   };
 
   const canSelectViewed = viewingAi ? aiReady : true;
-  const viewedIsSelected = viewedSource === selectedSource;
 
   const wordCount = editableText
     ? editableText
@@ -450,18 +485,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
     : 0;
 
   return (
-    <ScreenContainer style={styles.container}>
-      <View style={styles.appBar}>
-        <Pressable
-          onPress={goBack}
-          style={styles.backButton}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Icon name="arrow-left" size={20} color="#0F172A" />
-        </Pressable>
-        <Text style={styles.appBarTitle}>Transcript Review</Text>
-        <View style={styles.appBarRightSpacer} />
+    <View style={styles.container}>
+      {/* Decorative background blobs */}
+      <View style={styles.blobContainer}>
+        <View style={styles.blob1} />
+        <View style={styles.blob2} />
+        <View style={styles.blob3} />
       </View>
 
       <ScrollView
@@ -469,294 +498,251 @@ const TranscriptReviewScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View
-          style={[
-            styles.flexOne,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          <View style={styles.heroSection}>
-            <View style={styles.heroLeft}>
-              <View style={styles.heroLabelRow} />
-              <Text style={styles.heroTitle}>
-                Review & Edit{'\n'}Transcript
-              </Text>
-              <Text style={styles.heroSubtitle}>
-                Compare both transcriptions, then choose which one the report is
-                built from.
-              </Text>
-            </View>
-
-            <View style={styles.heroRight}>
-              <Animated.View
-                style={[
-                  styles.illustrationContainer,
-                  { transform: [{ translateY: floatAnim }] },
-                ]}
-              >
-                <View style={[styles.blob, styles.blobBlue]} />
-                <View style={[styles.blob, styles.blobLavender]} />
-                <View style={styles.illusDoc}>
-                  <Icon name="file-text" size={28} color="#2F6BFF" />
-                  <View style={styles.illusSparkle}>
-                    <Icon name="star" size={10} color="#FFF" />
-                  </View>
-                </View>
-                <View style={styles.illusWave}>
-                  <Icon name="activity" size={14} color="#8B5CF6" />
-                </View>
-              </Animated.View>
-            </View>
+        <Animated.View style={[{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          
+          {/* Header */}
+          <View style={styles.headerRow}>
+            <GlassBtn onPress={goBack}>
+              <Icon name="arrow-left" size={17} color="#6D4FFF" />
+            </GlassBtn>
+            <Text style={styles.headerTitle}>Transcript Review</Text>
+            <GlassBtn>
+              <Icon name="more-horizontal" size={17} color="#6D4FFF" />
+            </GlassBtn>
           </View>
 
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <View style={[styles.iconCircle, styles.iconCircleBlue]}>
-                <Icon name="clock" size={18} color="#2F6BFF" />
-              </View>
-              <View style={styles.summaryTextCol}>
-                <Text style={styles.summaryTitle}>Recording Time</Text>
-                <Text style={styles.summaryValue}>
-                  {formatDuration(durationSeconds)}
-                </Text>
-              </View>
+          {/* Hero band */}
+          <LinearGradient
+            colors={['#6D4FFF', '#8B5CF6', '#EC4899']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.heroBand}
+          >
+            <View style={styles.heroBlob1} />
+            <View style={styles.heroBlob2} />
+            <View style={styles.liveSessionBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>Live Session</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <View style={[styles.iconCircle, styles.iconCirclePurple]}>
-                <Icon name="layers" size={18} color="#8B5CF6" />
-              </View>
-              <View style={styles.summaryTextCol}>
-                <Text style={styles.summaryTitle}>Report Uses</Text>
-                <Text style={styles.summaryValue}>{LABEL[selectedSource]}</Text>
-              </View>
-            </View>
+            <Text style={styles.heroTitle}>
+              Review & Edit{'\n'}
+              <Text style={styles.heroTitleLight}>Transcript</Text>
+            </Text>
+            <Text style={styles.heroDesc}>
+              Compare transcriptions, then choose which the report is built from.
+            </Text>
+          </LinearGradient>
+
+          {/* Stat cards */}
+          <View style={styles.statCardsGrid}>
+            <StatCard
+              gradient={['#6D4FFF', '#818CF8']}
+              shadowColor="#6D4FFF"
+              icon={<Icon name="mic" size={16} color="#fff" />}
+              label="Recording"
+              value={formatDuration(durationSeconds)}
+              sub="Total duration"
+              subColor="#000000"
+              badge="● REC"
+              badgeColor="rgba(255,255,255,0.2)"
+            />
+            <StatCard
+              gradient={['#EC4899', '#F97316']}
+              shadowColor="#EC4899"
+              icon={<Icon name="layers" size={16} color="#fff" />}
+              label="Report Uses"
+              value={selectedSource === TRANSCRIPT_SOURCE.NATIVE ? 'Original' : 'AI Ver.'}
+              sub="Active source"
+              subColor="#000000"
+              badge="ACTIVE"
+              badgeColor="rgba(255,255,255,0.2)"
+            />
           </View>
 
-          <View style={styles.segmentContainer}>
-            {[TRANSCRIPT_SOURCE.NATIVE, TRANSCRIPT_SOURCE.ANUVADINI].map(
-              source => {
-                const isSelectedTab = viewedSource === source;
-                const isUsed = selectedSource === source;
-                return (
-                  <Pressable
-                    key={source}
-                    style={[
-                      styles.segmentTab,
-                      isSelectedTab && styles.segmentTabActive,
-                    ]}
-                    onPress={() => showSource(source)}
-                  >
-                    <View style={styles.segmentTabHeader}>
-                      {source === TRANSCRIPT_SOURCE.ANUVADINI &&
-                        !isSelectedTab && (
-                          <Icon
-                            name="star"
-                            size={14}
-                            color="#8B5CF6"
-                            style={styles.starIconMargin}
-                          />
-                        )}
-                      <Text
-                        style={[
-                          styles.segmentTabText,
-                          isSelectedTab && styles.segmentTabTextActive,
-                        ]}
-                      >
-                        {LABEL[source]}
-                      </Text>
-                      {isUsed && (
-                        <Icon
-                          name="check-circle"
-                          size={13}
-                          color={isSelectedTab ? '#FFFFFF' : '#2F6BFF'}
-                          style={styles.usedCheckMargin}
-                        />
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.inUseText,
-                        isSelectedTab && styles.inUseTextActive,
-                        !isUsed && styles.inUseTextIdle,
-                      ]}
-                    >
-                      {isUsed ? 'USED FOR REPORT' : 'PREVIEW ONLY'}
-                    </Text>
-                  </Pressable>
-                );
-              },
-            )}
+          {/* Mini stats row */}
+          {/* <View style={styles.miniStatsGrid}>
+            {[
+              { label: 'Words', value: `${wordCount}`, color: '#6D4FFF', bg: '#EDE9FF' },
+              { label: 'Quality', value: '98%', color: '#059669', bg: '#ECFDF5' },
+              { label: 'Source', value: selectedSource === TRANSCRIPT_SOURCE.NATIVE ? 'Orig' : 'AI', color: '#D97706', bg: '#FFF7ED' },
+            ].map(s => (
+              <View key={s.label} style={[styles.miniStatBox, { backgroundColor: s.bg, borderColor: `${s.color}22` }]}>
+                <Text style={[styles.miniStatValue, { color: s.color }]}>{s.value}</Text>
+                <Text style={[styles.miniStatLabel, { color: s.color }]}>{s.label}</Text>
+              </View>
+            ))}
+          </View> */}
+
+          {/* Tab switcher */}
+          <View style={styles.tabSwitcher}>
+            <TabBtn
+              active={viewedSource === TRANSCRIPT_SOURCE.NATIVE}
+              gradient={['#6D4FFF', '#A855F7']}
+              shadow="#6D4FFF"
+              onPress={() => showSource(TRANSCRIPT_SOURCE.NATIVE)}
+              label="Original"
+              sub={selectedSource === TRANSCRIPT_SOURCE.NATIVE ? '✓ For Report' : 'Dictated'}
+              icon={<Icon name="check-circle" size={16} color={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? '#fff' : (selectedSource === TRANSCRIPT_SOURCE.NATIVE ? '#6D4FFF' : '#C4BFDB')} />}
+            />
+            <TabBtn
+              active={viewedSource === TRANSCRIPT_SOURCE.ANUVADINI}
+              gradient={['#EC4899', '#F97316']}
+              shadow="#EC4899"
+              onPress={() => showSource(TRANSCRIPT_SOURCE.ANUVADINI)}
+              label="AI Transcription"
+              sub={selectedSource === TRANSCRIPT_SOURCE.ANUVADINI ? '✓ For Report' : 'Preview Only'}
+              icon={<Icon name="zap" size={16} color={viewedSource === TRANSCRIPT_SOURCE.ANUVADINI ? '#fff' : '#C4BFDB'} />}
+            />
           </View>
 
+          {/* Fallback Notice */}
           {showFailureNotice ? (
             <View style={styles.fallbackNotice}>
               <Text style={styles.fallbackText}>
                 {captureUnavailable
-                  ? 'Microphone capture did not start for this dictation, so ' +
-                    'there was no audio to refine — continuing with the ' +
-                    'original transcription.'
-                  : 'AI refinement could not be completed — continuing with ' +
-                    'the original transcription.'}
+                  ? 'Microphone capture did not start for this dictation, so there was no audio to refine — continuing with the original transcription.'
+                  : 'AI refinement could not be completed — continuing with the original transcription.'}
               </Text>
-              <Pressable
-                onPress={() => setDismissedAt(anuvadini.updatedAt)}
-                accessibilityRole="button"
-                accessibilityLabel="Dismiss"
-                hitSlop={8}
-              >
+              <Pressable onPress={() => setDismissedAt(anuvadini.updatedAt)} hitSlop={8}>
                 <Text style={styles.fallbackDismiss}>✕</Text>
               </Pressable>
             </View>
           ) : null}
 
+          {/* AI Status */}
           {viewingAi && !aiReady && (
             <View style={styles.statusRow}>
               {anuvadini.status === ANUVADINI_STATUS.PENDING ? (
-                <ActivityIndicator size="small" color="#2F6BFF" />
+                <ActivityIndicator size="small" color="#6D4FFF" />
               ) : null}
               <Text style={styles.statusText}>{aiStatusLine()}</Text>
-              {anuvadini.status === ANUVADINI_STATUS.FAILED &&
-              canRetryRefinement ? (
-                <Pressable
-                  onPress={handleRetryRefinement}
-                  accessibilityRole="button"
-                >
+              {anuvadini.status === ANUVADINI_STATUS.FAILED && canRetryRefinement ? (
+                <Pressable onPress={handleRetryRefinement}>
                   <Text style={styles.retry}>Retry</Text>
                 </Pressable>
               ) : null}
             </View>
           )}
-          <View style={styles.editorCard}>
-            <View style={styles.editorHeader}>
-              <View style={styles.editorHeaderLeft}>
-                <Icon name="file-text" size={16} color="#2F6BFF" />
-                <Text style={styles.editorHeaderTitle}>
-                  {viewingAi ? 'AI Transcription' : 'Original Transcription'}
-                </Text>
+
+          {/* Transcript panel */}
+          <View style={styles.transcriptPanel}>
+            <LinearGradient
+              colors={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? ['#6D4FFF', '#A855F7', '#818CF8'] : ['#EC4899', '#F97316', '#FBBF24']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.panelTopStripe}
+            />
+            
+            <View style={styles.panelHeader}>
+              <View style={styles.panelHeaderLeft}>
+                <LinearGradient
+                  colors={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? ['#6D4FFF', '#A855F7'] : ['#EC4899', '#F97316']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={styles.panelHeaderIconBg}
+                >
+                  <Icon name="file-text" size={15} color="#fff" />
+                </LinearGradient>
+                <View>
+                  <Text style={styles.panelHeaderTitle}>
+                    {viewedSource === TRANSCRIPT_SOURCE.NATIVE ? 'Original Transcript' : 'AI Transcript'}
+                  </Text>
+                  <Text style={styles.panelHeaderSub}>
+                    {viewedSource === TRANSCRIPT_SOURCE.NATIVE ? 'Dictated recording' : 'AI-enhanced version'}
+                  </Text>
+                </View>
               </View>
-              {viewedIsSelected ? (
-                <View style={styles.selectedBadge}>
-                  <Icon name="check" size={12} color="#FFFFFF" />
-                  <Text style={styles.selectedBadgeText}>Used for report</Text>
+              
+              {selectedSource === viewedSource ? (
+                <View style={[styles.useBadge, { backgroundColor: '#D1FAE5', borderColor: 'rgba(5,150,105,0.25)' }]}>
+                  <Text style={[styles.useBadgeText, { color: '#059669' }]}>✓ For Report</Text>
                 </View>
-              ) : (
-                <View style={styles.unusedBadge}>
-                  <Text style={styles.unusedBadgeText}>Not used</Text>
-                </View>
-              )}
+              ) : canSelectViewed ? (
+                <Pressable onPress={() => selectForReport(viewedSource)}>
+                  <LinearGradient
+                    colors={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? ['#6D4FFF', '#A855F7'] : ['#EC4899', '#F97316']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={[styles.useBadge, { borderColor: 'transparent' }]}
+                  >
+                    <Text style={[styles.useBadgeText, { color: '#fff' }]}>Use This</Text>
+                  </LinearGradient>
+                </Pressable>
+              ) : null}
             </View>
+
             <Animated.View style={{ opacity: editorFade }}>
-              {viewingAi &&
-              !hasAiText &&
-              anuvadini.status !== ANUVADINI_STATUS.READY ? (
+              {viewingAi && !hasAiText && anuvadini.status !== ANUVADINI_STATUS.READY ? (
                 anuvadini.status === ANUVADINI_STATUS.PENDING ? (
                   <View style={styles.pendingBlock}>
-                    <ActivityIndicator size="small" color="#2F6BFF" />
-                    <Text style={styles.pendingTitle}>
-                      Generating AI transcription…
-                    </Text>
-                    <Text style={styles.pendingDetail}>
-                      This usually takes a few seconds. The original transcript
-                      is ready to use in the meantime.
-                    </Text>
+                    <ActivityIndicator size="small" color="#6D4FFF" />
+                    <Text style={styles.pendingTitle}>Generating AI transcription…</Text>
+                    <Text style={styles.pendingDetail}>This usually takes a few seconds. The original transcript is ready to use in the meantime.</Text>
                   </View>
                 ) : (
                   <Text style={styles.placeholder}>
-                    No AI transcription for this dictation. The original
-                    transcript is unaffected and can still generate the report.
+                    No AI transcription for this dictation. The original transcript is unaffected and can still generate the report.
                   </Text>
                 )
               ) : (
                 <TextInput
-                  style={styles.editorInput}
+                  style={[styles.panelEditor, viewingAi && { opacity: 0.72 }]}
                   multiline
                   value={editableText}
                   onChangeText={setEditableText}
+                  readOnly={viewingAi}
                   placeholder="Dictated text will appear here..."
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9E9BB5"
                 />
               )}
             </Animated.View>
 
-            <View style={styles.editorToolbar}>
-              <View style={styles.toolbarLeft}>
-                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                  <Icon name="activity" size={16} color="#2F6BFF" />
-                </Animated.View>
-                <Text style={styles.wordCount}>{wordCount} words</Text>
+            <View style={styles.panelFooter}>
+              <View style={styles.wordCountRow}>
+                <Icon name="activity" size={14} color={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? '#6D4FFF' : '#EC4899'} />
+                <Text style={styles.wordCountText}>{wordCount} words</Text>
               </View>
-              <View style={styles.toolbarRight}>
-                <Pressable
-                  style={styles.toolbarIcon}
-                  onPress={handleCopyTranscript}
-                  disabled={!editableText}
-                  accessibilityRole="button"
-                  accessibilityLabel="Copy the transcript"
-                  accessibilityState={{ disabled: !editableText }}
-                  hitSlop={8}
+              <Pressable onPress={handleCopyTranscript} disabled={!editableText}>
+                <LinearGradient
+                  colors={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? ['#EDE9FF', '#DDD5FF'] : ['#FCE7F3', '#FBCFE8']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={styles.copyBtn}
                 >
-                  <Icon
-                    name={copied ? 'check' : 'copy'}
-                    size={18}
-                    color={editableText ? '#2F6BFF' : '#94A3B8'}
-                  />
-                </Pressable>
-              </View>
+                  <Icon name={copied ? 'check' : 'copy'} size={13} color={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? '#6D4FFF' : '#EC4899'} />
+                </LinearGradient>
+              </Pressable>
             </View>
           </View>
-
-          {canSelectViewed && !viewedIsSelected ? (
+ 
+          {/* Action buttons */}
+          <View style={styles.actionsContainer}>
             <Pressable
-              style={({ pressed }) => [
-                styles.useBtn,
-                pressed && styles.pressed,
-              ]}
-              onPress={() => selectForReport(viewedSource)}
-              accessibilityRole="button"
+              style={({ pressed }) => [styles.addMoreBtn, pressed && styles.pressed, submitting && styles.disabled]}
+              onPress={handleAddMoreSpeech}
+              disabled={submitting}
             >
-              <Text style={styles.useBtnText}>
-                {viewingAi
-                  ? 'Use AI Transcription'
-                  : 'Use Original Transcription'}
-              </Text>
+              <LinearGradient colors={['#6D4FFF', '#A855F7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.addMoreIconBg}>
+                <Icon name="plus" size={16} color="#fff" />
+              </LinearGradient>
+              <Text style={styles.addMoreText}>Add More Speech</Text>
             </Pressable>
-          ) : null}
 
+            <Pressable
+              style={({ pressed }) => [pressed && styles.pressed, submitting && styles.disabled]}
+              onPress={handleGenerateReport}
+              disabled={submitting}
+            >
+              <LinearGradient colors={['#6D4FFF', '#8B5CF6', '#EC4899']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.generateBtn}>
+                <View style={styles.generateBtnShimmer} />
+                <Icon name="file-text" size={18} color="#fff" />
+                <Text style={styles.generateText}>Generate Report</Text>
+                <View style={styles.generateArrowBox}>
+                  <Icon name="arrow-right" size={16} color="#fff" />
+                </View>
+              </LinearGradient>
+            </Pressable>
+          </View>
+          
           <TranscriptDiffView original={nativeRaw} revised={anuvadini.raw} />
+          
         </Animated.View>
       </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.footer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.addMoreBtn,
-            pressed && styles.pressed,
-            submitting && styles.disabled,
-          ]}
-          onPress={handleResumeRecording}
-          disabled={submitting}
-        >
-          <Icon name="plus" size={20} color="#2F6BFF" />
-          <Text style={styles.addMoreBtnText}>Add More Speech</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.generateBtn,
-            pressed && styles.generateBtnPressed,
-            submitting && styles.disabled,
-          ]}
-          onPress={handleGenerateReport}
-          disabled={submitting}
-        >
-          <View style={styles.generateBtnContent}>
-            <Icon name="file-text" size={20} color="#FFF" />
-            <Text style={styles.generateBtnText}>Generate Report</Text>
-          </View>
-          <Icon name="arrow-right" size={20} color="#FFF" />
-        </Pressable>
-      </View>
 
       <RefiningOverlay
         visible={refining}
@@ -774,7 +760,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
         onDismiss={handleDismissBlocked}
         promptError={promptReason}
       />
-    </ScreenContainer>
+    </View>
   );
 };
 

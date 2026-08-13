@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,14 +7,14 @@ import {
   Pressable,
   Text,
   View,
+  Animated,
+  TextInput,
+  Keyboard,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
-import BottomDock, { useDockClearance } from '../components/BottomDock';
 import IPCLogo from '../components/IPCLogo';
-import MicGlyph from '../components/MicGlyph';
-import ReportListRow from '../components/ReportListRow';
-import ScreenContainer from '../components/ScreenContainer';
+import BottomDock, { useDockClearance } from '../components/BottomDock';
 import useStartConsultation from '../hooks/useStartConsultation';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import { purgeAbandoned } from '../services/consultationAudio';
@@ -31,89 +31,54 @@ import { colors } from '../theme';
 import { formatRelativeDateTime } from '../utils/datetime';
 import styles from './styles/DashboardScreen.styles';
 
-const RECENT_LIMIT = 3;
+const MiniBarChart = ({ color, bars }) => {
+  const max = Math.max(...bars, 1);
+  return (
+    <View style={styles.miniBarChart}>
+      {bars.map((h, i) => (
+        <View
+          key={i}
+          style={[
+            styles.miniBar,
+            {
+              backgroundColor: color,
+              height: (h / max) * 24,
+              opacity: 0.35 + (i / bars.length) * 0.65,
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
 
-function greetingFor(date) {
-  const hour = date.getHours();
-  if (hour < 12) {
-    return 'Good Morning';
-  }
-  if (hour < 17) {
-    return 'Good Afternoon';
-  }
-  return 'Good Evening';
-}
-
-const MiniBarChart = ({ color }) => (
-  <View style={styles.miniBarChart}>
-    <View style={[styles.bar, styles.bar1, { backgroundColor: color }]} />
-    <View style={[styles.bar, styles.bar2, { backgroundColor: color }]} />
-    <View style={[styles.bar, styles.bar3, { backgroundColor: color }]} />
-    <View style={[styles.bar, styles.bar4, { backgroundColor: color }]} />
-  </View>
-);
-
-const StatTile = ({
-  label,
-  subLabel,
-  value,
-  tint,
-  accent,
-  glyph = accent,
-  iconName,
-}) => (
+const StatTile = ({ stat }) => (
   <View style={styles.statTile}>
     <View style={styles.statTileHeader}>
-      <View style={[styles.statChip, { backgroundColor: tint }]}>
-        <Icon name={iconName} size={16} color={glyph} />
+      <View style={[styles.statChip, { backgroundColor: stat.bg }]}>
+        <Icon name={stat.icon} size={20} color={stat.color} />
       </View>
-      <Text style={styles.statTileLabel}>{label}</Text>
+      <MiniBarChart color={stat.color} bars={stat.bars} />
     </View>
-    <View style={styles.statTileBody}>
-      <View style={styles.statTileTextGroup}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statSubLabel}>{subLabel}</Text>
-      </View>
-      <MiniBarChart color={accent} />
+    <View>
+      <Text style={styles.statValue}>{stat.value}</Text>
+      <Text style={styles.statLabel}>{stat.label}</Text>
+      <Text style={styles.statSubLabel}>{stat.sub}</Text>
     </View>
   </View>
 );
 
-const QuickAction = ({
-  label,
-  subLabel,
-  iconName,
-  accent,
-  glyph = accent,
-  tint,
-  active,
-  onPress,
-  style,
-}) => (
-  <Pressable
-    style={({ pressed }) => [
-      styles.quickAction,
-      style,
-      active && styles.quickActionActive,
-      pressed && styles.pressed,
-    ]}
-    onPress={onPress}
-    accessibilityRole="button"
-    accessibilityLabel={label}
-    accessibilityState={{ selected: !!active }}
-  >
+const QuickAction = ({ action, onPress }) => (
+  <Pressable style={styles.quickActionBtn} onPress={() => onPress(action.label)}>
     <View
-      style={[styles.quickChip, { backgroundColor: tint, borderColor: accent }]}
+      style={[
+        styles.reportIconBox, // Reusing size shape
+        { backgroundColor: action.bg, marginBottom: 8, marginRight: 0 },
+      ]}
     >
-      <Icon name={iconName} size={22} color={glyph} />
+      <Text style={{ fontSize: 22, color: action.color }}>{action.icon}</Text>
     </View>
-    <Text style={styles.quickLabel} numberOfLines={1}>
-      {label}
-    </Text>
-    <Text style={styles.quickSubLabel} numberOfLines={1}>
-      {subLabel}
-    </Text>
-    <View style={[styles.quickIndicator, { backgroundColor: accent }]} />
+    <Text style={[styles.quickActionLabel, { color: '#0f1628' }]}>{action.label}</Text>
   </Pressable>
 );
 
@@ -128,11 +93,32 @@ const DashboardScreen = ({ navigation }) => {
   const startConsultation = useStartConsultation();
   const clearance = useDockClearance();
 
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const [unfinished, setUnfinished] = useState(null);
+  const [activeTab, setActiveTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim]);
 
   useFocusEffect(
     useCallback(() => {
       loadAll();
+      Keyboard.dismiss();
     }, [loadAll]),
   );
 
@@ -151,7 +137,7 @@ const DashboardScreen = ({ navigation }) => {
     }, []),
   );
 
-  const stats = useMemo(() => {
+  const statsObj = useMemo(() => {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const todayMs = startOfToday.getTime();
@@ -159,295 +145,210 @@ const DashboardScreen = ({ navigation }) => {
     return {
       total: reports.length,
       today: reports.filter(report => report.createdAt >= todayMs).length,
-      drafts: reports.filter(report => report.status !== REPORT_STATUS.FINAL)
-        .length,
-      final: reports.filter(report => report.status === REPORT_STATUS.FINAL)
-        .length,
+      drafts: reports.filter(report => report.status !== REPORT_STATUS.FINAL).length,
+      final: reports.filter(report => report.status === REPORT_STATUS.FINAL).length,
     };
   }, [reports]);
 
-  const visibleReports = useMemo(
-    () => reports.slice(0, RECENT_LIMIT),
-    [reports],
-  );
+  const statsList = [
+    { label: 'Total Reports', sub: 'All time', value: statsObj.total, color: '#6c63ff', bg: '#ede9ff', icon: 'file-text', bars: [3, 5, 4, 6, 5, 7] },
+    { label: "Today's", sub: 'Generated today', value: statsObj.today, color: '#06b6d4', bg: '#e0f9ff', icon: 'clock', bars: [2, 3, 2, 4, 3, 5] },
+    { label: 'Drafts', sub: 'Pending reports', value: statsObj.drafts, color: '#f97316', bg: '#fff0e6', icon: 'edit-2', bars: [4, 3, 5, 3, 4, 2] },
+    { label: 'Finalized', sub: 'Completed reports', value: statsObj.final, color: '#10b981', bg: '#e6f9f2', icon: 'check-circle', bars: [2, 4, 3, 5, 4, 6] },
+  ];
+
+  const quickActions = [
+    { icon: '🔍', label: 'Search', color: '#6c63ff', bg: '#ede9ff' },
+    { icon: '✏️', label: 'Drafts', color: '#f97316', bg: '#fff0e6' },
+    // { icon: '🗓️', label: 'Schedule', color: '#06b6d4', bg: '#e0f9ff' },
+    // { icon: '📝', label: 'Templates', color: '#10b981', bg: '#e6f9f2' },
+  ];
+
+  const visibleReports = useMemo(() => {
+    let filtered = reports;
+    if (searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        r =>
+          (r.patientName || '').toLowerCase().includes(q) ||
+          (r.consultationType || '').toLowerCase().includes(q)
+      );
+    }
+    if (activeTab === 'finalized') {
+      filtered = filtered.filter(r => r.status === REPORT_STATUS.FINAL);
+    } else if (activeTab === 'drafts') {
+      filtered = filtered.filter(r => r.status !== REPORT_STATUS.FINAL);
+    }
+    return searchQuery.trim().length > 0 ? filtered : filtered.slice(0, 5); // Limit to recent 5 if not searching
+  }, [reports, activeTab, searchQuery]);
 
   const handleOpen = useCallback(
     id => navigation.navigate('Report', { reportId: id }),
     [navigation],
   );
 
-  const handleResumeUnfinished = useCallback(() => {
-    if (!unfinished) {
-      return;
+  const handleQuickAction = useCallback((label) => {
+    if (label === 'Search') {
+      navigation.navigate('Patients');
+    } else if (label === 'Drafts') {
+      navigation.navigate('Reports', { filter: 'drafts' });
     }
-    restoreSession(unfinished);
-    setUnfinished(null);
-    if (unfinished.stage === CONSULTATION_STAGE.REPORT) {
-      navigation.navigate('Report');
-    } else if (unfinished.stage === CONSULTATION_STAGE.REVIEW) {
-      navigation.navigate('TranscriptReview');
-    } else {
-      navigation.navigate('Recording', { resume: true });
-    }
-  }, [unfinished, restoreSession, navigation]);
-
-  const handleDiscardUnfinished = useCallback(() => {
-    Alert.alert(
-      'Discard this consultation?',
-      'The dictation and any report details captured for it will be removed.',
-      [
-        { text: 'Keep it', style: 'cancel' },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: async () => {
-            await clearActiveSession(unfinished?.id);
-            await purgeAbandoned(0);
-            clearRefinementState();
-            setUnfinished(null);
-          },
-        },
-      ],
-    );
-  }, [unfinished]);
-
-  const handleDelete = useCallback(
-    report => {
-      Alert.alert(
-        'Delete report?',
-        `${report.patientName || 'This report'} will be permanently removed.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => remove(report.id),
-          },
-        ],
-      );
-    },
-    [remove],
-  );
-
-  const openReports = useCallback(
-    params => navigation.navigate('Reports', params),
-    [navigation],
-  );
+  }, [navigation]);
 
   const renderItem = useCallback(
-    ({ item }) => (
-      <ReportListRow
-        report={item}
-        onOpen={handleOpen}
-        onDelete={handleDelete}
-      />
-    ),
-    [handleOpen, handleDelete],
+    ({ item }) => {
+      const isFinal = item.status === REPORT_STATUS.FINAL;
+      return (
+        <Pressable style={styles.reportRow} onPress={() => handleOpen(item.id)}>
+          <View
+            style={[
+              styles.reportIconBox,
+              { backgroundColor: isFinal ? '#e6f9f2' : '#fff0e6' },
+            ]}
+          >
+            <Text style={styles.reportIconText}>{isFinal ? '✅' : '✏️'}</Text>
+          </View>
+          <View style={styles.reportInfo}>
+            <Text style={styles.reportName}>{item.patientName || 'Unnamed Patient'}</Text>
+            <Text style={styles.reportMeta}>
+              {item.consultationType || 'General'} · Age {item.patientAge || '--'}
+            </Text>
+          </View>
+          <View style={styles.reportStatusBox}>
+            <View
+              style={[
+                styles.reportStatusBadge,
+                { backgroundColor: isFinal ? '#e6f9f2' : '#fff0e6' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.reportStatusText,
+                  { color: isFinal ? '#10b981' : '#f97316' },
+                ]}
+              >
+                {isFinal ? 'Finalized' : 'Draft'}
+              </Text>
+            </View>
+            <Text style={styles.reportTime}>{formatRelativeDateTime(item.createdAt)}</Text>
+          </View>
+        </Pressable>
+      );
+    },
+    [handleOpen],
   );
 
   const header = (
-    <View>
-      <View style={styles.greetingRow}>
-        <View style={styles.greetingText}>
-          <Text style={styles.greeting}>
-            {greetingFor(new Date())}, <Text style={styles.doctor}>Doctor</Text>
-          </Text>
-          <Text style={styles.brand}>MedScribe</Text>
-          <Text style={styles.brandSub}>Medical dictation assistant</Text>
-        </View>
-
-        <View style={styles.logoBadge}>
-          <IPCLogo size={42} />
-        </View>
-      </View>
-
-      <Text style={styles.readyLine}>Ready for your next consultation.</Text>
-
-      <Pressable
-        style={({ pressed }) => [styles.ctaWrapper, pressed && styles.pressed]}
-        onPress={startConsultation}
-        accessibilityRole="button"
-        accessibilityLabel="Start new recording"
-        accessibilityHint="Opens the dictation screen"
+    <View style={styles.pageBackground}>
+      <LinearGradient
+        colors={['#6c63ff', '#8b5cf6', '#a78bfa']}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={styles.heroHeader}
       >
-        <LinearGradient
-          colors={['#2F6BFF', '#7C4DFF']}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={styles.ctaCard}
-        >
-          <View style={styles.waveContainerLeft}>
-            <View style={[styles.waveBar, styles.waveBar8]} />
-            <View style={[styles.waveBar, styles.waveBar16]} />
-            <View style={[styles.waveBar, styles.waveBar12]} />
-            <View style={[styles.waveBar, styles.waveBar20]} />
-          </View>
+        <View style={styles.heroDecorCircle1} />
+        <View style={styles.heroDecorCircle2} />
+        <View style={styles.heroDecorCircle3} />
 
-          <View style={styles.ctaMic}>
-            <MicGlyph size={28} color="#2F6BFF" />
+        <View style={styles.heroTopRow}>
+          <View>
+            <View style={styles.greetingPill}>
+              <Animated.View style={[styles.greetingDot, { transform: [{ scale: pulseAnim }] }]} />
+              <Text style={styles.greetingText}>Good Afternoon, Doctor</Text>
+            </View>
+            <Text style={styles.brandTitle}>MedScribe</Text>
+            <Text style={styles.brandSub}>Medical Dictation Assistant</Text>
           </View>
-
-          <View style={styles.waveContainerRight}>
-            <View style={[styles.waveBar, styles.waveBar20]} />
-            <View style={[styles.waveBar, styles.waveBar12]} />
-            <View style={[styles.waveBar, styles.waveBar16]} />
-            <View style={[styles.waveBar, styles.waveBar8]} />
-          </View>
-
-          <View style={styles.ctaText}>
-            <Text
-              style={styles.ctaTitle}
-              numberOfLines={1}
-              adjustsFontSizeToFit={true}
-              minimumFontScale={0.8}
-            >
-              Start New Recording
-            </Text>
-            <Text style={styles.ctaSubtitle} numberOfLines={2}>
-              Tap to begin a new dictation
-            </Text>
-          </View>
-
-          <View style={styles.ctaChevronContainer}>
-            <Text style={styles.ctaChevron}>›</Text>
-          </View>
-        </LinearGradient>
-      </Pressable>
-
-      {unfinished ? (
-        <View style={styles.resumeCard}>
-          <Text style={styles.resumeTitle}>Unfinished consultation</Text>
-          <Text style={styles.resumeMeta}>
-            {formatRelativeDateTime(unfinished.updatedAt)} ·{' '}
-            {unfinished.segments.length}{' '}
-            {unfinished.segments.length === 1 ? 'utterance' : 'utterances'}
-          </Text>
-          <View style={styles.resumeActions}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.resumeBtn,
-                pressed && styles.pressed,
-              ]}
-              onPress={handleResumeUnfinished}
-              accessibilityRole="button"
-              accessibilityLabel="Resume the unfinished consultation"
-            >
-              <Text style={styles.resumeBtnText}>Resume</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleDiscardUnfinished}
-              accessibilityRole="button"
-              accessibilityLabel="Discard the unfinished consultation"
-            >
-              <Text style={styles.linkText}>Discard</Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
-
-      {error ? (
-        <View style={styles.errorCard}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable onPress={loadAll} accessibilityRole="button">
-            <Text style={styles.linkText}>Try again</Text>
+          <Pressable style={styles.bellBtn}>
+            <IPCLogo size={44} />
           </Pressable>
         </View>
-      ) : null}
 
-      <View style={styles.overviewContainer}>
-        <View style={styles.overviewHeader}>
-          <View style={styles.overviewHeaderLeft}>
-            <View
-              style={[
-                styles.overviewIconContainer,
-                { backgroundColor: colors.violetSoft },
-              ]}
-            >
-              <Icon name="bar-chart-2" size={20} color={colors.violet} />
-            </View>
-            <View style={styles.overviewHeaderText}>
-              <Text style={styles.overviewTitle}>Overview</Text>
-              <Text style={styles.overviewSubtitle}>
-                Quick summary of your reports
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.statGrid}>
-          <StatTile
-            label="Total Reports"
-            subLabel="All time"
-            value={stats.total}
-            iconName="file-text"
-            tint={colors.accentSoft}
-            accent={colors.secondaryAccent}
-          />
-          <StatTile
-            label="Today"
-            subLabel="Generated today"
-            value={stats.today}
-            iconName="clock"
-            tint={colors.violetSoft}
-            accent={colors.violet}
-          />
-          <StatTile
-            label="Drafts"
-            subLabel="Pending reports"
-            value={stats.drafts}
-            iconName="edit-2"
-            tint={colors.warningSoft}
-            accent={colors.warning}
-            glyph={colors.warningText}
-          />
-          <StatTile
-            label="Finalized"
-            subLabel="Completed reports"
-            value={stats.final}
-            iconName="check"
-            tint={colors.successSoft}
-            accent={colors.success}
-            glyph={colors.successText}
+        <View style={styles.searchBar}>
+          <Icon name="search" size={18} color="rgba(255,255,255,0.7)" />
+          <TextInput
+            style={[styles.searchText, { flex: 1, color: '#fff', padding: 0 }]}
+            placeholder="Search patients, reports…"
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
           />
         </View>
-      </View>
+      </LinearGradient>
 
-      <View style={styles.quickActionsHeader}>
-        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-      </View>
-
-      <View style={styles.quickGrid}>
-        <QuickAction
-          label="Search Patients"
-          subLabel="Find existing patients"
-          iconName="search"
-          tint={colors.violetSoft}
-          accent={colors.secondaryAccent}
-          onPress={() => openReports({ focusSearch: true })}
-          style={styles.quickBorderRight}
-        />
-        <QuickAction
-          label="Pending Drafts"
-          subLabel="Continue incomplete reports"
-          iconName="alert-circle"
-          tint={colors.warningSoft}
-          accent={colors.warning}
-          glyph={colors.warningText}
-          onPress={() => openReports({ filter: 'drafts' })}
-        />
-      </View>
-
-      <View style={styles.listHeaderRow}>
-        <Text style={styles.sectionTitle}>Recent Reports</Text>
-        {reports.length > RECENT_LIMIT ? (
-          <Pressable
-            onPress={() => openReports({ filter: 'all' })}
-            accessibilityRole="button"
-            accessibilityLabel="View all reports"
+      <View style={styles.recordCardContainer}>
+        <Pressable style={styles.recordBtn} onPress={startConsultation}>
+          <LinearGradient
+            colors={['#6c63ff', '#a78bfa']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.recordIconBg}
           >
-            <Text style={styles.linkText}>View all</Text>
+            <Icon name="mic" size={22} color="#fff" />
+          </LinearGradient>
+          <View style={styles.recordTextCol}>
+            <Text style={styles.recordTitle}>Start New Recording</Text>
+            <Text style={styles.recordSubtitle}>Tap to begin a new dictation</Text>
+          </View>
+          <View style={styles.recordChevronBg}>
+            <Icon name="chevron-right" size={18} color="#6c63ff" />
+          </View>
+        </Pressable>
+      </View>
+
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionHeaderRow}>
+          <View>
+            <Text style={styles.sectionTitle}>Overview</Text>
+            <Text style={styles.sectionSubtitle}>Quick summary of your reports</Text>
+          </View>
+          <Pressable style={styles.weekBtn}>
+            <Text style={styles.weekBtnText}>This week</Text>
           </Pressable>
-        ) : null}
+        </View>
+        <View style={styles.statGrid}>
+          {statsList.map((s, i) => (
+            <StatTile key={i} stat={s} />
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.quickActionsContainer}>
+        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+        <View style={styles.quickGrid}>
+          {quickActions.map((a, i) => (
+            <QuickAction key={i} action={a} onPress={handleQuickAction} />
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.recentReportsContainer}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Recent Reports</Text>
+          <Pressable onPress={() => navigation.navigate('Reports')}>
+            <Text style={styles.viewAllBtnText}>View all →</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.tabsRow}>
+          {['all', 'finalized', 'drafts'].map(tab => (
+            <Pressable
+              key={tab}
+              style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text
+                style={[
+                  styles.tabBtnText,
+                  activeTab === tab && styles.tabBtnTextActive,
+                ]}
+              >
+                {tab}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -455,36 +356,37 @@ const DashboardScreen = ({ navigation }) => {
   const empty =
     loading && !loaded ? (
       <View style={styles.emptyBox}>
-        <ActivityIndicator color={colors.secondaryAccent} />
+        <ActivityIndicator color="#6c63ff" />
       </View>
     ) : (
-      <View style={styles.emptyBox}>
-        <Text style={styles.emptyTitle}>No reports yet</Text>
-        <Text style={styles.emptyBody}>
-          Tap the microphone to dictate your first patient consultation.
-        </Text>
+      <View style={[styles.recentReportsContainer, { paddingTop: 0 }]}>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyEmoji}>📭</Text>
+          <Text style={styles.emptyTitle}>No reports here</Text>
+          {/* <Text style={styles.emptyBody}>Try a different filter</Text> */}
+        </View>
       </View>
     );
 
+  const footer = (
+    <View style={{ paddingBottom: clearance }} />
+  );
+
   return (
-    <>
-      <ScreenContainer>
-        <FlatList
-          data={visibleReports}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          ListHeaderComponent={header}
-          ListEmptyComponent={empty}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: clearance },
-          ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        />
-      </ScreenContainer>
+    <View style={styles.pageBackground}>
+      <FlatList
+        data={visibleReports}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        ListFooterComponent={footer}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      />
       <BottomDock active="Dashboard" />
-    </>
+    </View>
   );
 };
 
