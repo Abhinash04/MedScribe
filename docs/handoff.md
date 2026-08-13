@@ -816,7 +816,7 @@ The cap is enforced in `services/anuvadini/speechClient.js` and again in `server
 
 ### A language with no TTS voice stays silent
 
-`voiceFor` returns `null`, `synthesize` returns `UNSUPPORTED_LANGUAGE`, and `MissingFieldsModal` already renders "this language has no voice" while listing every missing field visually. Speaking English at a doctor who chose Marathi is worse than saying nothing. The policy is overridable in one line — `speakMissingFields(fields, { language, fallbackLanguage })` — if that judgement changes.
+`voiceFor` returns `null`, `synthesize` returns `UNSUPPORTED_LANGUAGE`, and `MissingFieldsModal.jsx` (in `src/components/MissingFieldsModal.jsx`, rendered by `ReportScreen` and `TranscriptReviewScreen`) already renders "this language has no voice" while listing every missing field visually. Speaking English at a doctor who chose Marathi is worse than saying nothing. The policy is overridable in one line — `speakMissingFields(fields, { language, fallbackLanguage })` — if that judgement changes.
 
 ### `probe:*` and `seed:*` are not tests
 

@@ -553,15 +553,17 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run test:tts:prompt` | 26 assertions over the spoken missing-field prompt: grammar at every count, the four-field cap and its overflow, and that a field VALUE never reaches the text. |
 | `npm run test:tts:client` | 86 assertions over the speech client: both transports, every response shape and failure path, and that the token appears in no result or error. |
 | `npm run test:tts:service` | 10 assertions over prompt ordering: a stop issued during synthesis prevents playback, and the newer request wins. |
-| `npm run test:languages` | 64 assertions over the language table and the capability record. Guards `normalizeAnuvadiniLanguage` back-compatibility for all thirteen original codes. |
+| `npm run test:languages` | 80 assertions over the language table and the capability record. Guards `normalizeAnuvadiniLanguage` back-compatibility for all thirteen original codes. |
 | `npm run test:settings` | 23 assertions over the persisted dictation-language setting, driven through an injected database stub. |
-| `npm run test:prompts` | 60 assertions over the spoken-prompt catalogs: key parity with `PATIENT_FIELDS`, no untranslated Latin runs in a non-Latin catalog, worst-case prompt within `MAX_SPEECH_CHARS`, and English output byte-identical to before multilingual support. |
+| `npm run test:prompts` | 80 assertions over the spoken-prompt catalogs: key parity with `PATIENT_FIELDS`, no untranslated Latin runs in a non-Latin catalog, worst-case prompt within `MAX_SPEECH_CHARS`, and English output byte-identical to before multilingual support. |
 | `npm run test:translation` | 55 assertions over the English-translation record: staleness, the doctor's edit surviving a re-render but not a source change, and the round trip through `active_sessions.translation_json`. |
-| `npm run test:pravah` | 131 assertions over the Pravah translation client and chunker: the request body really is a bare array, every documented status maps to its error kind, the API key never appears in a result, every guard returns before the transport, and no committed file contains an `apk_` key. |
+| `npm run test:pravah` | 133 assertions over the Pravah translation client and chunker: the request body really is a bare array, every documented status maps to its error kind, the API key never appears in a result, every guard returns before the transport, and no committed file contains an `apk_` key. |
 | `npm run test:proxy:translate` | 89 assertions over the proxy's `/translate` route, including that a 429 passes through unchanged so the app's quota latch fires on both transports, and a round-trip proving the app's `readTranslations` reads the proxy body identically to the direct one. |
-| `npm run test:translated` | Recall of the deterministic extractor on machine-translated English — the dominant risk now that no prompt steering is possible. Prints a per-field table and gates on floors, not on 100%. |
+| `npm run test:translated` | 27 assertions over recall of the deterministic extractor on machine-translated English — the dominant risk now that no prompt steering is possible. Prints a per-field table and gates on floors, not on 100%. |
 | `npm run test:all` | Runs every `scripts/test-*.mjs` and exits non-zero if any fails. With ~29 suites this is the index. |
 | `npm run proxy` | Runs the local transcription proxy. Needs `server/.env` — see [server/README.md](server/README.md). |
+| `npm run lint` | ESLint across the project. |
+| `npm test` | Jest. **Currently broken** — see below. |
 
 ### Scripts that are not tests
 
@@ -571,10 +573,8 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 - `seed:prompts` drafts a prompt catalog for one language through the Pravah API (one batched request, 17 items) and **prints it to stdout for a human to paste**. It deliberately does not write into `src/`: the doctor *hears* these sentences read aloud, so a machine-generated draft gets a native speaker's eyes before it is committed. `reviewed: false` is hard-coded for that reason.
 
   Placeholders like `{names}` are never sent — braces are exactly what machine translation mangles. Each is swapped for an opaque sentinel, restored afterwards, then **verified to appear exactly once**. If one does not survive, that frame falls back to the English original with a `// TODO(xx):` comment rather than emitting a catalog that would read `{names}` aloud to a doctor.
-| `npm run lint` | ESLint across the project. |
-| `npm test` | Jest. **Currently broken** — see below. |
 
-The twenty-two fixture suites total **1731 assertions** and are the project's real gate — the extraction, report and transcript layers are pure and RN-free, so they run under plain Node with no framework and no device. `npm test` (Jest) is a separate, currently broken path; it is not what guards this codebase.
+The twenty-nine fixture suites total **2231 assertions** and are the project's real gate — the extraction, report and transcript layers are pure and RN-free, so they run under plain Node with no framework and no device. `npm test` (Jest) is a separate, currently broken path; it is not what guards this codebase.
 
 Useful direct commands:
 
