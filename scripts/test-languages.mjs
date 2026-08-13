@@ -1,4 +1,3 @@
-
 import {
   DEFAULT_LANGUAGE_CODE,
   DICTATION_LANGUAGES,
@@ -31,8 +30,6 @@ const tags = DICTATION_LANGUAGES.map(language => language.tag);
 
 check('L1.1 codes are unique', new Set(codes).size, codes.length);
 
-// A tag may be shared, but only by a deliberate script split: Pravah serves
-// some languages once per script while Android has one recogniser locale.
 const byTag = DICTATION_LANGUAGES.reduce((map, language) => {
   (map[language.tag] ??= []).push(language);
   return map;
@@ -151,8 +148,13 @@ check('L4.8 isKnownLanguage rejects a tag', isKnownLanguage('hi-IN'), false);
 const noProbe = capabilitiesFor('hi');
 check('L5.1 unprobed is UNVERIFIED', noProbe.recognizer, RECOGNIZER.UNVERIFIED);
 check('L5.2 unprobed still knows the tag', noProbe.tag, 'hi-IN');
-check('L5.3 Hindi has no voice yet', noProbe.hasVoice, false);
+check('L5.3 Hindi has a verified voice', noProbe.hasVoice, true);
 check('L5.4 English has a voice', capabilitiesFor('en').hasVoice, true);
+check(
+  'L5.5 a language with no verified voice reports none',
+  capabilitiesFor('sat').hasVoice,
+  false,
+);
 
 const probed = { deviceLocales: ['en-US', 'hi_IN', 'ta-IN'] };
 check(
@@ -193,13 +195,6 @@ check(
   capabilityList().map(entry => entry.code),
   codes,
 );
-
-// L6 — translation codes
-//
-// The Pravah API is a separate namespace from the Android recogniser tag. Four
-// languages disagree, and those four are pinned literally below because they
-// are exactly what a future "helpful" refactor would normalise back to
-// `${code}-IN` — killing translation with no other test failing.
 
 check(
   'L6.1 every row has a translation code',
@@ -252,6 +247,7 @@ check(
   LANGUAGE_BY_TAG['ks-IN'].code,
   'ks-deva',
 );
+
 check('L6.9a a split legacy code migrates', resolveLegacyCode('ks'), 'ks-arab');
 check('L6.9b an unsplit code is untouched', resolveLegacyCode('hi'), 'hi');
 check('L6.9c an unknown code is untouched', resolveLegacyCode('zz'), 'zz');

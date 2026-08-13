@@ -4,7 +4,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-
 const entries = await readdir(here);
 const suites = entries
   .filter(name => name.startsWith('test-') && name.endsWith('.mjs'))
@@ -15,6 +14,9 @@ const runSuite = name =>
     const child = spawn(process.execPath, [join(here, name)], {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
 
     let output = '';
     child.stdout.on('data', chunk => (output += chunk));
@@ -30,11 +32,11 @@ for (const name of suites) {
   const failed = Number(summary?.[2] ?? 0);
 
   results.push({ ...result, passed, failed });
-  const status = result.code === 0 ? 'ok  ' : 'FAIL';
+  const status = result.code === 0 && failed === 0 ? 'ok  ' : 'FAIL';
   console.log(`${status} ${name.padEnd(36)} ${passed} passed, ${failed} failed`);
 }
 
-const broken = results.filter(result => result.code !== 0);
+const broken = results.filter(result => result.code !== 0 || result.failed > 0);
 const totalPassed = results.reduce((sum, result) => sum + result.passed, 0);
 const totalFailed = results.reduce((sum, result) => sum + result.failed, 0);
 

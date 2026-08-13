@@ -1,3 +1,4 @@
+import { flag } from './lib/cli-flags.mjs';
 import { ANUVADINI_TTS_URL } from '../src/config/endpoints.js';
 import { DICTATION_LANGUAGES } from '../src/constants/languages.js';
 import { buildDirectSpeechRequestBody } from '../src/services/anuvadini/speechContract.js';
@@ -13,11 +14,6 @@ if (!token) {
   );
   process.exit(0);
 }
-
-const flag = name => {
-  const match = process.argv.find(arg => arg.startsWith(`--${name}=`));
-  return match ? match.slice(name.length + 3) : null;
-};
 
 const only = flag('only')?.split(',').map(value => value.trim()).filter(Boolean);
 const voiceOverrides = flag('voices')

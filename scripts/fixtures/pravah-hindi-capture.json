@@ -1,0 +1,23 @@
+{
+  "1": {
+    "id": 1,
+    "title": "Standard dictation",
+    "hindi": "रोगी का नाम राहुल शर्मा है। उम्र 34 वर्ष है। लिंग पुरुष है। पता है मकान नंबर 24, सेक्टर 10, नोएडा, उत्तर प्रदेश। पिन कोड 201301 है। संपर्क नंबर 9876543210 है। पिछले तीन दिनों से बुखार, सूखी खांसी, सिरदर्द और कमजोरी की शिकायत है। पहले से मधुमेह की बीमारी है। निदान वायरल फीवर है। दवा में पैरासिटामोल 500 मिलीग्राम दिन में दो बार पाँच दिनों तक और कफ सिरप दिन में दो बार लेने की सलाह दी जाती है। अतिरिक्त सलाह: पर्याप्त पानी पिएं, पूरा आराम करें और तीन दिन बाद पुनः जांच के लिए आएं।",
+    "english": "The name of the patient is Rahul Sharma. Age is 34 years. The gender is male. The address is House No. 24, Sector 10, NOIDA, U.P. The PIN Code is 201301. The contact number is 9876543210. Complainant of fever, dandruff, headache and weakness for the last three days. Preexisting disease (s). The definition of the disease is \"pertussis.\" The drug prescribes paracetamol 500 mg twice a day for five days and expectorant two times a day. Additional advice: Drunk sufficient water, take complete rest and come for re-examination after three days.",
+    "capturedAt": "2026-08-11T10:04:17.191Z"
+  },
+  "2": {
+    "id": 2,
+    "title": "Diagnosis first, random order",
+    "hindi": "निदान सामान्य सर्दी है। दवा में पैरासिटामोल 500 मिलीग्राम दिन में दो बार और कफ सिरप रात में एक बार तीन दिनों तक लेने की सलाह है। रोगी का नाम प्रिया वर्मा है। संपर्क नंबर 9812345678 है। उम्र 27 वर्ष है और लिंग महिला है। लक्षणों में नाक बहना, हल्का बुखार, छींक आना और गले में खराश शामिल हैं। पहले से अस्थमा की बीमारी है। पता है मकान नंबर 18, रोहिणी सेक्टर 7, नई दिल्ली। पिन कोड 110085 है। अतिरिक्त सलाह: दिन में दो बार भाप लें, गर्म तरल पदार्थ पिएं और यदि पाँच दिनों तक लक्षण बने रहें तो पुनः परामर्श के लिए आएं।",
+    "english": "The etiology is \"common cold.\" The drug advice is to take paracetamol 500 mg twice a day and expectorant once at night for three days. The name of the patient is Priya Verma. The contact number is 9812345678. A. is 27 years and the gender is female. Signs and conditions of the disease include runny noses, mild fever, shortness of breath, and a stiff neck. Preexisting Asthma disease. The address is House No. 18, Rohini Sector 7, New Delhi. The PIN Code is 110085. Additional advice: Take steam twice a day, sip on lukewarm liquids and come for consultation again if features last for five days.",
+    "capturedAt": "2026-08-11T10:04:18.854Z"
+  },
+  "3": {
+    "id": 3,
+    "title": "Conversational speech",
+    "hindi": "यह अमित कुमार हैं। इनकी उम्र 42 वर्ष है। इन्हें कल से बुखार, शरीर में दर्द, सिरदर्द और थकान की शिकायत है। इन्हें पहले से मधुमेह है। इनका पता फ्लैट नंबर 12, ग्रीन पार्क, नई दिल्ली है। पिन कोड 110016 है और इनका मोबाइल नंबर 9898765432 है। लिंग पुरुष है। यह वायरल फीवर प्रतीत होता है। मैं पैरासिटामोल 650 मिलीग्राम दिन में दो बार तीन दिनों तक और विटामिन की गोली दिन में एक बार लेने की सलाह देता हूँ। अतिरिक्त सलाह: अधिक मात्रा में तरल पदार्थ लें, पूरा आराम करें और तीन दिन बाद पुनः जांच के लिए आएं।",
+    "english": "This is Amit Kumar. He is 42 years of age. They complain of fever, body pain, headache and fatigue since last night. They already have Diabetic issues. Their address is Flat No. 12, Greene Park, New Delhi. The PIN Code is 110016 and their mobile number is 9898765432. The gender is male. It appears to be Viral Fever. I recommend taking paracetamol650 mg twice a day for three days and vitamin tablets once a day. Additional advice: Take extra fluid, take complete rest and come for re-examination after three days.",
+    "capturedAt": "2026-08-11T10:04:19.608Z"
+  }
+}

@@ -1,38 +1,11 @@
-
-// Drafts a spoken-prompt catalog for one language by translating the English
-// one through the Pravah API.
-//
-// This is a GENERATOR, not a test, and deliberately NOT named test-*.mjs:
-// scripts/run-all.mjs collects only test-*.mjs, so a full test sweep can never
-// reach the network.
-//
-// It prints a catalog file to STDOUT for a human to paste into
-// src/constants/prompts/<code>.js. It does not write into src/ on purpose: the
-// doctor HEARS these sentences read aloud, so a machine draft gets a native
-// speaker's eyes before it is committed. `reviewed: false` is hard-coded for
-// exactly that reason — flip it by hand after review.
-//
-// Usage:
-//   PRAVAH_API_KEY=apk_... npm run seed:prompts -- --lang=or
-//   PRAVAH_API_KEY=apk_... PRAVAH_API_URL=http://localhost:8787/translate \
-//     npm run seed:prompts -- --lang=or
-//
-// It reuses translateTexts, the same client the app uses. That is the strongest
-// integration test of the client short of running the app, and it makes
-// seeder/runtime drift impossible.
-
-import { LANGUAGE_BY_CODE } from '../src/constants/languages.js';
+import { flag } from './lib/cli-flags.mjs';
+import { LANGUAGE_BY_CODE, isLatinScript } from '../src/constants/languages.js';
 import en from '../src/constants/prompts/en.js';
 import { translateTexts } from '../src/services/pravah/translationClient.js';
 import {
   ERROR_KIND,
   isPravahLanguage,
 } from '../src/services/pravah/translationContract.js';
-
-const flag = name => {
-  const match = process.argv.find(arg => arg.startsWith(`--${name}=`));
-  return match ? match.slice(name.length + 3) : null;
-};
 
 const die = message => {
   console.error(message);
@@ -63,17 +36,6 @@ if (!key) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Placeholder protection
-//
-// {names}, {count} and {detailWord} are substituted at runtime and MUST survive
-// translation intact. Braces are exactly what MT breaks: it will happily return
-// {नाम}, { names }, {names) or drop the token entirely.
-//
-// So we never send braces. Each placeholder becomes an opaque, translation-inert
-// sentinel — uppercase ASCII with a digit, no translatable word — restored
-// afterwards and then VERIFIED.
-// ---------------------------------------------------------------------------
 const PLACEHOLDERS = ['{names}', '{count}', '{detailWord}'];
 const sentinelFor = index => `XX${index + 1}XX`;
 
@@ -83,8 +45,6 @@ const toSentinels = frame =>
     frame,
   );
 
-// Tolerant restoration: MT changes case and inserts spacing inside the
-// sentinel, and Indic shaping can leave a ZWJ/ZWNJ against it.
 const restore = translated => {
   let text = String(translated ?? '').replace(/[‌‍]/g, '');
   PLACEHOLDERS.forEach((token, index) => {
@@ -96,16 +56,6 @@ const restore = translated => {
 
 const countOf = (text, token) => text.split(token).length - 1;
 
-// ---------------------------------------------------------------------------
-// One request, index-keyed
-//
-// join.separator is NOT sent: it is ', ', meaningless to translate, and MT
-// strips the surrounding whitespace. English is carried verbatim and a native
-// reviewer can change it.
-//
-// join.and is sent as the BARE WORD, because MT drops leading and trailing
-// spaces; the generator re-wraps it below.
-// ---------------------------------------------------------------------------
 const FRAME_NAMES = ['one', 'few', 'many'];
 
 const ENTRIES = [
@@ -142,16 +92,13 @@ if (!result.ok) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Repair, verify, report
-// ---------------------------------------------------------------------------
 const stripQuotes = value =>
   String(value ?? '')
     .trim()
     .replace(/^["'“‘](.*)["'”’]$/s, '$1')
     .trim();
 
-const isLatin = language.script === 'latin';
+const isLatin = isLatinScript(language.code);
 const out = {};
 const warnings = [];
 let restored = 0;
@@ -167,9 +114,6 @@ ENTRIES.forEach(([name, source], index) => {
     return;
   }
 
-  // Byte-identical output for a non-Latin target almost certainly means the
-  // string was passed through untranslated. Catch it here, where it is
-  // fixable, rather than in test-prompt-catalogs' Latin-run assertion.
   if (!isLatin && value === source) {
     untranslated += 1;
     warnings.push(`${name}: came back unchanged — probably not translated`);
@@ -186,9 +130,6 @@ ENTRIES.forEach(([name, source], index) => {
 
     const broken = wanted.filter(token => countOf(value, token) !== 1);
     if (broken.length) {
-      // Never emit a catalog with a broken placeholder: at runtime it would
-      // substitute wrongly, or read a literal "{names}" aloud to the doctor.
-      // Fall back to English and make it impossible to miss in review.
       warnings.push(
         `${name}: ${broken.join(', ')} did not survive translation — kept the English original`,
       );
@@ -201,8 +142,7 @@ ENTRIES.forEach(([name, source], index) => {
   out[name] = value;
 });
 
-const quote = value =>
-  `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+const quote = value => JSON.stringify(String(value ?? ''));
 
 const labelLines = Object.keys(en.labels)
   .map(name => `    ${name}: ${quote(out[`labels.${name}`])},`)
@@ -243,7 +183,6 @@ ${labelLines}
   },
 };`);
 
-// stdout is the catalog, so the summary goes to stderr.
 console.error(
   `\n${ENTRIES.length} items · placeholders restored ${restored}/${expected} · ` +
     `untranslated ${untranslated} · warnings ${warnings.length}`,

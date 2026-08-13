@@ -1,26 +1,3 @@
-
-// Recall of the deterministic extractor on MACHINE-TRANSLATED English.
-//
-// The Pravah API is pure machine translation — no system prompt, no way to
-// steer its output toward the phrasings src/constants/fieldMarkers.js matches.
-// So a perfectly working translation pipeline can still hand the extractor
-// English it does not recognise, and the doctor gets a report with three of
-// eleven fields filled. That risk lives here.
-//
-// GATED ON A PER-FIELD FLOOR, NOT ON 100%. MT output is not something this repo
-// controls; a hard gate would break CI whenever Pravah retrains, for a reason
-// nobody here can fix. The floor plus the printed table gives the signal
-// without the brittleness, and raising a floor after widening a marker is the
-// ratchet.
-//
-// WHEN A CASE FAILS: the fix is a new marker in src/constants/fieldMarkers.js —
-// never a change to the extraction engine, never to the translation pipeline.
-// Add markers ONE AT A TIME and run `npm run test:all` between each: the marker
-// arrays are ordered and a broad new pattern can steal text from a
-// higher-priority field. If a widening cannot be made regression-free, record
-// the miss as a known gap below and leave the markers alone — a half-filled
-// report the doctor completes is strictly better than a confidently wrong one.
-
 import { extractForReport } from '../src/services/extractionService.js';
 import { joinTranslated } from '../src/services/pravah/chunkText.js';
 
@@ -34,19 +11,12 @@ const valueOf = (record, field) => {
 const holds = (record, field, fragment) =>
   valueOf(record, field).toLowerCase().includes(String(fragment).toLowerCase());
 
-// Realistic Pravah-style output for Hindi / Odia / Bengali medical dictation.
-// The artefacts are the point: dropped articles, durative calques, verb-final
-// word order, literal renderings of Indic idiom.
 const CASES = {
   patientName: [
     ['plain', 'The patient name is Sunita Devi.', 'Sunita Devi'],
     ['possessive', "The patient's name is Sunita Devi.", 'Sunita Devi'],
     ['dropped article', 'Name of patient is Sunita Devi.', 'Sunita Devi'],
     ['name is', 'Her name is Sunita Devi.', 'Sunita Devi'],
-    // Known gap: no marker introduces a bare appositive name, and the obvious
-    // one (`patient` followed by a capital) would collide with "The patient
-    // complains of…" across the ten protected extraction suites. Left alone
-    // deliberately — a name the doctor types is better than a wrong one.
     ['appositive (known gap)', 'Patient Sunita Devi has come today.', 'Sunita Devi'],
     ['named', 'A patient named Sunita Devi came to the clinic.', 'Sunita Devi'],
   ],
@@ -60,9 +30,6 @@ const CASES = {
   gender: [
     ['explicit', 'Gender is female.', 'female'],
     ['sex', 'Sex is female.', 'female'],
-    // `gender` has only one marker, but inferGender in collectEvidence.js
-    // recovers a pronoun-only mention. MT keeps English pronouns, so this
-    // holds — verified, not assumed.
     ['pronoun only', 'She is 35 years old.', 'female'],
   ],
   address: [
@@ -70,7 +37,6 @@ const CASES = {
     ['resides', 'The patient resides at Cuttack, Odisha.', 'Cuttack'],
     ['lives in', 'She lives in Cuttack, Odisha.', 'Cuttack'],
     ['hails from', 'She hails from Cuttack, Odisha.', 'Cuttack'],
-    // Known gap: an em-dash label is not a marker phrase.
     ['label form (known gap)', 'Residence - Cuttack, Odisha.', 'Cuttack'],
   ],
   pinCode: [
@@ -78,12 +44,6 @@ const CASES = {
     ['pincode', 'Pincode is 751024.', '751024'],
     ['label dropped', 'PIN 751024.', '751024'],
     ['standalone digits', 'Cuttack, Odisha. 751024.', '751024'],
-    // Known gap: the address marker claims the whole sentence, and the
-    // bare-six-digit fallback only runs over ranges no marker claimed. Fixing
-    // it means changing how fallbacks interact with claimed ranges — an engine
-    // change, which this suite is explicitly not allowed to motivate. A doctor
-    // who dictates the PIN as its own statement (the common case, and what
-    // TX2.5 covers) is unaffected.
     ['inside an address sentence (known gap)', 'Address is Cuttack, Odisha 751024.', '751024'],
   ],
   contactNumber: [
@@ -91,8 +51,6 @@ const CASES = {
     ['mobile', 'Mobile number is 9876543210.', '9876543210'],
     ['label dropped', 'Phone 9876543210.', '9876543210'],
     ['number is', 'Her number is 9876543210.', '9876543210'],
-    // MT reflows long digit runs into groups. The phone post-processor
-    // normalises the spacing, so this survives — verified, not assumed.
     ['reflowed digits', 'Contact number is 98765 43210.', '9876543210'],
   ],
   symptoms: [
@@ -103,10 +61,6 @@ const CASES = {
     ['singular complaint', 'Complaint of fever and body ache.', 'fever'],
     ['presents with', 'The patient presents with fever and cough.', 'fever'],
     ['experiencing', 'She is experiencing fever and weakness.', 'fever'],
-    // Verb-final existential word order, a direct calque of "बुखार और खांसी है".
-    // The obvious candidate for a miss; it survives because the residue
-    // classifier claims the sentence for symptoms. Pinned so a future residue
-    // change cannot silently lose it.
     ['existential', 'Fever and cough for three days is there.', 'fever'],
   ],
   medicalHistory: [
@@ -114,7 +68,7 @@ const CASES = {
     ['past medical', 'Past medical history is diabetes.', 'diabetes'],
     ['known case', 'She is a known case of diabetes.', 'diabetes'],
     ['bare condition', 'The patient is diabetic.', 'diabetic'],
-    ['negative', 'No significant medical history.', 'no'],
+    ['negative', 'No significant medical history.', 'no significant medical history'],
   ],
   diagnosis: [
     ['plain', 'Diagnosis is viral fever.', 'viral fever'],
@@ -129,10 +83,6 @@ const CASES = {
     ['medication is', 'Medication is paracetamol 500 mg.', 'paracetamol'],
     ['started on', 'I have started her on paracetamol 500 mg.', 'paracetamol'],
     ['give her', 'Give her paracetamol 500 mg twice a day.', 'paracetamol'],
-    // "Medicine ... given" is a very common MT rendering of Indic dictation.
-    // `medicine` is not a positive marker; only the bare drug+dose fallback
-    // rescues these, which is why that fallback matters more for MT than for
-    // native English.
     ['medicine given', 'Medicine paracetamol 500 mg given.', 'paracetamol'],
     ['told to take', 'Paracetamol 500 mg told to take twice a day.', 'paracetamol'],
   ],
@@ -144,16 +94,12 @@ const CASES = {
   ],
 };
 
-// Floors are the RATCHET: raise one only after a marker widening proves itself
-// against the full suite. Never lower one to make a failing build pass.
-// Set AT the measured value, so any regression fails immediately. The three
-// shortfalls below are the documented known gaps, not slack.
 const FLOOR = {
-  patientName: 5, // of 6 — appositive
+  patientName: 5,
   age: 5,
   gender: 3,
-  address: 4, // of 5 — label form
-  pinCode: 4, // of 5 — inside an address sentence
+  address: 4,
+  pinCode: 4,
   contactNumber: 5,
   symptoms: 8,
   medicalHistory: 5,
@@ -184,11 +130,6 @@ for (const [field, cases] of Object.entries(CASES)) {
     true,
   );
 }
-
-// TX2 — a full translated consultation, end to end.
-//
-// This is what the extractor actually receives: several MT sentences joined by
-// joinTranslated, not one hand-tuned phrase.
 
 const CONSULTATION = joinTranslated([
   'The patient name is Sunita Devi.',
@@ -240,12 +181,6 @@ const CONSULTATION = joinTranslated([
   );
 }
 
-// TX3 — chunk-join seams
-//
-// runTranslation reassembles per-chunk translations with joinTranslated. A
-// missing separator would fuse two sentences into "fever.Cough" and the
-// extractor would read one mangled value.
-
 {
   const joined = joinTranslated([
     'Diagnosis is viral fever.',
@@ -263,14 +198,12 @@ const CONSULTATION = joinTranslated([
 }
 
 {
-  // A blank chunk in the middle is legal — readTranslations holds its slot.
   const joined = joinTranslated(['Diagnosis is viral fever.', '', 'Age is 35 years.']);
   const record = extractForReport(joined).record;
   check('TX3.4 a blank chunk does not break reassembly', holds(record, 'age', '35'), true);
   check('TX3.5 nor the field before it', holds(record, 'diagnosis', 'viral fever'), true);
 }
 
-// The table is the point of this suite: it is the signal a floor cannot carry.
 const width = Math.max(...rows.map(row => row.field.length));
 console.log('\nTranslated-extraction recall\n');
 for (const row of rows) {

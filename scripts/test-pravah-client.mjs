@@ -1,10 +1,8 @@
-
-// Any real network call from this suite is a bug, not a slow test.
 globalThis.fetch = () => {
   throw new Error('network access from a fixture suite');
 };
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { DICTATION_LANGUAGES } from '../src/constants/languages.js';
@@ -34,8 +32,6 @@ import {
 
 import { check, report } from './lib/fixture-harness.mjs';
 
-// Deliberately without the apk_ prefix so the secret scan in PR9 cannot match
-// this file itself.
 const KEY = 'pravah-key-do-not-log';
 const HI = ['बुखार है।', 'खांसी भी है।', 'तीन दिन से।'];
 const EN = ['Fever is there.', 'Cough is also there.', 'For three days.'];
@@ -57,8 +53,6 @@ const fake = (status, body, { throws = null } = {}) => {
 
 const run = (transport, extra = {}) =>
   translateTexts({ texts: HI, to: 'en', key: KEY, transport, ...extra });
-
-// PR1 — the success path and the wire shape
 
 {
   const transport = fake(200, wrap(EN));
@@ -97,12 +91,6 @@ const run = (transport, extra = {}) =>
   check('PR1.13 and carries the pravah code', transport.calls[0].body[0].from, 'hi-IN');
 }
 
-// PR2 — order preservation
-//
-// Index-parallel reassembly is the whole correctness story of a bulk API: a
-// silent reorder would put the wrong English under the wrong sentence and the
-// extractor would emit a plausible but wrong report.
-
 {
   const transport = fake(200, wrap(['first', '', 'third']));
   const result = await run(transport);
@@ -113,8 +101,6 @@ const run = (transport, extra = {}) =>
   ]);
   check('PR2.2 and the run still succeeds', result.ok, true);
 }
-
-// PR3 — response shapes readTranslations must absorb
 
 for (const [label, body] of [
   ['bare array', wrap(EN)],
@@ -135,8 +121,6 @@ check(
   (await run(fake(200, wrap(['  a  ', ' b ', 'c'])))).texts,
   ['a', 'b', 'c'],
 );
-
-// PR4 — every documented status, and the key never leaks
 
 for (const [status, kind] of [
   [400, ERROR_KIND.CLIENT_ERROR],
@@ -170,7 +154,6 @@ check(
   (await run(fake(0, null, { throws: new Error('timeout') }))).errorKind,
   ERROR_KIND.TIMEOUT,
 );
-// fetchTransport aborts with reason 'timeout', which surfaces as an AbortError.
 check(
   'PR4.abort an abort with no signal is a timeout',
   (await run(fake(0, null, { throws: new Error('Aborted') }))).errorKind,
@@ -179,14 +162,27 @@ check(
 check(
   'PR4.cancel an abort with a raised signal is a cancellation',
   (
-    await run(fake(0, null, { throws: new Error('Aborted') }), {
-      signal: { aborted: false, addEventListener() {}, removeEventListener() {} },
-    })
+    await run(
+      options => {
+        if (options.signal) {
+          options.signal._aborted = true;
+        }
+        throw new Error('Aborted');
+      },
+      {
+        signal: {
+          _aborted: false,
+          get aborted() {
+            return this._aborted;
+          },
+          addEventListener() {},
+          removeEventListener() {},
+        },
+      },
+    )
   ).errorKind,
-  ERROR_KIND.TIMEOUT,
+  ERROR_KIND.CANCELLED,
 );
-
-// PR5 — malformed and mis-counted responses
 
 check('PR5.1 null body', (await run(fake(200, null))).errorKind, ERROR_KIND.MALFORMED);
 check(
@@ -230,11 +226,6 @@ check(
 check('PR5.9 readUpstreamError reads the message', readUpstreamError({ error: 'x' }), 'x');
 check('PR5.10 and tolerates a non-object', readUpstreamError(null), '');
 
-// PR6 — every guard returns before the transport is called
-//
-// This ordering is what keeps CI offline. If a guard ever moved below the
-// request, the suite would start making real calls.
-
 const big = 'x'.repeat(MAX_ITEM_CHARS + 1);
 const many = Array.from({ length: MAX_BATCH_ITEMS + 1 }, () => 'a');
 const heavy = Array.from({ length: 4 }, () => 'y'.repeat(MAX_BATCH_CHARS / 3));
@@ -257,14 +248,10 @@ for (const [label, extra, kind] of [
   check(`PR6 ${label} sends nothing`, transport.calls.length, 0);
 }
 
-// The NOT_CONFIGURED guard is the one that protects CI when no transport is
-// injected at all: it must return before the real fetchTransport is reached.
 {
   const result = await translateTexts({ texts: HI, to: 'en', key: '' });
   check('PR6.11 no key, no proxy -> NOT_CONFIGURED', result.errorKind, ERROR_KIND.NOT_CONFIGURED);
 }
-
-// PR7 — chunker and joiner
 
 check('PR7.1 empty text yields no chunks', splitForTranslation(''), []);
 check('PR7.2 whitespace yields no chunks', splitForTranslation('   \n  '), []);
@@ -274,6 +261,7 @@ check(
   ['Fever is there. Cough too.'],
 );
 
+const sentenceLen = Math.floor(DEFAULT_CHUNK_CHARS / 2) + 10;
 for (const [label, terminator] of [
   ['danda', '।'],
   ['double danda', '॥'],
@@ -285,8 +273,8 @@ for (const [label, terminator] of [
   ['question mark', '?'],
   ['exclamation', '!'],
 ]) {
-  const a = `${'क'.repeat(500)}${terminator}`;
-  const b = `${'ख'.repeat(500)}${terminator}`;
+  const a = `${'क'.repeat(sentenceLen)}${terminator}`;
+  const b = `${'ख'.repeat(sentenceLen)}${terminator}`;
   check(`PR7.4 ${label} splits sentences`, splitForTranslation(`${a} ${b}`).length, 2);
 }
 
@@ -309,7 +297,6 @@ for (const [label, terminator] of [
 }
 
 {
-  // A single sentence longer than the cap, with no terminator to split on.
   const runOn = 'word '.repeat(400).trim();
   const chunks = splitForTranslation(runOn);
   check('PR7.8 a run-on sentence is hard-split', chunks.length > 1, true);
@@ -374,8 +361,6 @@ check(
   false,
 );
 
-// PR8 — the language table agrees with the API
-
 check(
   'PR8.1 every translation code is one the API accepts',
   DICTATION_LANGUAGES.filter(l => !isPravahLanguage(l.translationCode)).map(
@@ -402,18 +387,9 @@ check(
   EN,
 );
 
-// PR9 — no real API key is committed anywhere
-//
-// The key format is documented as `apk_...`. This is the guard the whole
-// placeholder-credential design is built around.
 
 const SECRET = /apk_[A-Za-z0-9_-]{8,}/;
 const SKIP = new Set(['node_modules', '.git', 'build', 'gradle']);
-
-// server/.env and android/local.properties are gitignored and are exactly where
-// a real key is SUPPOSED to live. Everything else is fair game — including the
-// .example templates, so a placeholder can never be written in a shape that
-// would hide a real key from this scan.
 const IGNORED_FILES = new Set(['.env', 'local.properties']);
 const SCANNED = /\.(js|jsx|mjs|ts|kt|gradle|json|md|example|properties|ya?ml)$/;
 
@@ -431,13 +407,13 @@ function walk(dir, found = []) {
     const path = join(dir, entry);
     let info;
     try {
-      info = statSync(path);
+      info = lstatSync(path);
     } catch {
       continue;
     }
     if (info.isDirectory()) {
       walk(path, found);
-    } else if (!IGNORED_FILES.has(entry) && SCANNED.test(entry)) {
+    } else if (!info.isSymbolicLink() && !IGNORED_FILES.has(entry) && SCANNED.test(entry)) {
       try {
         if (SECRET.test(readFileSync(path, 'utf8'))) {
           found.push(path);
@@ -452,19 +428,9 @@ function walk(dir, found = []) {
 
 check(
   'PR9.1 no committed Pravah API key',
-  [
-    ...walk('src'),
-    ...walk('server'),
-    ...walk('scripts'),
-    ...walk('android/app'),
-    ...walk('docs'),
-    ...(SECRET.test(readFileSync('README.md', 'utf8')) ? ['README.md'] : []),
-  ],
+  walk('.'),
   [],
 );
-// Proves the pattern can actually see a real key shape — without this, a broken
-// filter would report "clean" forever. Built by concatenation so this file does
-// not itself contain a key-shaped literal for the scan above to find.
 check(
   'PR9.2 the scan pattern matches a real key shape',
   SECRET.test(`${'apk'}_0123456789ab`),

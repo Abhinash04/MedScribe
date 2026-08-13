@@ -1,5 +1,3 @@
-
-// Any real network call from this suite is a bug, not a slow test.
 globalThis.fetch = () => {
   throw new Error('network access from a fixture suite');
 };
@@ -25,10 +23,15 @@ const EN = ['Fever is there.', 'Cough is also there.'];
 
 const wrap = texts => texts.map(text => ({ translations: [{ text }] }));
 
-const fakeFetch = (status, body, { throws = null } = {}) => {
+const fakeFetch = (status, body, { throws = null, signalAbort = false } = {}) => {
   const calls = [];
   const impl = async (url, init) => {
     calls.push({ url, init });
+    if (signalAbort && init?.signal) {
+      try {
+        Object.defineProperty(init.signal, 'aborted', { value: true, configurable: true });
+      } catch {}
+    }
     if (throws) {
       throw throws;
     }
@@ -50,11 +53,8 @@ const fakeFetch = (status, body, { throws = null } = {}) => {
 const call = (body, fetchImpl) =>
   handleTranslate(body, { config: CONFIG, fetchImpl });
 
-// Silence the deliberate upstream-error logging below.
 const originalWarn = console.warn;
 console.warn = () => {};
-
-// PT1 — the success path and the upstream wire shape
 
 {
   const fetchImpl = fakeFetch(200, wrap(EN));
@@ -84,12 +84,6 @@ console.warn = () => {};
   check('PT1.10 `from` is forwarded when supplied', payload[0].from, 'hi-IN');
 }
 
-// PT2 — the round trip that proves the app needs no proxy special-casing
-//
-// The app's readTranslations must read the proxy's success body exactly as it
-// reads the direct bare array. This is requirement satisfied by construction
-// rather than by assertion.
-
 {
   const result = await call({ items: ITEMS }, fakeFetch(200, wrap(EN)));
   const viaProxy = readTranslations(result.body, 2);
@@ -99,8 +93,6 @@ console.warn = () => {};
   check('PT2.2 with the same texts', viaProxy.texts, EN);
   check('PT2.3 identically to the direct shape', viaProxy, viaDirect);
 }
-
-// PT3 — validation, all rejecting before any upstream call
 
 const long = Array.from({ length: MAX_TRANSLATE_ITEMS + 1 }, () => ({
   text: 'a',
@@ -144,11 +136,6 @@ for (const [label, body, status, error] of [
   check(`PT3 ${label} calls nothing upstream`, fetchImpl.calls.length, 0);
 }
 
-// PT4 — upstream status mapping
-//
-// 429 passing through unchanged is the load-bearing case: it is what makes the
-// app's quota latch fire on the proxy path exactly as it does on the direct one.
-
 for (const [status, error, mapped] of [
   [401, PRAVAH_ERROR.UNAUTHORIZED, 502],
   [403, PRAVAH_ERROR.UNAUTHORIZED, 502],
@@ -182,24 +169,19 @@ check(
   (
     await call(
       { items: ITEMS },
-      fakeFetch(0, null, { throws: new Error('aborted') }),
+      fakeFetch(0, null, { throws: new Error('aborted'), signalAbort: true }),
     )
   ).status,
-  502,
+  504,
 );
 
 {
-  // A genuine abort maps to TIMEOUT/504; the fake above cannot set
-  // controller.signal.aborted, so it lands on NETWORK/502. Assert the code path
-  // rather than the status.
   const result = await call(
     { items: ITEMS },
     fakeFetch(0, null, { throws: new Error('socket hang up') }),
   );
   check('PT4.network error code', result.body.error, PRAVAH_ERROR.NETWORK);
 }
-
-// PT5 — malformed upstream responses
 
 check(
   'PT5.1 unparseable body',
@@ -227,8 +209,6 @@ check(
     .success,
   true,
 );
-
-// PT6 — configuration
 
 {
   const fetchImpl = fakeFetch(200, wrap(EN));

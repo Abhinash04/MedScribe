@@ -1,3 +1,6 @@
+globalThis.fetch = () => {
+  throw new Error('network access from a fixture suite');
+};
 
 import {
   TRANSLATION_STATUS,
@@ -20,19 +23,12 @@ const ENGLISH = 'The patient has had fever for three days.';
 const ok = text => ({ ok: true, text, errorKind: null });
 const failed = errorKind => ({ ok: false, text: '', errorKind });
 
-// T1 — needsTranslation
-//
-// This predicate is what keeps English a no-op path. Everything downstream —
-// the live-extraction guard, stopSession, selectEnglishTranscript — hangs off it.
-
 check('T1.1 English needs none', needsTranslation('en'), false);
 check('T1.2 Hindi needs it', needsTranslation('hi'), true);
 check('T1.3 Odia needs it', needsTranslation('or'), true);
 check('T1.4 null means no session yet', needsTranslation(null), false);
 check('T1.5 undefined means no session yet', needsTranslation(undefined), false);
 check('T1.6 empty string is not a language', needsTranslation(''), false);
-
-// T2 — empty and normalize
 
 const blank = emptyTranslation();
 check('T2.1 starts idle', blank.status, TRANSLATION_STATUS.IDLE);
@@ -58,8 +54,6 @@ check(
 );
 check('T2.9 translationText of nothing', translationText(null), '');
 
-// T3 — pending
-
 const pending = markTranslationPending(blank, {
   sourceText: `  ${HINDI}  `,
   sourceKind: 'native',
@@ -75,8 +69,6 @@ check(
   setTranslationProgress(pending, { done: 2, total: 5 }).progress,
   { done: 2, total: 5 },
 );
-
-// T4 — apply
 
 const ready = applyTranslation(pending, ok(`  ${ENGLISH}  `), {
   now: 1000,
@@ -114,22 +106,12 @@ check(
   HINDI,
 );
 
-// T5 — staleness
-//
-// One predicate answers "re-translate?" for every trigger: refinement landed,
-// the doctor toggled Original/AI, the doctor edited the original text.
-
 check('T5.1 idle is always stale', isStale(blank, HINDI), true);
 check('T5.2 same source is fresh', isStale(ready, HINDI), false);
 check('T5.3 whitespace differences do not count', isStale(ready, `  ${HINDI} `), false);
 check('T5.4 a refined transcript is stale', isStale(ready, `${HINDI} खांसी भी है।`), true);
 check('T5.5 an emptied source is stale', isStale(ready, ''), true);
 check('T5.6 a failed attempt is not automatically stale', isStale(broke, HINDI), false);
-
-// T6 — the doctor's edit
-//
-// A correction typed into the English box must survive the next re-render, but
-// must NOT survive the source text changing underneath it.
 
 const edited = editTranslation(ready, 'The patient has had a high fever for three days.');
 check('T6.1 keeps the correction', edited.text.includes('high fever'), true);
@@ -153,11 +135,6 @@ check(
   false,
 );
 
-// T7 — round trip through persistence
-//
-// The record is JSON.stringify'd into active_sessions.translation_json and read
-// back by restoreSession, so it has to survive that unchanged.
-
 const restored = normalizeTranslation(JSON.parse(JSON.stringify(edited)));
 check('T7.1 text survives', restored.text, edited.text);
 check('T7.2 source survives', restored.sourceText, edited.sourceText);
@@ -165,5 +142,66 @@ check('T7.3 edit flag survives', restored.edited, true);
 check('T7.4 status survives', restored.status, TRANSLATION_STATUS.READY);
 check('T7.5 still fresh after a restore', isStale(restored, HINDI), false);
 check('T7.6 still protected after a restore', canTranslate(restored, HINDI), false);
+
+// T8 — a failed RE-translation keeps the earlier English, and says so
+//
+// Discarding it would be worse: a good pass-1 translation must not be thrown
+// away because a pass-2 retry failed. But the report will be built from it, so
+// it has to be flagged rather than presented as current.
+
+{
+  const first = applyTranslation(pending, ok(ENGLISH), {
+    now: 1000,
+    sourceText: HINDI,
+  });
+  check('T8.1 a fresh translation is not stale', first.stale, false);
+
+  const grown = `${HINDI} खांसी भी है।`;
+  const retried = markTranslationPending(first, { sourceText: grown });
+  const failedRetry = applyTranslation(retried, failed('network'), {
+    now: 2000,
+    sourceText: grown,
+  });
+
+  check('T8.2 the earlier English is kept', failedRetry.text, ENGLISH);
+  check('T8.3 and marked stale', failedRetry.stale, true);
+  check('T8.4 status is FAILED', failedRetry.status, TRANSLATION_STATUS.FAILED);
+  check('T8.5 the error kind is recorded', failedRetry.error, 'network');
+  check('T8.6 sourceText advanced to what failed', failedRetry.sourceText, grown);
+
+  // The report uses whatever English exists, so a stale record must still be
+  // retryable — otherwise the doctor is stuck with out-of-date text.
+  check('T8.7 a stale record can be retried', canTranslate(failedRetry, grown), true);
+
+  const recovered = applyTranslation(failedRetry, ok('Fresh English.'), {
+    now: 3000,
+    sourceText: grown,
+  });
+  check('T8.8 a later success clears stale', recovered.stale, false);
+  check('T8.9 and replaces the text', recovered.text, 'Fresh English.');
+
+  // A first-ever failure has no text to keep, so nothing is stale.
+  const neverHadText = applyTranslation(emptyTranslation(), failed('timeout'), {
+    now: 4000,
+    sourceText: HINDI,
+  });
+  check('T8.10 a first failure leaves no text', neverHadText.text, '');
+  check('T8.11 and is not stale', neverHadText.stale, false);
+
+  // The doctor rewriting it makes it theirs, not an out-of-date machine output.
+  check('T8.12 an edit clears stale', editTranslation(failedRetry, 'Mine.').stale, false);
+
+  // It is persisted in active_sessions.translation_json, so it must round trip.
+  const restoredStale = normalizeTranslation(
+    JSON.parse(JSON.stringify(failedRetry)),
+  );
+  check('T8.13 stale survives persistence', restoredStale.stale, true);
+  check('T8.14 and so does the kept text', restoredStale.text, ENGLISH);
+  check(
+    'T8.15 a record from before this field defaults to not stale',
+    normalizeTranslation({ text: 'old', status: TRANSLATION_STATUS.READY }).stale,
+    false,
+  );
+}
 
 report();
