@@ -1,6 +1,7 @@
 import {
   DEFAULT_LANGUAGE_CODE,
   DICTATION_LANGUAGES,
+  resolveLegacyCode,
 } from '../../constants/languages.js';
 
 const LANGUAGES = Object.fromEntries(
@@ -15,9 +16,8 @@ export function normalizeAnuvadiniLanguage(language = DEFAULT_LANGUAGE) {
     return LANGUAGES[DEFAULT_LANGUAGE];
   }
 
-  // Exact match first. Script-variant codes are hyphenated ('ks-deva'), and the
-  // base-tag split below would reduce them to 'ks', which is not a row.
-  const lowered = value.toLowerCase();
+  const rawLower = value.toLowerCase();
+  const lowered = resolveLegacyCode(rawLower);
   if (LANGUAGES[lowered]) {
     return LANGUAGES[lowered];
   }

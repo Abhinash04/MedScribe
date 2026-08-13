@@ -39,7 +39,11 @@ export const FIELD_MARKERS = {
     markers: [
       m(/\bpatient(?:'s|s)?\s+name\s+(?:is[\s,]+)?/i, CONFIDENCE.EXPLICIT, "patient's name is"),
       m(/\bname\s+of\s+the\s+patient\s+(?:is[\s,]+)?/i, CONFIDENCE.EXPLICIT, 'name of the patient is'),
-      m(/\b(?:her|his|the)\s+name\s+(?:is[\s,]+)?/i, CONFIDENCE.STRONG, 'name is'),
+      m(
+        /\b(?:her|his|the)\s+name\s+(?!of\s+the\s+patient)(?:is[\s,]+)?/i,
+        CONFIDENCE.STRONG,
+        'name is',
+      ),
       m(/\bname\s+is[\s,]+/i, CONFIDENCE.STRONG, 'name is'),
       m(/\bthe\s+patient\s+is[\s,]+/i, CONFIDENCE.MODERATE, 'the patient is'),
       m(/\bpatient\s+is[\s,]+/i, CONFIDENCE.MODERATE, 'patient is'),
@@ -256,7 +260,6 @@ export const FIELD_MARKERS = {
       m(/\bmedications?\s+(?:are|is)?\s*/i, CONFIDENCE.STRONG, 'medication'),
       m(/\b(?:put|putting|start(?:ed|ing)?)\s+(?:her|him|them|the\s+patient)\s*on\s+/i, CONFIDENCE.STRONG, 'started on'),
       m(/\b(?:start|give|administer|prescribe)\s+(?:her|him|them\s+)?(?=[\w-]+\s+\d+\s*(?:milligrams?|millilitres?|milliliters?|mg|ml|mcg|g)\b)/i, CONFIDENCE.STRONG, 'start <drug> <dose>'),
-      // the intent unambiguous.
       m(/\bgive\s+(?:her|him|them)\s+/i, CONFIDENCE.STRONG, 'give her'),
       m(/\btreatment\s+(?:is\s+)?/i, CONFIDENCE.MODERATE, 'treatment'),
       m(/\bi'?ll\s+prescribe\s+/i, CONFIDENCE.EXPLICIT, "I'll prescribe"),

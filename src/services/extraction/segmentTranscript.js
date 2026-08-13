@@ -98,6 +98,18 @@ export function findSentenceEnd(text, from, limit) {
       continue;
     }
 
+    // "House No. 24" / "Flat No. 12" — an abbreviation for "number", not a
+    // sentence end. Indian addresses use it constantly, and breaking here
+    // truncates the address to "House No". Kept narrow: only when a digit
+    // follows, so a sentence genuinely ending in the word "no" still breaks.
+    if (
+      char === '.' &&
+      /(?:^|\s)no$/i.test(text.slice(Math.max(0, i - 3), i)) &&
+      /^\s*\d/.test(text.slice(i + 1, i + 4))
+    ) {
+      continue;
+    }
+
     const after = text[i + 1];
     if (after === undefined || /\s/.test(after)) {
       return i;

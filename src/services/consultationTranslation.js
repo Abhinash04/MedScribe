@@ -12,6 +12,7 @@ export function emptyTranslation() {
     sourceText: '',
     sourceKind: '',
     edited: false,
+    stale: false,
     status: TRANSLATION_STATUS.IDLE,
     error: null,
     updatedAt: 0,
@@ -27,6 +28,7 @@ export function normalizeTranslation(translation) {
     sourceText: current.sourceText ?? '',
     sourceKind: current.sourceKind ?? '',
     edited: Boolean(current.edited),
+    stale: Boolean(current.stale),
     progress: {
       done: Number(current.progress?.done ?? 0),
       total: Number(current.progress?.total ?? 0),
@@ -61,8 +63,11 @@ export function applyTranslation(translation, result, options = {}) {
   const kind = sourceKind === undefined ? current.sourceKind : sourceKind;
 
   if (!(result?.ok && result.text?.trim())) {
+    const keptText = current.text ?? '';
     return {
       ...current,
+      text: keptText,
+      stale: Boolean(keptText),
       sourceText: source,
       sourceKind: kind,
       status: TRANSLATION_STATUS.FAILED,
@@ -77,6 +82,7 @@ export function applyTranslation(translation, result, options = {}) {
     sourceText: source,
     sourceKind: kind,
     edited: false,
+    stale: false,
     status: TRANSLATION_STATUS.READY,
     error: null,
     updatedAt: now,
@@ -92,6 +98,7 @@ export function editTranslation(translation, text) {
     ...normalizeTranslation(translation),
     text: text ?? '',
     edited: true,
+    stale: false,
     status: TRANSLATION_STATUS.READY,
     error: null,
   };

@@ -1,9 +1,6 @@
 export const TRANSPORT = {
   DIRECT: 'direct',
   PROXY: 'proxy',
-  // Prefer a baked key, fall back to the dev proxy. Lets a developer swap the
-  // Pravah key in server/.env with no rebuild and no code edit, while a release
-  // build (where MEDSCRIBE_PROXY_BASE_URL is '') still goes direct.
   AUTO: 'auto',
   NONE: 'none',
 };
@@ -13,7 +10,7 @@ export const ANUVADINI_STT_URL =
   'https://anuvadini-services.aicte-india.org/api/voice-to-text';
 export const ANUVADINI_TTS_URL =
   'https://anuvadini-services.aicte-india.org/api/text-to-speech';
-export const TRANSLATION_TRANSPORT = TRANSPORT.AUTO;
+export const TRANSLATION_TRANSPORT = TRANSPORT.PROXY;
 export const PRAVAH_TRANSLATE_URL =
   'https://pravahai.aicte-india.org/api/translatebulk';
 
@@ -48,20 +45,18 @@ export function resolveTransport(token) {
   return TRANSPORT.NONE;
 }
 
-export function resolveTranslationTransport(key) {
-  if (TRANSLATION_TRANSPORT === TRANSPORT.DIRECT) {
-    return key ? TRANSPORT.DIRECT : TRANSPORT.NONE;
-  }
-  if (TRANSLATION_TRANSPORT === TRANSPORT.PROXY) {
-    return MEDSCRIBE_PROXY_BASE_URL ? TRANSPORT.PROXY : TRANSPORT.NONE;
-  }
-  if (TRANSLATION_TRANSPORT === TRANSPORT.AUTO) {
-    if (key) {
+export function resolveTranslationTransport(key, url) {
+  if (url) {
+    if (url === PRAVAH_TRANSLATE_URL && key) {
       return TRANSPORT.DIRECT;
     }
-    if (MEDSCRIBE_PROXY_BASE_URL) {
-      return TRANSPORT.PROXY;
-    }
+    return TRANSPORT.PROXY;
+  }
+  if (key) {
+    return TRANSPORT.DIRECT;
+  }
+  if (TRANSLATION_TRANSPORT === TRANSPORT.PROXY || MEDSCRIBE_PROXY_BASE_URL) {
+    return MEDSCRIBE_PROXY_BASE_URL ? TRANSPORT.PROXY : TRANSPORT.NONE;
   }
   return TRANSPORT.NONE;
 }

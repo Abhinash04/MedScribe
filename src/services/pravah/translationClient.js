@@ -1,20 +1,3 @@
-// HTTP client for the Pravah translatebulk API.
-//
-// ⚠️ RETURN SHAPE DIFFERS FROM EVERY OTHER CLIENT IN THIS REPO.
-// transcriptionClient and speechClient return { ok, text, errorKind }.
-// This returns { ok, TEXTS, errorKind } — plural, index-parallel to the input.
-// Never hand this result straight to store.setTranslationResult:
-// applyTranslation reads `.text` and would mark a good result FAILED.
-// Joining happens in transcriptTranslation.runTranslation.
-//
-// It takes an ARRAY, not a string. The API is inherently bulk; a string-taking
-// client would tempt callers into N sequential requests, which is the fastest
-// way to burn a key's quota.
-//
-// It speaks PRAVAH codes ('gom-IN'), not our codes ('kok'). Mapping is the
-// caller's job via translationCodeFor, which is what lets the prompt-catalog
-// seeder — which runs English -> Indic — reuse this client unchanged.
-
 import {
   PRAVAH_TRANSLATE_URL,
   TRANSPORT,
@@ -82,8 +65,6 @@ export async function translateTexts({
   key = '',
   timeoutMs = REQUEST_TIMEOUT_MS,
 }) {
-  // Every guard returns before `transport` is called, so a fixture can assert
-  // transport.calls.length === 0 — that ordering is what keeps CI offline.
   if (signal?.aborted) {
     return failed(ERROR_KIND.CANCELLED);
   }
@@ -112,7 +93,7 @@ export async function translateTexts({
     return failed(ERROR_KIND.UNSUPPORTED_LANGUAGE);
   }
 
-  const mode = resolveTranslationTransport(key);
+  const mode = resolveTranslationTransport(key, url);
   if (mode === TRANSPORT.NONE) {
     return failed(ERROR_KIND.NOT_CONFIGURED);
   }
@@ -127,7 +108,6 @@ export async function translateTexts({
   try {
     response = await transport({
       url: endpoint,
-      // Direct is a bare array; the proxy wraps it and holds the key itself.
       body: direct
         ? buildDirectTranslateBody(texts, { to, from })
         : buildProxyTranslateBody(texts, { to, from }),

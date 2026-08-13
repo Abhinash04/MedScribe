@@ -7,26 +7,9 @@ import {
   MEDICATION_TIMING,
 } from '../../constants/clinicalCues.js';
 
-/**
- * One entry per drug, with the dictated wording preserved verbatim.
- *
- * Attributes are parsed for validation and traceability only — nothing is
- * normalised, reordered or invented. A prescription that says "twice daily"
- * still reads "twice daily".
- */
-
 const AND_JOIN = /\s+and\s+/i;
-
 const LIST_SEPARATOR = /\s*[,;]\s*/;
 
-/**
- * "and" splits drugs only when what follows is itself medication-like, judged
- * by the same test that keeps advice out of the prescription list. A numeric
- * strength is not required — "cough syrup twice daily and vitamin tablets once
- * daily" is two prescriptions — while an advice clause ("and drink plenty of
- * water") stays attached to the entry it was dictated with rather than becoming
- * an entry of its own.
- */
 function splitOnAnd(part) {
   const pieces = part.split(AND_JOIN);
   if (pieces.length === 1) {
@@ -70,14 +53,6 @@ export function parseMedication(entry) {
   };
 }
 
-/**
- * True when the phrase looks like medication rather than advice.
- *
- * "plenty of oral fluids and complete bed rest" carries a route word but no
- * drug, so a route alone is not enough. Neither is a frequency: "drink water
- * twice daily" and "a daily walk" are cadences of advice, not prescriptions.
- * A strength or a dosage form is the anchor that makes an entry a medication.
- */
 export function looksLikeMedication(entry) {
   const parsed = parseMedication(entry);
   return !!(parsed.strength || parsed.form);

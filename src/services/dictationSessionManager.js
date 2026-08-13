@@ -18,7 +18,6 @@ import {
 import { ERROR_KIND } from './anuvadini/proxyContract';
 import { CAPTURE_OUTCOME, decideCaptureOutcome } from './captureOutcome';
 import useRecordingStore, {
-  selectActiveTranscript,
   selectFullTranscript,
 } from '../store/useRecordingStore';
 import { TRANSCRIPT_SOURCE } from './consultationTranscripts';
@@ -179,14 +178,14 @@ class DictationSessionManager {
       return;
     }
 
-    const sample = text.slice(0, FALLBACK_SAMPLE_CHARS);
+    const sample = text.slice(0, FALLBACK_SAMPLE_CHARS * 2);
     if (sample.length < FALLBACK_SAMPLE_CHARS) {
       return;
     }
 
     this.fallbackChecked = true;
-    const allAscii = [...sample].every(char => char.charCodeAt(0) < 128);
-    if (allAscii) {
+    const asciiWords = sample.split(/\s+/).filter(word => /^[a-zA-Z]{3,}$/.test(word));
+    if (asciiWords.length >= 2) {
       store.setRecognizerFellBack(true);
     }
   }
@@ -273,7 +272,7 @@ class DictationSessionManager {
 
     const language = useRecordingStore.getState().language;
     if (needsTranslation(language)) {
-      const source = selectActiveTranscript(useRecordingStore.getState());
+      const source = selectFullTranscript(useRecordingStore.getState());
       translateSession({
         text: source,
         language,
@@ -288,9 +287,7 @@ class DictationSessionManager {
     });
 
     if (outcome === CAPTURE_OUTCOME.REFINE) {
-      refineTranscript({ language: store.language ?? undefined }).catch(
-        () => {},
-      );
+      refineTranscript({ language: language ?? undefined }).catch(() => {});
       return outcome;
     }
 

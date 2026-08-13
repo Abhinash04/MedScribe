@@ -31,8 +31,6 @@ export function hasAnuvadiniToken() {
 
 export function getPravahKey() {
   const module = appConfig();
-  // The method-presence guard is what lets JS shipped ahead of the native
-  // rebuild degrade to "translation not configured" instead of crashing.
   if (!module || typeof module.getPravahKey !== 'function') {
     return '';
   }
@@ -46,3 +44,4 @@ export function getPravahKey() {
 export function hasPravahKey() {
   return getPravahKey().length > 0;
 }
+

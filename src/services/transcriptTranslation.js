@@ -1,36 +1,39 @@
-import { ERROR_KIND } from './anuvadini/proxyContract';
+import { ERROR_KIND } from './anuvadini/proxyContract.js';
+import { getPravahKey } from './appConfigService.js';
 import {
   canTranslate,
   isStale,
   needsTranslation,
-} from './consultationTranslation';
-import { getPravahKey } from './appConfigService';
-import { resolveTranslationTransport, TRANSPORT } from '../config/endpoints';
+  TRANSLATION_STATUS,
+} from './consultationTranslation.js';
+import { resolveTranslationTransport, TRANSPORT } from '../config/endpoints.js';
 import {
   joinTranslated,
   planBatches,
   splitForTranslation,
-} from './pravah/chunkText';
+} from './pravah/chunkText.js';
 import {
   MAX_BATCH_CHARS,
   MAX_BATCH_ITEMS,
   translateTexts,
-} from './pravah/translationClient';
-import { PRAVAH_TARGET_ENGLISH } from './pravah/translationContract';
-import { translationCodeFor } from '../constants/languages';
+} from './pravah/translationClient.js';
+import { PRAVAH_TARGET_ENGLISH } from './pravah/translationContract.js';
+import { translationCodeFor } from '../constants/languages.js';
 import useRecordingStore, {
   selectActiveTranscript,
-} from '../store/useRecordingStore';
+} from '../store/useRecordingStore.js';
 
 let inFlight = null;
 
-// Over eight batches (~96k characters, a very long consultation) we refuse
-// before sending anything, so a runaway transcript cannot burn a whole key
-// quota on one tap.
-const MAX_BATCHES = 8;
+// The promise for the run `inFlight` belongs to. markTranslationPending stamps
+// sourceText to the CURRENT source, so isStale reports false the moment a run
+// starts — which means a caller asking "is the translation current?" during a
+// PENDING run would otherwise get back the PREVIOUS text (empty on pass one)
+// and build the report from untranslated Hindi. ensureTranslation awaits this
+// instead.
+let inFlightPromise = null;
 
-// Only these are worth a second attempt. Everything else — and 429/401/422 in
-// particular — fails identically the second time and only delays the doctor.
+const MAX_BATCHES = 8;
 const RETRYABLE = new Set([
   ERROR_KIND.NETWORK,
   ERROR_KIND.TIMEOUT,
@@ -39,26 +42,9 @@ const RETRYABLE = new Set([
 ]);
 
 const RETRY_DELAYS_MS = [600, 1800];
-
-// Without a wall-clock budget the worst case is 8 batches x 3 attempts x 60s.
 const TRANSLATION_BUDGET_MS = 150000;
-
 const failed = errorKind => ({ ok: false, text: '', errorKind });
 
-// ---------------------------------------------------------------------------
-// Quota latch
-//
-// A 429 means the key's word/character allowance is spent. Retrying cannot
-// help, and neither can the next consultation, so translation is switched off
-// for the rest of the session.
-//
-// Module state, deliberately:
-//   - not useRecordingStore, because it must OUTLIVE reset(), and "remember to
-//     exempt this one field from reset" is the invariant a refactor loses;
-//   - not app_settings, because the quota resets on the server's schedule and
-//     persisting it would leave translation dead after it came back.
-// It dies on app restart, which is the honest reset.
-// ---------------------------------------------------------------------------
 let quotaExhaustedAt = 0;
 
 export const isTranslationDisabled = () => quotaExhaustedAt > 0;
@@ -66,9 +52,6 @@ export const disableTranslationForSession = () => {
   quotaExhaustedAt = Date.now();
 };
 
-// Named apart from clearTranslationState on purpose. That function has no
-// callers today and its obvious future home is clearSession(), which runs per
-// consultation — clearing the latch there would defeat the whole point.
 export const resetTranslationQuota = () => {
   quotaExhaustedAt = 0;
 };
@@ -86,25 +69,12 @@ export function clearTranslationState() {
   cancelTranslation();
 }
 
-// Policy: always let the API auto-detect the source language.
-//
-// We think we know it, but recognizerFellBack is precisely the case where our
-// belief is wrong — the store says Hindi and the text is English. Recognisers
-// also emit code-mixed output, and two rows are KNOWN to disagree with the
-// script the recogniser produces (sd is tagged sd-IN but Pravah only serves
-// Sindhi in Devanagari). Every `from` we send is another chance at a 422, which
-// is never retried. Detection on 900-character chunks is reliable.
-//
-// Kept as a function so making it conditional is a one-line change here rather
-// than a client change.
-export function shouldSendFrom() {
+export function shouldSendFrom(language) {
   return false;
 }
 
 const jitter = ms => Math.round(ms * (0.8 + Math.random() * 0.4));
 
-// Must be abortable, or cancelling leaves a zombie that wakes up and fires
-// against a superseded controller.
 const sleep = (ms, signal) =>
   new Promise(resolve => {
     if (signal?.aborted) {
@@ -129,7 +99,6 @@ async function withRetry(attempt, { signal, deadline }) {
     if (result.ok || !RETRYABLE.has(result.errorKind)) {
       return result;
     }
-    // MT is near-deterministic: a second empty answer is a real empty.
     if (result.errorKind === ERROR_KIND.EMPTY_TRANSLATION && index > 0) {
       return result;
     }
@@ -198,10 +167,8 @@ async function runTranslation({ text, language, key, signal, onProgress }) {
       const translated = result.texts[index];
       out[cursor + index] = translated;
 
-      // An undocumented per-item cap would truncate silently — readTranslations
-      // cannot see it. Warn rather than fail: a false positive must not break a
-      // working consultation.
       if (
+        typeof __DEV__ !== 'undefined' &&
         __DEV__ &&
         translated &&
         translated.length < batch[index].length * 0.25
@@ -225,11 +192,20 @@ async function runTranslation({ text, language, key, signal, onProgress }) {
     : failed(ERROR_KIND.EMPTY_TRANSLATION);
 }
 
-export async function translateSession({
-  text,
-  language,
-  sourceKind = '',
-} = {}) {
+export async function translateSession(options = {}) {
+  const promise = runSession(options);
+  inFlightPromise = promise;
+  try {
+    return await promise;
+  } finally {
+    // Only clear if a newer run has not already taken the slot.
+    if (inFlightPromise === promise) {
+      inFlightPromise = null;
+    }
+  }
+}
+
+async function runSession({ text, language, sourceKind = '' } = {}) {
   const store = useRecordingStore.getState();
   const source = (text ?? '').trim();
 
@@ -242,8 +218,6 @@ export async function translateSession({
     return result;
   }
 
-  // Before setTranslationPending, so the UI never flickers a spinner it is
-  // about to retract.
   if (isTranslationDisabled()) {
     const result = failed(ERROR_KIND.QUOTA_EXCEEDED);
     store.setTranslationResult(result, { sourceText: source, sourceKind });
@@ -252,6 +226,9 @@ export async function translateSession({
 
   store.setTranslationPending({ sourceText: source, sourceKind });
 
+  // Read once and thread it through: resolveTranslationTransport decides
+  // direct-vs-proxy from whether a key exists, and translateTexts needs the
+  // same value to build the Authorization header.
   const key = getPravahKey();
   if (resolveTranslationTransport(key) === TRANSPORT.NONE) {
     const result = failed(ERROR_KIND.NOT_CONFIGURED);
@@ -302,9 +279,6 @@ export async function translateSession({
   }
 }
 
-// The single entry point for every re-translate trigger: refinement landed, the
-// doctor toggled Original/AI, the doctor edited the original text, or they
-// pressed Translate again. Each changes the source text, and isStale notices.
 export async function ensureTranslation({ force = false } = {}) {
   const state = useRecordingStore.getState();
   const { language, translation } = state;
@@ -314,6 +288,19 @@ export async function ensureTranslation({ force = false } = {}) {
   }
 
   const source = selectActiveTranscript(state);
+
+  // A run already under way has stamped sourceText, so isStale would say
+  // "current" while text is still the previous (empty) value. Wait for it, then
+  // re-evaluate against settled state. Single re-entry: after the await the
+  // status is READY or FAILED, never PENDING, so this cannot recurse twice.
+  if (
+    !force &&
+    translation.status === TRANSLATION_STATUS.PENDING &&
+    inFlightPromise
+  ) {
+    await inFlightPromise.catch(() => {});
+    return ensureTranslation({ force });
+  }
 
   if (!force) {
     if (!isStale(translation, source)) {

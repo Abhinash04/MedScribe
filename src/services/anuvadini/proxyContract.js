@@ -22,9 +22,6 @@ export const ERROR_KIND = {
   EMPTY_TRANSCRIPTION: 'empty_transcription',
   NO_TEXT: 'no_text',
   EMPTY_SPEECH: 'empty_speech',
-  // Translation. One shared enum on purpose: translation.error is persisted in
-  // active_sessions.translation_json and rendered by a single map in the review
-  // screen, so two overlapping enums would be a bug farm.
   UNAUTHORIZED: 'unauthorized',
   QUOTA_EXCEEDED: 'quota_exceeded',
   TEXT_TOO_LARGE: 'text_too_large',

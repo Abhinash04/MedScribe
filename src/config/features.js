@@ -20,3 +20,4 @@ export function isTranscriptionAvailable() {
 export function isTranslationAvailable() {
   return resolveTranslationTransport(getPravahKey()) !== TRANSPORT.NONE;
 }
+

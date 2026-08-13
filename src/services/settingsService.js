@@ -6,6 +6,8 @@ import {
 
 export const SETTING_KEY = {
   DICTATION_LANGUAGE: 'dictation_language',
+  DICTATION_BUBBLE: 'dictation_bubble',
+  OVERLAY_ONBOARDING_SEEN: 'overlay_onboarding_seen',
 };
 
 function openSettingsDb() {
@@ -53,11 +55,33 @@ export async function loadDictationLanguage(db = null) {
     DEFAULT_LANGUAGE_CODE,
     db,
   );
-  // Migrate a code that has since been split by script, then fall back: a code
-  // dropped from the table must not strand the doctor on a language nothing
-  // else in the app understands.
   const migrated = resolveLegacyCode(stored);
   return isKnownLanguage(migrated) ? migrated : DEFAULT_LANGUAGE_CODE;
+}
+
+export async function loadBubbleEnabled(overlayGranted, db = null) {
+  const stored = await readSetting(SETTING_KEY.DICTATION_BUBBLE, null, db);
+  if (stored === null) {
+    return overlayGranted === true;
+  }
+  return stored === '1';
+}
+
+export async function saveBubbleEnabled(enabled, db = null) {
+  return writeSetting(SETTING_KEY.DICTATION_BUBBLE, enabled ? '1' : '0', db);
+}
+
+export async function loadOnboardingSeen(db = null) {
+  const stored = await readSetting(SETTING_KEY.OVERLAY_ONBOARDING_SEEN, null, db);
+  return stored === '1';
+}
+
+export async function saveOnboardingSeen(seen, db = null) {
+  return writeSetting(
+    SETTING_KEY.OVERLAY_ONBOARDING_SEEN,
+    seen ? '1' : '0',
+    db,
+  );
 }
 
 export async function saveDictationLanguage(code, db = null) {
