@@ -25,14 +25,11 @@ import {
 } from '../src/services/reportCompleteness.js';
 import { toDraft } from '../src/services/reportDraft.js';
 import { HINDI_SAMPLES, sampleById } from './fixtures/hindi-dictations.mjs';
+import { flag } from './lib/cli-flags.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAPTURE_PATH = join(HERE, 'fixtures', 'pravah-hindi-capture.json');
 
-const flag = name => {
-  const match = process.argv.find(arg => arg.startsWith(`--${name}=`));
-  return match ? match.slice(name.length + 3) : null;
-};
 const has = name => process.argv.includes(`--${name}`);
 
 const DRY_RUN = has('dry-run');

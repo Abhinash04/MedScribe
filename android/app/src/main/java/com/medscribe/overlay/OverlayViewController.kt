@@ -23,6 +23,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.medscribe.R
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -47,21 +48,39 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
   private var transcriptRoot: LinearLayout? = null
   private var transcriptParams: WindowManager.LayoutParams? = null
 
+  private lateinit var canvas: FrameLayout
   private lateinit var bubble: FrameLayout
   private lateinit var bubbleIcon: ImageView
-  private lateinit var satellites: LinearLayout
   private lateinit var playSatellite: FrameLayout
   private lateinit var playIcon: ImageView
   private lateinit var stopSatellite: FrameLayout
   private lateinit var homeSatellite: FrameLayout
   private lateinit var timerLabel: TextView
+  private lateinit var messageStrip: TextView
   private lateinit var transcriptLabel: TextView
   private lateinit var transcriptStatus: TextView
 
   private var expanded = false
+  private var messageVisible = false
+  private var anchorX = 0
+  private var anchorY = 0
   private var snapshot: OverlaySnapshot = OverlaySnapshot.idle()
   private var rotationIndex = 0
   private var rotating = false
+
+  private val hideMessage =
+    Runnable {
+      messageVisible = false
+      messageStrip
+        .animate()
+        .alpha(0f)
+        .setDuration(MESSAGE_FADE_MS)
+        .withEndAction {
+          messageStrip.visibility = View.GONE
+          applyWindowBounds()
+        }
+        .start()
+    }
 
   private val rotateMessages =
     Runnable {
@@ -87,6 +106,7 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
       bubbleRoot = view
       bubbleParams = params
       DictationOverlayBridge.windowAttached = true
+      applyWindowBounds()
       render(DictationOverlayBridge.latest)
       true
     } catch (error: Exception) {
@@ -97,6 +117,8 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
 
   fun detach() {
     stopRotation()
+    main.removeCallbacks(hideMessage)
+    messageVisible = false
     detachTranscript()
     val view = bubbleRoot ?: return
     bubbleRoot = null
@@ -168,9 +190,12 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
         WindowManager.LayoutParams.TYPE_PHONE
       }
 
+    anchorX = prefs.getInt(KEY_BUBBLE_X, dp(12))
+    anchorY = prefs.getInt(KEY_BUBBLE_Y, dp(200))
+
     return WindowManager.LayoutParams(
-        WindowManager.LayoutParams.WRAP_CONTENT,
-        WindowManager.LayoutParams.WRAP_CONTENT,
+        dp(BUBBLE_DP),
+        dp(BUBBLE_DP),
         type,
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
           WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -179,52 +204,85 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
       )
       .apply {
         gravity = Gravity.TOP or Gravity.START
-        x = prefs.getInt(KEY_BUBBLE_X, dp(12))
-        y = prefs.getInt(KEY_BUBBLE_Y, dp(200))
+        x = anchorX
+        y = anchorY
       }
+  }
+
+  private fun needsCanvas(): Boolean = expanded || messageVisible
+
+  private fun canvasInset(): Int = (dp(CANVAS_DP) - dp(BUBBLE_DP)) / 2
+
+  private fun applyWindowBounds() {
+    val params = bubbleParams ?: return
+    val inset = if (needsCanvas()) canvasInset() else 0
+    val extent = if (needsCanvas()) dp(CANVAS_DP) else dp(BUBBLE_DP)
+
+    params.width = extent
+    params.height = extent
+    params.x = anchorX - inset
+    params.y = anchorY - inset
+
+    bubble.translationX = inset.toFloat()
+    bubble.translationY = inset.toFloat()
+    timerLabel.translationX = inset.toFloat()
+    timerLabel.translationY = inset.toFloat()
+
+    safeUpdate(bubbleRoot, params)
+    positionSatellites()
+  }
+
+  private fun anchorCentreX(): Int = anchorX + dp(BUBBLE_DP) / 2
+
+  private fun anchorCentreY(): Int = anchorY + dp(BUBBLE_DP) / 2
+
+  private fun positionSatellites() {
+    val inset = if (needsCanvas()) canvasInset() else 0
+    val centre = inset + dp(BUBBLE_DP) / 2
+    val half = dp(SATELLITE_DP) / 2
+
+    val offsets =
+      OverlayRadialGeometry.offsets(
+        anchorCentreX = anchorCentreX(),
+        anchorCentreY = anchorCentreY(),
+        screenWidth = screenWidth(),
+        screenHeight = screenHeight(),
+        radius = dp(SATELLITE_RADIUS_DP),
+        clearance = dp(SATELLITE_DP),
+      )
+
+    orderedSatellites().forEachIndexed { index, satellite ->
+      val offset = offsets[index]
+      satellite.translationX = (centre + offset.x - half).toFloat()
+      satellite.translationY = (centre + offset.y - half).toFloat()
+    }
   }
 
   @SuppressLint("ClickableViewAccessibility")
   private fun buildBubbleViews(): FrameLayout {
-    val container = FrameLayout(context)
+    canvas = FrameLayout(context).apply { clipChildren = false }
 
-    val row =
-      LinearLayout(context).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-      }
-
-    satellites =
-      LinearLayout(context).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        visibility = View.GONE
-      }
-
-    playSatellite = buildSatellite(R.drawable.ic_overlay_play, OverlayPalette.ACCENT) {
-      DictationOverlayBridge.dispatch(
-        if (snapshot.phase == OverlaySnapshot.PHASE_RECORDING) ACTION_PAUSE else ACTION_PLAY,
+    playSatellite =
+      buildSatellite(
+        R.drawable.ic_overlay_play,
+        OverlayPalette.ACCENT,
+        R.string.overlay_action_play,
       )
-    }
     playIcon = playSatellite.getChildAt(0) as ImageView
 
-    stopSatellite = buildSatellite(R.drawable.ic_overlay_stop, OverlayPalette.DANGER) {
-      DictationOverlayBridge.dispatch(ACTION_STOP)
-    }
+    stopSatellite =
+      buildSatellite(
+        R.drawable.ic_overlay_stop,
+        OverlayPalette.DANGER,
+        R.string.overlay_action_stop,
+      )
 
-    homeSatellite = buildSatellite(R.drawable.ic_overlay_home, OverlayPalette.SURFACE) {
-      DictationOverlayBridge.dispatch(ACTION_HOME)
-    }
-
-    satellites.addView(playSatellite)
-    satellites.addView(stopSatellite)
-    satellites.addView(homeSatellite)
-
-    val bubbleColumn =
-      LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
-        gravity = Gravity.CENTER_HORIZONTAL
-      }
+    homeSatellite =
+      buildSatellite(
+        R.drawable.ic_overlay_home,
+        OverlayPalette.SURFACE,
+        R.string.overlay_action_home,
+      )
 
     bubble =
       FrameLayout(context).apply {
@@ -234,7 +292,8 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
             setColor(OverlayPalette.ACCENT)
           }
         elevation = dp(8).toFloat()
-        layoutParams = LinearLayout.LayoutParams(dp(BUBBLE_DP), dp(BUBBLE_DP))
+        contentDescription = context.getString(R.string.overlay_action_toggle)
+        layoutParams = FrameLayout.LayoutParams(dp(BUBBLE_DP), dp(BUBBLE_DP))
       }
 
     bubbleIcon =
@@ -246,7 +305,6 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
           }
       }
     bubble.addView(bubbleIcon)
-    bubble.setOnTouchListener(BubbleTouchListener())
 
     timerLabel =
       TextView(context).apply {
@@ -261,23 +319,49 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
             setColor(OverlayPalette.PANEL)
           }
         layoutParams =
-          LinearLayout.LayoutParams(
-              LinearLayout.LayoutParams.WRAP_CONTENT,
-              LinearLayout.LayoutParams.WRAP_CONTENT,
+          FrameLayout.LayoutParams(
+              FrameLayout.LayoutParams.WRAP_CONTENT,
+              FrameLayout.LayoutParams.WRAP_CONTENT,
             )
-            .apply { topMargin = dp(4) }
+            .apply {
+              gravity = Gravity.TOP or Gravity.START
+              topMargin = dp(BUBBLE_DP) + dp(4)
+            }
       }
 
-    bubbleColumn.addView(bubble)
-    bubbleColumn.addView(timerLabel)
+    messageStrip =
+      TextView(context).apply {
+        setTextColor(Color.WHITE)
+        textSize = 12f
+        gravity = Gravity.CENTER
+        visibility = View.GONE
+        alpha = 0f
+        elevation = dp(10).toFloat()
+        setPadding(dp(12), dp(6), dp(12), dp(6))
+        background =
+          GradientDrawable().apply {
+            cornerRadius = dp(14).toFloat()
+            setColor(OverlayPalette.PANEL)
+          }
+        layoutParams =
+          FrameLayout.LayoutParams(
+              FrameLayout.LayoutParams.WRAP_CONTENT,
+              FrameLayout.LayoutParams.WRAP_CONTENT,
+            )
+            .apply { gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL }
+      }
 
-    row.addView(satellites)
-    row.addView(bubbleColumn)
-    container.addView(row)
-    return container
+    canvas.addView(homeSatellite)
+    canvas.addView(stopSatellite)
+    canvas.addView(playSatellite)
+    canvas.addView(bubble)
+    canvas.addView(timerLabel)
+    canvas.addView(messageStrip)
+    canvas.setOnTouchListener(BubbleTouchListener())
+    return canvas
   }
 
-  private fun buildSatellite(iconRes: Int, tint: Int, onTap: () -> Unit): FrameLayout {
+  private fun buildSatellite(iconRes: Int, tint: Int, labelRes: Int): FrameLayout {
     val holder =
       FrameLayout(context).apply {
         background =
@@ -289,11 +373,9 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
         alpha = 0f
         scaleX = 0.4f
         scaleY = 0.4f
-        layoutParams =
-          LinearLayout.LayoutParams(dp(SATELLITE_DP), dp(SATELLITE_DP)).apply {
-            marginEnd = dp(10)
-          }
-        setOnClickListener { onTap() }
+        visibility = View.GONE
+        contentDescription = context.getString(labelRes)
+        layoutParams = FrameLayout.LayoutParams(dp(SATELLITE_DP), dp(SATELLITE_DP))
       }
 
     holder.addView(
@@ -306,12 +388,22 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
     return holder
   }
 
-  private fun setExpanded(next: Boolean) {
+  private fun actionFor(satellite: View): String? =
+    when (satellite) {
+      playSatellite ->
+        if (snapshot.phase == OverlaySnapshot.PHASE_RECORDING) ACTION_PAUSE else ACTION_PLAY
+      stopSatellite -> ACTION_STOP
+      homeSatellite -> ACTION_HOME
+      else -> null
+    }
+
+  fun setExpanded(next: Boolean) {
     if (expanded == next) {
       return
     }
     expanded = next
     if (next) {
+      applyWindowBounds()
       animateSatellitesIn()
     } else {
       animateSatellitesOut()
@@ -319,12 +411,12 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
   }
 
   private fun orderedSatellites(): List<FrameLayout> =
-    listOf(homeSatellite, stopSatellite, playSatellite)
+    listOf(playSatellite, stopSatellite, homeSatellite)
 
   private fun animateSatellitesIn() {
-    satellites.visibility = View.VISIBLE
     orderedSatellites().forEachIndexed { index, satellite ->
       satellite.animate().cancel()
+      satellite.visibility = View.VISIBLE
       satellite
         .animate()
         .alpha(1f)
@@ -350,12 +442,30 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
         .setDuration(SATELLITE_DURATION_MS)
         .setInterpolator(AnticipateInterpolator(1.4f))
         .withEndAction {
-          if (!expanded && satellite === ordered.last()) {
-            satellites.visibility = View.GONE
+          if (expanded) {
+            return@withEndAction
+          }
+          satellite.visibility = View.GONE
+          if (satellite === ordered.last()) {
+            applyWindowBounds()
           }
         }
         .start()
     }
+  }
+
+  fun showMessage(text: String) {
+    if (bubbleRoot == null || text.isEmpty()) {
+      return
+    }
+    main.removeCallbacks(hideMessage)
+    messageStrip.text = text
+    messageStrip.visibility = View.VISIBLE
+    messageVisible = true
+    applyWindowBounds()
+    messageStrip.animate().cancel()
+    messageStrip.animate().alpha(1f).setDuration(MESSAGE_FADE_MS).start()
+    main.postDelayed(hideMessage, MESSAGE_HOLD_MS)
   }
 
   private fun bubbleBackground(): GradientDrawable = bubble.background as GradientDrawable
@@ -469,8 +579,16 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
       listOf(snapshot.transcript, snapshot.partial)
         .filter { it.isNotEmpty() }
         .joinToString(" ")
-    transcriptLabel.text = live
-    transcriptLabel.visibility = if (live.isEmpty()) View.GONE else View.VISIBLE
+
+    if (live.isEmpty() && snapshot.phase == OverlaySnapshot.PHASE_RECORDING) {
+      transcriptLabel.text = context.getString(R.string.overlay_transcript_waiting)
+      transcriptLabel.setTextColor(OverlayPalette.MUTED)
+      transcriptLabel.visibility = View.VISIBLE
+    } else {
+      transcriptLabel.text = live
+      transcriptLabel.setTextColor(Color.WHITE)
+      transcriptLabel.visibility = if (live.isEmpty()) View.GONE else View.VISIBLE
+    }
     applyProcessingMessage()
   }
 
@@ -521,13 +639,15 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
 
   private fun formatDuration(totalSeconds: Int): String {
     val safe = if (totalSeconds < 0) 0 else totalSeconds
-    return String.format("%02d:%02d", safe / 60, safe % 60)
+    return String.format(Locale.US, "%02d:%02d", safe / 60, safe % 60)
   }
 
   private fun dp(value: Int): Int =
     (value * context.resources.displayMetrics.density).roundToInt()
 
   private fun screenWidth(): Int = context.resources.displayMetrics.widthPixels
+
+  private fun screenHeight(): Int = context.resources.displayMetrics.heightPixels
 
   private fun safeUpdate(view: View?, params: WindowManager.LayoutParams?) {
     if (view == null || params == null) {
@@ -546,73 +666,109 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
     private var touchX = 0f
     private var touchY = 0f
     private var dragging = false
+    private var pressed: View? = null
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View, event: MotionEvent): Boolean {
-      val params = bubbleParams ?: return false
-
       when (event.action) {
         MotionEvent.ACTION_DOWN -> {
-          startX = params.x
-          startY = params.y
+          pressed = hitTest(event.x, event.y)
+          if (pressed == null) {
+            if (expanded) {
+              setExpanded(false)
+              return true
+            }
+            return false
+          }
+          startX = anchorX
+          startY = anchorY
           touchX = event.rawX
           touchY = event.rawY
           dragging = false
-          bubble.animate().scaleX(0.92f).scaleY(0.92f).setDuration(90).start()
+          pressed?.animate()?.scaleX(0.92f)?.scaleY(0.92f)?.setDuration(90)?.start()
           return true
         }
         MotionEvent.ACTION_MOVE -> {
+          if (pressed == null) {
+            return false
+          }
           val dx = (event.rawX - touchX).roundToInt()
           val dy = (event.rawY - touchY).roundToInt()
           if (!dragging && abs(dx) < touchSlop && abs(dy) < touchSlop) {
             return true
           }
-          if (!dragging && expanded) {
-            setExpanded(false)
-          }
           dragging = true
-          params.x = startX + dx
-          params.y = startY + dy
-          safeUpdate(bubbleRoot, params)
+          anchorX = startX + dx
+          anchorY = startY + dy
+          applyWindowBounds()
           return true
         }
         MotionEvent.ACTION_UP,
         MotionEvent.ACTION_CANCEL -> {
-          bubble.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
-          if (!dragging) {
+          val target = pressed ?: return false
+          pressed = null
+          target.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+
+          if (dragging) {
+            snapToEdge()
+            return true
+          }
+
+          canvas.performClick()
+          if (target === bubble) {
             setExpanded(!expanded)
             return true
           }
-          snapToEdge(params)
+          DictationOverlayBridge.dispatch(actionFor(target) ?: return true)
           return true
         }
       }
       return false
     }
 
-    private fun snapToEdge(params: WindowManager.LayoutParams) {
+    private fun hitTest(x: Float, y: Float): View? {
+      if (expanded) {
+        orderedSatellites().forEach { satellite ->
+          if (satellite.visibility == View.VISIBLE && contains(satellite, x, y)) {
+            return satellite
+          }
+        }
+      }
+      if (contains(bubble, x, y)) {
+        return bubble
+      }
+      return null
+    }
+
+    private fun contains(target: View, x: Float, y: Float): Boolean {
+      val left = target.translationX
+      val top = target.translationY
+      return x >= left &&
+        x <= left + target.width &&
+        y >= top &&
+        y <= top + target.height
+    }
+
+    private fun snapToEdge() {
       val margin = dp(12)
       val width = dp(BUBBLE_DP)
-      val centre = params.x + width / 2
+      val centre = anchorCentreX()
       val target =
         if (centre < screenWidth() / 2) margin else screenWidth() - width - margin
-      val from = params.x
+      val from = anchorX
 
-      if (params.y < margin) {
-        params.y = margin
-      }
+      anchorY = anchorY.coerceIn(margin, screenHeight() - dp(BUBBLE_DP) - margin)
 
       val animator = android.animation.ValueAnimator.ofInt(from, target)
       animator.duration = SNAP_DURATION_MS
       animator.interpolator = DecelerateInterpolator()
       animator.addUpdateListener { value ->
-        val live = bubbleParams ?: return@addUpdateListener
-        live.x = value.animatedValue as Int
-        safeUpdate(bubbleRoot, live)
+        anchorX = value.animatedValue as Int
+        applyWindowBounds()
       }
       animator.start()
 
-      prefs.edit().putInt(KEY_BUBBLE_X, target).putInt(KEY_BUBBLE_Y, params.y).apply()
+      prefs.edit().putInt(KEY_BUBBLE_X, target).putInt(KEY_BUBBLE_Y, anchorY).apply()
     }
   }
 
@@ -655,12 +811,15 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
   }
 
   fun onConfigurationChanged(configuration: Configuration) {
-    val params = bubbleParams ?: return
-    val maxX = screenWidth() - dp(BUBBLE_DP) - dp(12)
-    if (params.x > maxX) {
-      params.x = maxX
-      safeUpdate(bubbleRoot, params)
+    if (bubbleParams == null) {
+      return
     }
+    val margin = dp(12)
+    anchorX = anchorX.coerceIn(margin, screenWidth() - dp(BUBBLE_DP) - margin)
+    anchorY = anchorY.coerceIn(margin, screenHeight() - dp(BUBBLE_DP) - margin)
+    applyWindowBounds()
+    prefs.edit().putInt(KEY_BUBBLE_X, anchorX).putInt(KEY_BUBBLE_Y, anchorY).apply()
+
     transcriptParams?.let {
       it.width = screenWidth() - dp(32)
       safeUpdate(transcriptRoot, it)
@@ -675,11 +834,15 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
     private const val KEY_TRANSCRIPT_Y = "transcript_y"
     private const val BUBBLE_DP = 60
     private const val SATELLITE_DP = 44
+    private const val SATELLITE_RADIUS_DP = 76
+    private const val CANVAS_DP = 280
     private const val TRANSCRIPT_MAX_LINES = 6
     private const val SATELLITE_STAGGER_MS = 45L
     private const val SATELLITE_DURATION_MS = 220L
     private const val SNAP_DURATION_MS = 220L
     private const val ROTATION_INTERVAL_MS = 2500L
+    private const val MESSAGE_FADE_MS = 160L
+    private const val MESSAGE_HOLD_MS = 3000L
     const val ACTION_PLAY = "play"
     const val ACTION_PAUSE = "pause"
     const val ACTION_STOP = "stop"

@@ -4,6 +4,7 @@ import {
   OVERLAY_REJECTION,
   resolveCommand,
 } from '../src/services/overlayCommandRouter.js';
+import { OPEN_APP_CAUSE } from '../src/services/consultationLauncher.js';
 import { CONSULTATION_STAGE } from '../src/store/useRecordingStore.js';
 
 import { check, report } from './lib/fixture-harness.mjs';
@@ -13,6 +14,7 @@ const run = overrides =>
     status: RECORDING_STATE.IDLE,
     stage: CONSULTATION_STAGE.RECORDING,
     micGranted: true,
+    sharedMicSupported: true,
     hasForeignActiveSession: false,
     ...overrides,
   });
@@ -39,14 +41,24 @@ check(
 );
 
 check(
-  'C2.1 play without the microphone is refused',
-  run({ action: OVERLAY_ACTION.PLAY, micGranted: false }).reason,
-  OVERLAY_REJECTION.MIC_DENIED,
+  'C2.1 play without the microphone opens the app instead of failing silently',
+  run({ action: OVERLAY_ACTION.PLAY, micGranted: false }).method,
+  'openRecording',
 );
 check(
-  'C2.2 and nothing is invoked',
-  run({ action: OVERLAY_ACTION.PLAY, micGranted: false }).method,
-  null,
+  'C2.2 carrying the reason it could not start in place',
+  run({ action: OVERLAY_ACTION.PLAY, micGranted: false }).reason,
+  OPEN_APP_CAUSE.MIC_NOT_GRANTED,
+);
+check(
+  'C2.4 a device without the shared mic also opens the app',
+  run({ action: OVERLAY_ACTION.PLAY, sharedMicSupported: false }).method,
+  'openRecording',
+);
+check(
+  'C2.5 a ready device starts in place',
+  run({ action: OVERLAY_ACTION.PLAY }).method,
+  'startSession',
 );
 check(
   'C2.3 a resume does not need a fresh permission check',
@@ -59,9 +71,14 @@ check(
 );
 
 check(
-  'C3.1 another unfinished session blocks a new one',
+  'C3.1 another unfinished session opens the app rather than discarding it',
+  run({ action: OVERLAY_ACTION.PLAY, hasForeignActiveSession: true }).method,
+  'openRecording',
+);
+check(
+  'C3.3 naming the unfinished session as the reason',
   run({ action: OVERLAY_ACTION.PLAY, hasForeignActiveSession: true }).reason,
-  OVERLAY_REJECTION.SESSION_IN_PROGRESS,
+  OPEN_APP_CAUSE.UNFINISHED_SESSION,
 );
 check(
   'C3.2 a consultation already at report stage blocks a new one',

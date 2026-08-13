@@ -42,6 +42,7 @@ export interface Spec extends TurboModule {
   readonly openReviewSurface: () => Promise<boolean>;
   readonly closeReviewSurface: () => Promise<boolean>;
   readonly handoffToReport: () => Promise<boolean>;
+  readonly showOverlayMessage: (text: string) => Promise<boolean>;
   readonly onOverlayCommand: EventEmitter<OverlayCommand>;
 }
 

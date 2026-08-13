@@ -12,6 +12,7 @@ import {
 } from '../services/settingsService';
 import * as overlay from '../services/dictationOverlayService';
 import { disableBubble, enableBubble } from '../services/dictationBubble';
+import { checkMicPermission, isGranted } from '../services/permissionService';
 
 let hydrating = null;
 
@@ -21,13 +22,21 @@ const useSettingsStore = create(set => ({
   deviceRecognizerLocales: null,
   bubbleEnabled: false,
   overlayGranted: false,
+  micGranted: false,
   onboardingSeen: false,
 
   hydrate: async () => {
     const dictationLanguage = await loadDictationLanguage();
     const overlayGranted = overlay.canDrawOverlays();
-    const bubbleEnabled = await loadBubbleEnabled(overlayGranted);
+    const bubbleEnabled = await loadBubbleEnabled();
     const onboardingSeen = await loadOnboardingSeen();
+
+    let micGranted = false;
+    try {
+      micGranted = isGranted(await checkMicPermission());
+    } catch {
+      micGranted = false;
+    }
 
     let deviceRecognizerLocales = null;
     try {
@@ -42,6 +51,7 @@ const useSettingsStore = create(set => ({
       deviceRecognizerLocales,
       bubbleEnabled,
       overlayGranted,
+      micGranted,
       onboardingSeen,
       hydrated: true,
     });
@@ -52,8 +62,11 @@ const useSettingsStore = create(set => ({
   },
 
   markOnboardingSeen: async () => {
-    set({ onboardingSeen: true });
-    return saveOnboardingSeen(true);
+    const ok = await saveOnboardingSeen(true);
+    if (ok) {
+      set({ onboardingSeen: true });
+    }
+    return ok;
   },
 
   refreshOverlayGrant: () => {
@@ -73,10 +86,19 @@ const useSettingsStore = create(set => ({
     const previous = useSettingsStore.getState().bubbleEnabled;
     set({ bubbleEnabled: enabled, overlayGranted: overlay.canDrawOverlays() });
 
-    const started = enabled ? await enableBubble() : await disableBubble();
-    const ok = await saveBubbleEnabled(enabled);
+    const applied = enabled ? await enableBubble() : await disableBubble();
+    if (!applied) {
+      set({ bubbleEnabled: previous });
+      return false;
+    }
 
-    if (!ok || (enabled && !started)) {
+    const ok = await saveBubbleEnabled(enabled);
+    if (!ok) {
+      if (enabled) {
+        await disableBubble();
+      } else {
+        await enableBubble();
+      }
       set({ bubbleEnabled: previous });
       return false;
     }

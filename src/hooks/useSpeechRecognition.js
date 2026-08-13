@@ -438,7 +438,9 @@ export default function useSpeechRecognition({
     return outcome;
   }, [stop]);
 
-  backgroundStopRef.current = stopWithManager;
+  useEffect(() => {
+    backgroundStopRef.current = stopWithManager;
+  }, [stopWithManager]);
   const resumeDictation = useCallback(
     () => beginSession({ keepTranscript: true }),
     [beginSession],

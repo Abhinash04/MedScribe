@@ -21,7 +21,7 @@ class DictationOverlayPackage : BaseReactPackage() {
           name = DICTATION_OVERLAY_NAME,
           className = DictationOverlayModule::class.java.name,
           canOverrideExistingModule = false,
-          needsEagerInit = false,
+          needsEagerInit = true,
           isCxxModule = false,
           isTurboModule = true,
         )

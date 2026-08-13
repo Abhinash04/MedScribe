@@ -129,6 +129,24 @@ check(
 check('T6.8 no second pass while one is in flight', canTranslate(pending, HINDI), false);
 check('T6.9 a failed attempt may be retried', canTranslate(broke, HINDI), true);
 
+const cleared = editTranslation(ready, '');
+check('T6.10 clearing the english text keeps the edit', cleared.text, '');
+check(
+  'T6.11 but it must not stay ready, or a report is built from the source language',
+  cleared.status === TRANSLATION_STATUS.READY,
+  false,
+);
+check(
+  'T6.12 whitespace alone is not a translation either',
+  editTranslation(ready, '   \n  ').status === TRANSLATION_STATUS.READY,
+  false,
+);
+check(
+  'T6.13 restoring text returns it to ready',
+  editTranslation(cleared, 'The patient has a fever.').status,
+  TRANSLATION_STATUS.READY,
+);
+
 check(
   'T6.10 a fresh translation clears the edited flag',
   applyTranslation(edited, ok(ENGLISH), { now: 5000, sourceText: HINDI }).edited,

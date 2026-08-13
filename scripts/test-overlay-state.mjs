@@ -181,4 +181,49 @@ check('S4.3 nullish text stays empty', truncateTranscript(null), '');
   check('S5.14 and a zero duration', snapshot.durationSeconds, 0);
 }
 
+check(
+  'S6.1 a stale pending refinement never wakes an idle bubble',
+  resolvePhase(state({ anuvadini: { status: ANUVADINI_STATUS.PENDING } })),
+  OVERLAY_PHASE.IDLE,
+);
+check(
+  'S6.2 nor does a stale pending translation',
+  resolvePhase(
+    state({
+      translation: { status: TRANSLATION_STATUS.PENDING, progress: { done: 0, total: 0 } },
+    }),
+  ),
+  OVERLAY_PHASE.IDLE,
+);
+check(
+  'S6.3 so an idle bubble shows no transcript panel',
+  toOverlaySnapshot(state({ anuvadini: { status: ANUVADINI_STATUS.PENDING } })).phase,
+  OVERLAY_PHASE.IDLE,
+);
+check(
+  'S6.4 and carries no processing detail',
+  toOverlaySnapshot(state({ anuvadini: { status: ANUVADINI_STATUS.PENDING } })).detail,
+  '',
+);
+check(
+  'S6.5 a pending pipeline during recording stays recording',
+  resolvePhase(
+    state({
+      status: RECORDING_STATE.LISTENING,
+      anuvadini: { status: ANUVADINI_STATUS.PENDING },
+    }),
+  ),
+  OVERLAY_PHASE.RECORDING,
+);
+check(
+  'S6.6 but a pending pipeline after review still reports processing',
+  resolvePhase(
+    state({
+      stage: CONSULTATION_STAGE.REVIEW,
+      anuvadini: { status: ANUVADINI_STATUS.PENDING },
+    }),
+  ),
+  OVERLAY_PHASE.PROCESSING,
+);
+
 report();

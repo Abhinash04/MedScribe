@@ -33,7 +33,7 @@ from the Play Store.
 
 **JS drives, native renders.**
 
-```
+```text
 overlay tap ──emitOnOverlayCommand──▶ dictationBubble
                                           │ overlayCommandRouter (pure)
                                           ▼
@@ -136,6 +136,41 @@ using `OvershootInterpolator` out and `AnticipateInterpolator` back.
 `androidx.dynamicanimation` is not on the classpath and was not worth adding for
 this.
 
+**A radial arc on a fixed canvas, not a horizontal row.** The satellites used to
+be a `LinearLayout` sibling *to the left of* the anchor inside a `WRAP_CONTENT`
+window pinned `TOP|START`. Expanding added 162dp to the row's left edge, which
+shoved the anchor 162dp right without changing `params.x` — so at the right edge
+the anchor drew past the screen and `FLAG_LAYOUT_NO_LIMITS` stopped Android
+clamping it. The window is now a fixed square canvas centred on the anchor, and
+satellites are placed by `translationX/Y` on an arc, so **expanding never moves
+the anchor**. The window carries two sizes: 60dp collapsed, so a transparent
+square never swallows taps, and the full canvas when expanded or showing a
+message.
+
+**Bounds are structural, not clamped.** `OverlayRadialGeometry` picks the arc
+direction from which half of the screen the anchor sits in, biases the fan away
+from the top or bottom edge, and then — if the fan would still exit the display —
+translates **all three satellites by one common offset**. A rigid translation
+keeps the arc's shape exactly intact while guaranteeing every button stays on
+screen. That is why the geometry is a separate pure object: it is ported
+verbatim into `scripts/test-overlay-geometry.mjs` and asserted from every corner,
+edge midpoint and the centre.
+
+**One gesture owner, hit-tested taps.** Satellites previously carried
+`setOnClickListener`, which makes a view clickable, so it consumed `ACTION_DOWN`
+and owned the whole gesture — and since `bubble` was its *sibling*, not an
+ancestor, the drag listener never saw the event. That is why only the M could be
+dragged. Now a single `OnTouchListener` on the canvas root hit-tests the press
+target and decides tap versus drag once, so the whole widget drags from any of
+its four circles. The arc is deliberately **not** collapsed while dragging.
+
+**Refusals are spoken, not swallowed.** `resolveCommand` always returned a
+`reason`, but `handleCommand` destructured only `method` and then called
+`publish()` — which produced a byte-identical snapshot that
+`DictationOverlayBridge.publish` de-duped on data-class equality. Zero pixels
+changed, which is exactly why Play looked dead. The reason now drives a fading
+message strip under the bubble.
+
 **Processing messages rotate in Kotlin, not JS.** A `Handler` cycles the eight
 messages every 2.5 s while the phase is processing. Native, because JS timers
 stall when the host is paused. Real progress from JS (`Refining… 2 of 3`) always
@@ -148,7 +183,9 @@ and a circular variant plus an adaptive icon; the bubble gets a circle-masked cr
 of the M with the wordmark excluded, because the wordmark is illegible at 60dp.
 The notification keeps its monochrome mic vector — Android masks small icons to
 alpha, so a colour logo would render as a grey blob. Regenerate the whole set with
-`node scripts/generate-icons.mjs` after changing the source logo.
+`npm run icons` after changing the source logo. That script needs **Python 3 with
+Pillow** (`pip install Pillow`) on PATH — it is a one-off authoring tool, not part
+of the build, and it fails with that instruction if either is missing.
 
 **Spec-declared `EventEmitter`, not `RCTDeviceEventEmitter`.** Codegen emits a
 typed `emitOnOverlayCommand` on the Kotlin spec, so there are no string-keyed
@@ -173,7 +210,7 @@ existing `DashboardScreen` probe routes by stage.
 
 Six phases, derived from existing state rather than stored separately:
 
-```
+```text
 Idle → Recording → Paused → Processing → Review → Completed
 ```
 
@@ -181,6 +218,18 @@ Idle → Recording → Paused → Processing → Review → Completed
 pipeline status onto a phase. A pending refinement or translation holds the
 overlay in **Processing** even after the recorder has settled, so the doctor is
 not offered a review of a transcript that is still being produced.
+
+That inference is gated on a session having actually run — `PROCESSING`/`SUCCESS`
+status or the review stage. Without the gate, a `PENDING` flag left behind by an
+interrupted session promoted a completely **idle** bubble to Processing, which
+attached the transcript panel *and* started the rotating messages the moment the
+bubble appeared, before Play was ever pressed. The native side was already
+correct: `showsTranscript` excludes idle and `startRotation()` is gated on
+`PHASE_PROCESSING`. Only the phase was lying.
+
+The transcript body shows `Listening…` while the phase is recording and no text
+has arrived yet, so the doctor can tell the microphone is live before speaking.
+The first partial replaces it.
 
 There is **one source of truth**: the zustand store. The overlay subscribes and
 pushes a snapshot; it never keeps its own copy. `DictationOverlayBridge` drops a
@@ -216,34 +265,47 @@ constant rather than rare:
 
 ## 7. Testing
 
-**35 suites, 2441 assertions, all green.** Five suites are new:
+**38 suites, 2517 assertions, all green.** Seven suites are new:
 
 | Suite | Covers |
 |---|---|
 | `test-background-teardown.mjs` | the backgrounding predicates — the regression test for the fixed bug |
-| `test-overlay-state.mjs` | every status × stage → phase, processing detail, transcript truncation, capability flags |
-| `test-overlay-commands.mjs` | command routing: pause refused unless recording, play refused without the mic or with a foreign session |
+| `test-overlay-state.mjs` | every status × stage → phase, processing detail, transcript truncation, capability flags, and that a stale pending flag never wakes an idle bubble |
+| `test-overlay-commands.mjs` | command routing: pause refused unless recording, play routed to the app when it cannot start in place |
 | `test-overlay-handoff.mjs` | queue → flush → consume-once, and the translation-readiness gate |
 | `test-bubble-settings.mjs` | the toggle's persistence, including the absent-value default and DB-error fallback |
+| `test-consultation-launcher.mjs` | the full headless-vs-open-app truth table, and that every open-app plan names a cause and a route |
+| `test-overlay-geometry.mjs` | the arc maths ported verbatim from Kotlin: direction, vertical bias, and every button on screen from nine anchor positions |
 
-Build verified: `assembleDebug` succeeds, the codegen spec contains
-`emitOnOverlayCommand`, and the merged manifest carries all five new permissions
-plus `foregroundServiceType="specialUse|microphone"`.
+Build verified: `assembleDebug` succeeds for `arm64-v8a`, the codegen spec
+contains `emitOnOverlayCommand` and `showOverlayMessage`, and the merged manifest
+carries all five new permissions plus
+`foregroundServiceType="specialUse|microphone"`.
 
 ### Device checklist
 
-1. First launch → Settings → toggle the bubble → explainer → grant → bubble appears.
-2. Drag it, release near each edge, confirm it snaps and survives a reboot.
-3. Tap to expand; Play; leave MedScribe; confirm the transcript keeps growing and
-   the timer keeps advancing for five minutes.
-4. Pause, switch apps, Resume — same session continues.
-5. Stop → processing panel → review sheet; edit both fields; Minimize; take a
-   call; reopen and confirm the edits survived.
-6. Save changes → Generate report → MedScribe opens on a populated Report.
-7. Repeat 6 after force-stopping MedScribe (cold handover).
-8. Cross-over: start in the app, stop from the bubble — and the reverse.
-9. Confirm the recogniser's tones stay muted for a whole backgrounded session.
-10. Repeat on at least one MIUI and one ColorOS device.
+1. **Diagnose first:** tap **Home**. If MedScribe opens, the native→JS chain is
+   alive and any Play failure is routing. If Home does nothing either, the
+   headless task never attached — check the overlay diagnostics.
+2. Fresh install → onboarding asks for the **microphone**, then the overlay. Deny
+   each once to see the explanation and the settings route, then grant both.
+3. Bubble appears → **no transcript panel and no processing messages** while idle.
+4. Tap Play → starts in place, bubble turns red, panel shows **Listening…**, the
+   app never opens.
+5. Speak → the placeholder is replaced by live partial text.
+6. Tap Stop → **only now** do the rotating processing messages run → review sheet.
+7. Drag from the **Play**, **Stop** and **Home** circles, not just the M — the
+   whole widget moves and the arc keeps its shape.
+8. Park at each edge and corner, expand → all three buttons fully visible.
+9. Tap Stop while idle → the message strip explains instead of nothing happening.
+10. Leave MedScribe mid-session; confirm the transcript keeps growing and the
+    timer advances for five minutes.
+11. Pause, switch apps, Resume — same session continues.
+12. Save changes → Generate report → MedScribe opens on a populated Report.
+13. Repeat 12 after force-stopping MedScribe (cold handover).
+14. Cross-over: start in the app, stop from the bubble — and the reverse.
+15. Confirm the recogniser's tones stay muted for a whole backgrounded session.
+16. Repeat on at least one MIUI and one ColorOS device.
 
 ---
 
@@ -263,7 +325,19 @@ plus `foregroundServiceType="specialUse|microphone"`.
   accumulates text and JS drains the delta on wake — but `durationSeconds` drifts.
   Anchoring the duration to wall clock would fix it.
 - **One active session, ever.** `saveSessionImmediate` deletes every other row, so
-  the router refuses to start a second session while one is unfinished.
+  an unfinished consultation routes Play into the app rather than starting a
+  second session. That is deliberate — silently clearing the row would discard a
+  doctor's unfinished consultation, so the decision is handed to the existing
+  `SessionRecoveryModal`.
+- **An overlay tap has no Activity**, so it can never raise a runtime permission
+  prompt. Play therefore falls back to opening MedScribe at `Recording`, where
+  `useSpeechRecognition.beginSession` does the requesting. Onboarding asks for the
+  microphone up front specifically so this fallback is rare rather than the normal
+  first-run path.
+- **Headless Play needs the shared mic.** `shouldContinueRef` and the recogniser
+  subscription live inside `useSpeechRecognition`, so a device where
+  `SharedMicModule.isSupported()` is false always routes through the app. On
+  shared-mic devices those are already dead code, so nothing is lost.
 - **The overlay is Android-only.** Every call degrades to a no-op on iOS through
   the lazy-require wrapper.
 - **Not yet built:** a level meter driven by real RMS, richer processing

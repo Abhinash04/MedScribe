@@ -7,7 +7,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -29,16 +31,25 @@ class DictationBubbleService : Service() {
   private var headlessTaskId: Int? = null
   private var reactContextRef: WeakReference<ReactContext>? = null
   private var dictationForeground = false
+  private var headlessRetries = 0
+
+  private val main = Handler(Looper.getMainLooper())
+
+  private val headlessRetry = Runnable { startHeadlessTask() }
 
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onCreate() {
     super.onCreate()
     createNotificationChannel()
+    instance = WeakReference(this)
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    promoteForeground(dictationForeground)
+    if (!promoteForeground(dictationForeground)) {
+      running = false
+      return START_NOT_STICKY
+    }
 
     when (intent?.action) {
       ACTION_STOP_DICTATION -> DictationOverlayBridge.dispatch(OVERLAY_ACTION_STOP)
@@ -55,6 +66,7 @@ class DictationBubbleService : Service() {
 
   override fun onDestroy() {
     running = false
+    instance = null
     hideOverlay()
     finishHeadlessTask()
     DictationOverlayBridge.reset()
@@ -63,7 +75,9 @@ class DictationBubbleService : Service() {
 
   private fun beginDictation() {
     dictationForeground = true
-    promoteForeground(true)
+    if (!promoteForeground(true)) {
+      dictationForeground = false
+    }
   }
 
   private fun endDictation() {
@@ -71,23 +85,27 @@ class DictationBubbleService : Service() {
     promoteForeground(false)
   }
 
-  private fun promoteForeground(withMicrophone: Boolean) {
+  private fun promoteForeground(withMicrophone: Boolean): Boolean {
     val type =
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        if (withMicrophone) {
-          ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-        } else {
-          ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-        }
-      } else {
-        0
+      when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ->
+          if (withMicrophone) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
+              ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+          } else {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+          }
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
+          if (withMicrophone) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+        else -> 0
       }
 
-    try {
+    return try {
       ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
+      true
     } catch (error: Exception) {
       stopSelf()
+      false
     }
   }
 
@@ -114,7 +132,12 @@ class DictationBubbleService : Service() {
     if (headlessTaskId != null) {
       return
     }
-    val context = currentReactContext() ?: return
+    val context = currentReactContext()
+    if (context == null) {
+      scheduleHeadlessRetry()
+      return
+    }
+    headlessRetries = 0
     reactContextRef = WeakReference(context)
 
     UiThreadUtil.runOnUiThread {
@@ -130,7 +153,17 @@ class DictationBubbleService : Service() {
     }
   }
 
+  private fun scheduleHeadlessRetry() {
+    if (headlessRetries >= HEADLESS_MAX_RETRIES) {
+      return
+    }
+    headlessRetries += 1
+    main.removeCallbacks(headlessRetry)
+    main.postDelayed(headlessRetry, HEADLESS_RETRY_MS)
+  }
+
   private fun finishHeadlessTask() {
+    main.removeCallbacks(headlessRetry)
     val taskId = headlessTaskId ?: return
     val context = reactContextRef?.get()
     headlessTaskId = null
@@ -219,10 +252,26 @@ class DictationBubbleService : Service() {
     const val ACTION_STOP_DICTATION = "com.medscribe.overlay.STOP_DICTATION"
     const val ACTION_BEGIN_DICTATION = "com.medscribe.overlay.BEGIN_DICTATION"
     const val ACTION_END_DICTATION = "com.medscribe.overlay.END_DICTATION"
+    private const val HEADLESS_RETRY_MS = 750L
+    private const val HEADLESS_MAX_RETRIES = 20
 
     @Volatile
     var running: Boolean = false
       private set
+
+    @Volatile private var instance: WeakReference<DictationBubbleService>? = null
+
+    fun showMessage(text: String): Boolean {
+      val controller = instance?.get()?.overlay ?: return false
+      UiThreadUtil.runOnUiThread { controller.showMessage(text) }
+      return true
+    }
+
+    fun setExpanded(expanded: Boolean): Boolean {
+      val controller = instance?.get()?.overlay ?: return false
+      UiThreadUtil.runOnUiThread { controller.setExpanded(expanded) }
+      return true
+    }
 
     fun start(context: Context) {
       ContextCompat.startForegroundService(

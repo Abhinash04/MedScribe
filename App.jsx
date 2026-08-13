@@ -1,6 +1,6 @@
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import {
@@ -16,6 +16,14 @@ import useSettingsStore, {
   watchOverlayGrant,
 } from './src/store/useSettingsStore';
 import { colors } from './src/theme';
+
+function drainReportHandoff() {
+  const route = consumeReportHandoff();
+  if (route) {
+    navigateWhenReady(route);
+  }
+  flushPendingNavigation();
+}
 
 const MedScribeTheme = {
   ...DefaultTheme,
@@ -34,6 +42,7 @@ const MedScribeTheme = {
 function App() {
   const hydrated = useSettingsStore(state => state.hydrated);
   const overlayGranted = useSettingsStore(state => state.overlayGranted);
+  const micGranted = useSettingsStore(state => state.micGranted);
   const onboardingSeen = useSettingsStore(state => state.onboardingSeen);
 
   useEffect(() => {
@@ -41,12 +50,17 @@ function App() {
     watchOverlayGrant();
   }, []);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', next => {
+      if (next === 'active') {
+        drainReportHandoff();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   const handleReady = () => {
-    const route = consumeReportHandoff();
-    if (route) {
-      navigateWhenReady(route);
-    }
-    flushPendingNavigation();
+    drainReportHandoff();
   };
 
   if (!hydrated) {
@@ -61,6 +75,7 @@ function App() {
 
   const initialRouteName = resolveInitialRoute({
     overlayGranted,
+    micGranted,
     onboardingSeen,
     overlaySupported: isAvailable(),
   });

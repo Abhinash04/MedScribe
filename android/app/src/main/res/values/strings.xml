@@ -11,6 +11,11 @@
     <string name="overlay_home">Home</string>
     <string name="overlay_status_listening">LISTENING</string>
     <string name="overlay_status_paused">PAUSED</string>
+    <string name="overlay_transcript_waiting">Listening…</string>
+    <string name="overlay_action_play">Start or pause dictation</string>
+    <string name="overlay_action_stop">Stop dictation</string>
+    <string name="overlay_action_home">Open MedScribe</string>
+    <string name="overlay_action_toggle">MedScribe actions</string>
 
     <string-array name="overlay_processing_messages">
         <item>AI is working…</item>

@@ -284,7 +284,9 @@ const ReportScreen = ({ route }) => {
 
     const state = useRecordingStore.getState();
     if (needsTranslation(state.language) && state.translation?.status !== TRANSLATION_STATUS.READY) {
-      return null;
+      throw new Error(
+        'The English translation is not ready yet. Review the translation, then save again.',
+      );
     }
 
     const id = await saveNew({

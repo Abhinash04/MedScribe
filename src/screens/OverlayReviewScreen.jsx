@@ -36,8 +36,11 @@ const OverlayReviewScreen = () => {
 
   const translationReady = useRecordingStore(isTranslationReady);
   const canGenerate = useMemo(
-    () => (multilingual ? translationReady : original.trim().length > 0),
-    [multilingual, translationReady, original],
+    () =>
+      multilingual
+        ? translationReady && english.trim().length > 0
+        : original.trim().length > 0,
+    [multilingual, translationReady, english, original],
   );
 
   const handleSave = useCallback(() => {

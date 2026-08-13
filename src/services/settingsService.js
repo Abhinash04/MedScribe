@@ -59,11 +59,8 @@ export async function loadDictationLanguage(db = null) {
   return isKnownLanguage(migrated) ? migrated : DEFAULT_LANGUAGE_CODE;
 }
 
-export async function loadBubbleEnabled(overlayGranted, db = null) {
+export async function loadBubbleEnabled(db = null) {
   const stored = await readSetting(SETTING_KEY.DICTATION_BUBBLE, null, db);
-  if (stored === null) {
-    return overlayGranted === true;
-  }
   return stored === '1';
 }
 

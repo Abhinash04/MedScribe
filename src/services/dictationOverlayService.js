@@ -175,15 +175,27 @@ export async function handoffToReport() {
   }
 }
 
+export async function showOverlayMessage(text) {
+  const module = overlay();
+  if (!module || !text) {
+    return false;
+  }
+  try {
+    return await module.showOverlayMessage(text);
+  } catch {
+    return false;
+  }
+}
+
 export function subscribeToCommands(handler) {
   const module = overlay();
   if (!module) {
-    return () => {};
+    return null;
   }
   try {
     const subscription = module.onOverlayCommand(handler);
     return () => subscription?.remove?.();
   } catch {
-    return () => {};
+    return null;
   }
 }

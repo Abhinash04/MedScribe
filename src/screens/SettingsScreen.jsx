@@ -100,6 +100,7 @@ const SettingsScreen = ({ navigation }) => {
   );
   const bubbleEnabled = useSettingsStore(state => state.bubbleEnabled);
   const overlayGranted = useSettingsStore(state => state.overlayGranted);
+  const bubbleActive = bubbleEnabled && overlayGranted;
   const setBubbleEnabled = useSettingsStore(state => state.setBubbleEnabled);
   const refreshOverlayGrant = useSettingsStore(
     state => state.refreshOverlayGrant,
@@ -319,7 +320,7 @@ const SettingsScreen = ({ navigation }) => {
               icon="message-circle"
               label="Floating dictation bubble"
               value={
-                bubbleEnabled
+                bubbleActive
                   ? 'Dictate from any screen without opening MedScribe.'
                   : overlayGranted
                   ? 'Turn on to dictate from any screen.'
@@ -329,7 +330,7 @@ const SettingsScreen = ({ navigation }) => {
               accessibilityHint="Shows a draggable dictation control over other apps"
               trailing={
                 <StatusBadge
-                  on={bubbleEnabled}
+                  on={bubbleActive}
                   onLabel="ON"
                   offLabel={overlayGranted ? 'OFF' : 'NEEDS PERMISSION'}
                 />

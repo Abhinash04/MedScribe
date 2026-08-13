@@ -19,7 +19,7 @@ class DictationOverlayModule(private val reactContext: ReactApplicationContext) 
   NativeDictationOverlaySpec(reactContext) {
 
   init {
-    DictationOverlayBridge.setEmitter { action ->
+    DictationOverlayBridge.setEmitter(this) { action ->
       emitOnOverlayCommand(Arguments.createMap().apply { putString("action", action) })
     }
   }
@@ -139,9 +139,7 @@ class DictationOverlayModule(private val reactContext: ReactApplicationContext) 
   }
 
   override fun setExpanded(expanded: Boolean) {
-    DictationOverlayBridge.dispatch(
-      if (expanded) OverlayViewController.ACTION_PLAY else OverlayViewController.ACTION_PAUSE
-    )
+    DictationBubbleService.setExpanded(expanded)
   }
 
   override fun openReviewSurface(promise: Promise) {
@@ -176,8 +174,12 @@ class DictationOverlayModule(private val reactContext: ReactApplicationContext) 
     }
   }
 
+  override fun showOverlayMessage(text: String, promise: Promise) {
+    promise.resolve(DictationBubbleService.showMessage(text))
+  }
+
   override fun invalidate() {
-    DictationOverlayBridge.clearEmitter()
+    DictationOverlayBridge.clearEmitter(this)
     super.invalidate()
   }
 }

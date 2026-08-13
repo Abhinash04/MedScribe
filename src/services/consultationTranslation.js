@@ -94,12 +94,14 @@ export function setTranslationProgress(translation, { done = 0, total = 0 } = {}
 }
 
 export function editTranslation(translation, text) {
+  const next = text ?? '';
   return {
     ...normalizeTranslation(translation),
-    text: text ?? '',
+    text: next,
     edited: true,
     stale: false,
-    status: TRANSLATION_STATUS.READY,
+    status:
+      next.trim().length > 0 ? TRANSLATION_STATUS.READY : TRANSLATION_STATUS.IDLE,
     error: null,
   };
 }

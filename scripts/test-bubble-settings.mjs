@@ -32,38 +32,33 @@ const originalWarn = console.warn;
 console.warn = () => {};
 
 check(
-  'U1.1 no stored value and permission granted defaults on',
-  await loadBubbleEnabled(true, dbReturning([])),
-  true,
-);
-check(
-  'U1.2 no stored value without permission defaults off',
-  await loadBubbleEnabled(false, dbReturning([])),
+  'U1.1 no stored value defaults off, so the bubble is never self-enabling',
+  await loadBubbleEnabled(dbReturning([])),
   false,
 );
 check(
-  'U1.3 an explicit on is honoured',
-  await loadBubbleEnabled(false, dbReturning([{ value: '1' }])),
+  'U1.2 an explicit on is honoured',
+  await loadBubbleEnabled(dbReturning([{ value: '1' }])),
   true,
 );
 check(
-  'U1.4 an explicit off is honoured even with permission',
-  await loadBubbleEnabled(true, dbReturning([{ value: '0' }])),
+  'U1.3 an explicit off is honoured',
+  await loadBubbleEnabled(dbReturning([{ value: '0' }])),
   false,
 );
 check(
-  'U1.5 an unrecognised value reads as off',
-  await loadBubbleEnabled(true, dbReturning([{ value: 'yes' }])),
+  'U1.4 an unrecognised value reads as off',
+  await loadBubbleEnabled(dbReturning([{ value: 'yes' }])),
   false,
 );
 check(
-  'U1.6 a db error falls back to the permission default',
-  await loadBubbleEnabled(true, dbThrowing(new Error('no such table'))),
-  true,
+  'U1.5 a db error reads as off rather than enabling the bubble',
+  await loadBubbleEnabled(dbThrowing(new Error('no such table'))),
+  false,
 );
 check(
-  'U1.7 and to off when there is no permission',
-  await loadBubbleEnabled(false, dbThrowing(new Error('no such table'))),
+  'U1.6 an empty string reads as off',
+  await loadBubbleEnabled(dbReturning([{ value: '' }])),
   false,
 );
 
