@@ -1,10 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
 import BottomDock, { useDockClearance } from '../components/BottomDock';
 import LanguagePickerModal from '../components/LanguagePickerModal';
-import ScreenContainer from '../components/ScreenContainer';
 import { isTranscriptionAvailable } from '../config/features';
 import { displayFor } from '../constants/languages';
 import { RECORDING_STATE } from '../constants/recordingStates';
@@ -276,16 +276,25 @@ const SettingsScreen = ({ navigation }) => {
   }, [unfinished, resetRecording]);
 
   return (
-    <>
-      <ScreenContainer>
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: clearance }}
-          showsVerticalScrollIndicator={false}
+    <View style={styles.pageBackground}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+      >
+        <LinearGradient
+          colors={['#6c63ff', '#8b5cf6', '#a78bfa']}
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.9, y: 1 }}
+          style={styles.heroHeader}
         >
-          <Text style={styles.heading}>Settings</Text>
-          <Text style={styles.subheading}>
+          <View style={styles.heroDecorCircle1} />
+          <View style={styles.heroDecorCircle2} />
+          <View style={styles.heroDecorCircle3} />
+          <Text style={styles.brandTitle}>Settings</Text>
+          <Text style={styles.brandSub}>
             Dictation, storage and device capability.
           </Text>
+        </LinearGradient>
+        <View style={[styles.contentContainer, { paddingBottom: clearance + 20 }]}>
 
           <Text style={styles.sectionTitle}>Dictation</Text>
           <View style={styles.card}>
@@ -438,8 +447,8 @@ const SettingsScreen = ({ navigation }) => {
               ? 'Patient data never leaves this device except for transcription.'
               : 'Patient data never leaves this device except for transcription and translation.'}
           </Text>
-        </ScrollView>
-      </ScreenContainer>
+        </View>
+      </ScrollView>
       <BottomDock active="Settings" />
       <LanguagePickerModal
         visible={pickerOpen}
@@ -448,7 +457,7 @@ const SettingsScreen = ({ navigation }) => {
         onSelect={handleSelectLanguage}
         onDismiss={() => setPickerOpen(false)}
       />
-    </>
+    </View>
   );
 };
 

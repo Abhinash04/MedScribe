@@ -9,10 +9,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
 import BottomDock, { useDockClearance } from '../components/BottomDock';
 import ReportListRow from '../components/ReportListRow';
-import ScreenContainer from '../components/ScreenContainer';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import useReportsStore from '../store/useReportsStore';
 import { colors } from '../theme';
@@ -114,23 +114,36 @@ const ReportsScreen = ({ navigation, route }) => {
   );
 
   const header = (
-    <View>
-      <Text style={styles.heading}>Reports</Text>
-      <Text style={styles.subheading}>
-        Every consultation you have saved on this device.
-      </Text>
+    <>
+      <LinearGradient
+        colors={['#6c63ff', '#8b5cf6', '#a78bfa']}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={styles.heroHeader}
+      >
+        <View style={styles.heroDecorCircle1} />
+        <View style={styles.heroDecorCircle2} />
+        <View style={styles.heroDecorCircle3} />
+        <Text style={styles.brandTitle}>Reports</Text>
+        <Text style={styles.brandSub}>
+          Every consultation you have saved on this device.
+        </Text>
+        <View style={styles.searchBar}>
+          <Icon name="search" size={18} color="rgba(255,255,255,0.7)" />
+          <TextInput
+            style={[styles.searchText, { flex: 1, color: '#fff', padding: 0 }]}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search by patient or diagnosis"
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            autoFocus={route?.params?.focusSearch === true}
+            accessibilityLabel="Search saved reports"
+          />
+        </View>
+      </LinearGradient>
 
-      <TextInput
-        style={styles.search}
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search by patient or diagnosis"
-        placeholderTextColor={colors.textMuted}
-        autoFocus={route?.params?.focusSearch === true}
-        accessibilityLabel="Search saved reports"
-      />
-
-      <View style={styles.filterRow}>
+      <View style={styles.contentContainer}>
+        <View style={styles.filterRow}>
         {FILTERS.map(option => {
           const active = filter === option.key;
           return (
@@ -174,7 +187,8 @@ const ReportsScreen = ({ navigation, route }) => {
         {visibleReports.length}{' '}
         {visibleReports.length === 1 ? 'report' : 'reports'}
       </Text>
-    </View>
+      </View>
+    </>
   );
 
   const empty =
@@ -196,21 +210,19 @@ const ReportsScreen = ({ navigation, route }) => {
     );
 
   return (
-    <>
-      <ScreenContainer>
-        <FlatList
-          data={visibleReports}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          ListHeaderComponent={header}
-          ListEmptyComponent={empty}
-          contentContainerStyle={{ paddingBottom: clearance }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        />
-      </ScreenContainer>
+    <View style={styles.pageBackground}>
+      <FlatList
+        data={visibleReports}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        contentContainerStyle={{ paddingBottom: clearance }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      />
       <BottomDock active="Reports" />
-    </>
+    </View>
   );
 };
 
