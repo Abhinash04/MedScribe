@@ -20,7 +20,7 @@ change — see [Deploying](#deploying).
 | :-- | :-- | :-- | :-- |
 | `VOICE_TO_TEXT_API_URL` | yes | — | Anuvadini endpoint |
 | `VOICE_TO_TEXT_API_KEY` | yes | — | Bearer token. **The only place it exists once deployed.** |
-| `TEXT_TO_SPEECH_API_URL` | no | Anuvadini TTS | Text-to-speech endpoint |
+| `TEXT_TO_SPEECH_API_URL` | no | `https://anuvadini-services.aicte-india.org/api/text-to-speech` | Text-to-speech endpoint |
 | `PRAVAH_TRANSLATE_URL` | no | `https://pravahai.aicte-india.org/api/translatebulk` | Translation endpoint |
 | `PRAVAH_API_KEY` | for `/translate` | — | Pravah API key (`apk_…`). A different host from Anuvadini, so a different credential. |
 | `PORT` | no | `8787` | Listen port |

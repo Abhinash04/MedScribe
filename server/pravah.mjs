@@ -1,15 +1,3 @@
-// Upstream caller for the Pravah translatebulk API.
-//
-// Deliberately a sibling of anuvadini.mjs's callUpstream rather than an
-// extension of it. That helper folds 422 into a generic UPSTREAM_ERROR and
-// assumes an object payload; teaching it a status map and a bare-array body
-// would put test-proxy.mjs at risk for no gain. ~40 duplicated lines is the
-// cheaper trade.
-//
-// The response reader is IMPORTED from the app so the proxy and the app agree
-// byte-for-byte on what a valid response is. That module is dependency-free and
-// uses explicit .js extensions, so it loads cleanly under plain Node.
-
 import {
   ERROR_KIND,
   readTranslations,
@@ -24,6 +12,7 @@ export const PRAVAH_ERROR = {
   QUOTA_EXCEEDED: 'quota_exceeded',
   UNSUPPORTED_LANGUAGE: 'unsupported_language',
   BAD_REQUEST: 'bad_request',
+  TEXT_TOO_LARGE: 'text_too_large',
   UPSTREAM_ERROR: 'upstream_error',
   TIMEOUT: 'timeout',
   NETWORK: 'network',
@@ -57,6 +46,9 @@ function statusError(status) {
   if (status === 422) {
     return PRAVAH_ERROR.UNSUPPORTED_LANGUAGE;
   }
+  if (status === 413) {
+    return PRAVAH_ERROR.TEXT_TOO_LARGE;
+  }
   if (status === 400) {
     return PRAVAH_ERROR.BAD_REQUEST;
   }
@@ -80,14 +72,12 @@ export async function translateBulk(
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort('timeout'), timeoutMs);
-
-  // The documented body is a bare array. `from` is omitted when absent so the
-  // upstream auto-detects rather than being told something possibly wrong.
   const payload = items.map(({ text, to, from }) =>
     from ? { text, to, from } : { text, to },
   );
 
   let response;
+  let body = null;
   try {
     response = await fetchImpl(config.url, {
       method: 'POST',
@@ -99,6 +89,12 @@ export async function translateBulk(
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
+
+    try {
+      body = await response.json();
+    } catch {
+      body = null;
+    }
   } catch {
     const aborted = controller.signal.aborted;
     return done({
@@ -111,16 +107,7 @@ export async function translateBulk(
 
   const status = response.status;
 
-  let body = null;
-  try {
-    body = await response.json();
-  } catch {
-    body = null;
-  }
-
   if (!response.ok) {
-    // Logged, never forwarded: the upstream message can quote the request,
-    // which includes the API key.
     const detail = readUpstreamError(body);
     if (detail) {
       console.warn(`[proxy] pravah ${status}: ${detail}`);

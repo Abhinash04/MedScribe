@@ -3,9 +3,7 @@ import { synthesize, transcribe, UPSTREAM_ERROR } from './anuvadini.mjs';
 import { PRAVAH_ERROR, translateBulk } from './pravah.mjs';
 
 export const PORT = Number(process.env.PORT || 8787);
-
 export const MAX_BODY_BYTES = 8 * 1024 * 1024;
-
 export const REQUEST_ERROR = {
   NOT_FOUND: 'not_found',
   METHOD_NOT_ALLOWED: 'method_not_allowed',
@@ -131,17 +129,12 @@ export async function handleTextToSpeech(body, deps = {}) {
   };
 }
 
-// 429 is passed straight through, not folded into 502, precisely so the app's
-// classifyStatus maps it back to QUOTA_EXCEEDED and the session latch fires
-// identically on both transports. Without this the proxy path would silently
-// never latch.
 const TRANSLATE_STATUS_FOR = {
   [PRAVAH_ERROR.NOT_CONFIGURED]: 503,
   [PRAVAH_ERROR.UNAUTHORIZED]: 502,
   [PRAVAH_ERROR.QUOTA_EXCEEDED]: 429,
   [PRAVAH_ERROR.UNSUPPORTED_LANGUAGE]: 422,
-  // The proxy built the upstream body, so a 400 from upstream is our bug, not
-  // the app's request being malformed.
+  [PRAVAH_ERROR.TEXT_TOO_LARGE]: 413,
   [PRAVAH_ERROR.BAD_REQUEST]: 502,
   [PRAVAH_ERROR.UPSTREAM_ERROR]: 502,
   [PRAVAH_ERROR.TIMEOUT]: 504,
@@ -156,8 +149,6 @@ const reject = (status, error) => ({ status, body: { success: false, error } });
 export async function handleTranslate(body, deps = {}) {
   const items = body?.items;
 
-  // Every rejection returns before any upstream call, so a fixture can assert
-  // fetchImpl was never invoked.
   if (!Array.isArray(items) || items.length === 0) {
     return reject(400, REQUEST_ERROR.MISSING_ITEMS);
   }
@@ -184,8 +175,6 @@ export async function handleTranslate(body, deps = {}) {
   const result = await translateBulk({ items }, deps);
 
   if (result.ok) {
-    // Shaped so the app's readTranslations handles proxy and direct with one
-    // branch and no special-casing.
     return {
       status: 200,
       body: {
