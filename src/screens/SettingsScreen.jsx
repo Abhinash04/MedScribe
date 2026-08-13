@@ -9,7 +9,15 @@ import { isTranscriptionAvailable } from '../config/features';
 import { displayFor } from '../constants/languages';
 import { RECORDING_STATE } from '../constants/recordingStates';
 import { purgeAbandoned } from '../services/consultationAudio';
-import { capabilityList } from '../services/languageCapabilities';
+import {
+  capabilitiesFor,
+  capabilityList,
+  RECOGNIZER,
+} from '../services/languageCapabilities';
+import {
+  getOverlayDiagnostics,
+  requestOverlayPermission,
+} from '../services/dictationOverlayService';
 import * as sharedMic from '../services/sharedMicService';
 import {
   clearActiveSession,
@@ -90,6 +98,12 @@ const SettingsScreen = ({ navigation }) => {
   const deviceLocales = useSettingsStore(
     state => state.deviceRecognizerLocales,
   );
+  const bubbleEnabled = useSettingsStore(state => state.bubbleEnabled);
+  const overlayGranted = useSettingsStore(state => state.overlayGranted);
+  const setBubbleEnabled = useSettingsStore(state => state.setBubbleEnabled);
+  const refreshOverlayGrant = useSettingsStore(
+    state => state.refreshOverlayGrant,
+  );
   const [captureSupported, setCaptureSupported] = useState(null);
   const [unfinished, setUnfinished] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -118,6 +132,7 @@ const SettingsScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      refreshOverlayGrant();
       (async () => {
         const active = await getActiveSession();
         if (!cancelled) {
@@ -127,8 +142,66 @@ const SettingsScreen = ({ navigation }) => {
       return () => {
         cancelled = true;
       };
-    }, []),
+    }, [refreshOverlayGrant]),
   );
+
+  const handleOverlayDiagnostics = useCallback(() => {
+    const info = getOverlayDiagnostics();
+    const sideloaded =
+      info.installerPackage === 'none' ||
+      info.installerPackage === 'null' ||
+      info.installerPackage === 'com.android.shell';
+
+    const verdict = info.canDrawOverlays
+      ? info.windowAttached
+        ? 'Granted and the window is attached.'
+        : 'Granted, but the window never attached. This is the OEM background-popup block — look for a separate "Display pop-up windows while running in background" toggle in the app permissions.'
+      : sideloaded && info.sdkInt >= 33
+      ? 'Not granted, and the installer is untrusted on Android 13+. This is Restricted Settings. Reinstall with "adb install -r -i com.android.vending", or use Settings > Apps > MedScribe > three-dot menu > Allow restricted settings.'
+      : 'Not granted. Open the permission screen from the bubble toggle above.';
+
+    Alert.alert(
+      'Overlay diagnostics',
+      [
+        `canDrawOverlays: ${info.canDrawOverlays}`,
+        `windowAttached: ${info.windowAttached}`,
+        `serviceRunning: ${info.serviceRunning}`,
+        `installer: ${info.installerPackage}`,
+        `android: API ${info.sdkInt}`,
+        `device: ${info.manufacturer} ${info.model}`,
+        '',
+        verdict,
+      ].join('\n'),
+    );
+  }, []);
+
+  const handleToggleBubble = useCallback(async () => {
+    if (bubbleEnabled) {
+      await setBubbleEnabled(false);
+      return;
+    }
+
+    if (refreshOverlayGrant()) {
+      await setBubbleEnabled(true);
+      return;
+    }
+
+    Alert.alert(
+      'Allow MedScribe to draw over other apps',
+      'The floating bubble lets you dictate from any screen without opening ' +
+        'MedScribe. Android needs the "display over other apps" permission to ' +
+        'show it. You can turn this off at any time.',
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Open settings',
+          onPress: async () => {
+            await requestOverlayPermission();
+          },
+        },
+      ],
+    );
+  }, [bubbleEnabled, setBubbleEnabled, refreshOverlayGrant]);
 
   const handleSelectLanguage = useCallback(
     async code => {
@@ -229,10 +302,37 @@ const SettingsScreen = ({ navigation }) => {
             <SettingRow
               icon="help-circle"
               label="How it works"
+              value={(() => {
+                const cap = capabilitiesFor(dictationLanguage, { deviceLocales });
+                const recognizerText =
+                  cap.recognizer === RECOGNIZER.ON_DEVICE
+                    ? 'Dictation is recognised on this device'
+                    : cap.recognizer === RECOGNIZER.CLOUD_ONLY
+                    ? `Dictation is recognised via cloud speech service for ${language.englishName}`
+                    : `Dictation is recognised in ${language.englishName}`;
+                return isEnglish
+                  ? `${recognizerText} and refined by Anuvadini.`
+                  : `${recognizerText}, then translated to English for the report. Prompts for missing details are spoken back in ${language.englishName}.`;
+              })()}
+            />
+            <SettingRow
+              icon="message-circle"
+              label="Floating dictation bubble"
               value={
-                isEnglish
-                  ? 'Dictation is recognised on this device and refined by Anuvadini.'
-                  : `Dictation is recognised in ${language.englishName}, then translated to English for the report. Prompts for missing details are spoken back in ${language.englishName}.`
+                bubbleEnabled
+                  ? 'Dictate from any screen without opening MedScribe.'
+                  : overlayGranted
+                  ? 'Turn on to dictate from any screen.'
+                  : 'Needs permission to draw over other apps.'
+              }
+              onPress={handleToggleBubble}
+              accessibilityHint="Shows a draggable dictation control over other apps"
+              trailing={
+                <StatusBadge
+                  on={bubbleEnabled}
+                  onLabel="ON"
+                  offLabel={overlayGranted ? 'OFF' : 'NEEDS PERMISSION'}
+                />
               }
             />
             <SettingRow
@@ -308,6 +408,12 @@ const SettingsScreen = ({ navigation }) => {
                   label="Mic spike"
                   value="Raw capture and recogniser diagnostics."
                   onPress={() => navigation.navigate('MicSpike')}
+                />
+                <SettingRow
+                  icon="layers"
+                  label="Overlay diagnostics"
+                  value="Why the floating bubble permission was refused."
+                  onPress={handleOverlayDiagnostics}
                 />
               </View>
             </>

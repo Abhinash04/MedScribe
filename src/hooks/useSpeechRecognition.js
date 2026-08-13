@@ -23,6 +23,12 @@ import {
 import * as speech from '../services/speechService';
 import audioFeedbackService from '../services/audioFeedbackService';
 import dictationSessionManager from '../services/dictationSessionManager';
+import {
+  shouldFinalizeImmediately,
+  shouldRestoreAudioCue,
+  shouldTeardownOnBackground,
+} from '../services/dictationBackground';
+import { isBubbleSessionActive } from '../services/dictationBubbleSession';
 import useRecordingStore, {
   selectFullTranscript,
 } from '../store/useRecordingStore';
@@ -307,6 +313,16 @@ export default function useSpeechRecognition({
       await speech.stop();
     } catch {  }
     clearFinalizeTimer();
+
+    if (
+      shouldFinalizeImmediately({
+        usesSharedMic: dictationSessionManager.usesSharedMic(),
+      })
+    ) {
+      finalize();
+      return;
+    }
+
     finalizeTimerRef.current = setTimeout(() => {
       finalizeTimerRef.current = null;
       if (mountedRef.current) {
@@ -328,8 +344,7 @@ export default function useSpeechRecognition({
   const beginSessionRef = useRef(beginSession);
   beginSessionRef.current = beginSession;
 
-  const stopRef = useRef(stop);
-  stopRef.current = stop;
+  const backgroundStopRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -375,11 +390,20 @@ export default function useSpeechRecognition({
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
-      if (nextState !== 'active') {
+      const bubbleActive = isBubbleSessionActive();
+
+      if (shouldRestoreAudioCue({ appState: nextState, bubbleActive })) {
         audioFeedbackService.restoreNow();
       }
-      if (nextState !== 'active' && shouldContinueRef.current) {
-        stopRef.current();
+
+      const teardown = shouldTeardownOnBackground({
+        appState: nextState,
+        isDictating: shouldContinueRef.current,
+        bubbleActive,
+      });
+
+      if (teardown) {
+        backgroundStopRef.current?.();
       }
     });
 
@@ -413,6 +437,8 @@ export default function useSpeechRecognition({
     await stop();
     return outcome;
   }, [stop]);
+
+  backgroundStopRef.current = stopWithManager;
   const resumeDictation = useCallback(
     () => beginSession({ keepTranscript: true }),
     [beginSession],

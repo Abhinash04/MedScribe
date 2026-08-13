@@ -52,7 +52,10 @@ import useRecordingStore, {
   selectReportTranscript,
   selectSourceTranscript,
 } from '../store/useRecordingStore';
-import { needsTranslation } from '../services/consultationTranslation';
+import {
+  needsTranslation,
+  TRANSLATION_STATUS,
+} from '../services/consultationTranslation';
 import dictationSessionManager from '../services/dictationSessionManager';
 import useReportsStore from '../store/useReportsStore';
 import { colors } from '../theme';
@@ -280,6 +283,10 @@ const ReportScreen = ({ route }) => {
     }
 
     const state = useRecordingStore.getState();
+    if (needsTranslation(state.language) && state.translation?.status !== TRANSLATION_STATUS.READY) {
+      return null;
+    }
+
     const id = await saveNew({
       transcript,
       extracted,

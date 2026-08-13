@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { RECORDING_STATE } from '../constants/recordingStates';
+import { RECORDING_STATE } from '../constants/recordingStates.js';
 import {
   activeText,
   applyResult,
@@ -8,7 +8,7 @@ import {
   normalizeAnuvadini,
   switchSource,
   TRANSCRIPT_SOURCE,
-} from '../services/consultationTranscripts';
+} from '../services/consultationTranscripts.js';
 import {
   applyTranslation,
   editTranslation,
@@ -16,8 +16,9 @@ import {
   markTranslationPending,
   needsTranslation,
   normalizeTranslation,
-  setTranslationProgress,
-} from '../services/consultationTranslation';
+  setTranslationProgress as updateTranslationProgress,
+  TRANSLATION_STATUS,
+} from '../services/consultationTranslation.js';
 
 export const CONSULTATION_STAGE = {
   RECORDING: 'recording',
@@ -190,7 +191,7 @@ const useRecordingStore = create((set, get) => ({
 
   setTranslationProgress: progress =>
     set(state => ({
-      translation: setTranslationProgress(state.translation, progress),
+      translation: updateTranslationProgress(state.translation, progress),
     })),
 
   setAnuvadiniText: text =>
@@ -275,9 +276,15 @@ export const selectActiveTranscript = state =>
 
 export const selectSourceTranscript = selectActiveTranscript;
 
+export const isTranslationReady = state =>
+  !needsTranslation(state.language) ||
+  state.translation?.status === TRANSLATION_STATUS.READY;
+
 export const selectEnglishTranscript = state =>
   needsTranslation(state.language)
-    ? state.translation?.text || ''
+    ? state.translation?.status === TRANSLATION_STATUS.READY
+      ? state.translation?.text || ''
+      : ''
     : selectActiveTranscript(state);
 
 export const selectReportTranscript = state =>

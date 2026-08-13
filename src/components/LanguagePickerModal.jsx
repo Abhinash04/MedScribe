@@ -78,8 +78,8 @@ const LanguagePickerModal = ({
         <View style={styles.header}>
           <Text style={styles.title}>Dictation Language</Text>
           <Text style={styles.message}>
-            Dictate in the language you are most comfortable with. The patient
-            report is always written in English.
+            Dictate in the language you are most comfortable with. Non-English
+            dictation is translated to English for the patient report.
           </Text>
         </View>
 

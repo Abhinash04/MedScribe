@@ -114,6 +114,14 @@ const TranscriptReviewScreen = ({ navigation }) => {
   );
   const multilingual = needsTranslation(language);
   const languageName = displayFor(language).englishName;
+  // Key off the TEXT, not the status: selectReportTranscript uses whatever
+  // English exists, including a kept-but-stale one after a failed retry. The
+  // chip has to describe what the report actually used.
+  const reportSourceLabel = !translation.text
+    ? 'Original (untranslated)'
+    : translation.stale
+    ? 'English translation · may be out of date'
+    : 'English translation';
   const [languageNoticeDismissed, setLanguageNoticeDismissed] = useState(false);
   const [viewedSource, setViewedSource] = useState(selectedSource);
   const [blocked, setBlocked] = useState(null);
@@ -326,17 +334,17 @@ const TranscriptReviewScreen = ({ navigation }) => {
   ]);
 
   const applySource = useCallback(
-    (source, { announce, commit = true }) => {
+    async (source, { announce, commit = true }) => {
       if (commit) {
         commitEditor(editableText);
       }
       setTranscriptSource(source);
+      await ensureTranslation({ force: true }).catch(() => {});
 
       const next = useRecordingStore.getState();
       const { record, residue } = extractForReport(
         selectReportTranscript(next),
       );
-      ensureTranslation().catch(() => {});
       const previous = next.reportDraft;
       const kept = previous
         ? Object.keys(previous).filter(key => previous[key]?.edited).length
@@ -587,11 +595,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
               <View style={styles.summaryTextCol}>
                 <Text style={styles.summaryTitle}>Report Uses</Text>
                 <Text style={styles.summaryValue}>
-                  {multilingual
-                    ? translation.status === TRANSLATION_STATUS.READY
-                      ? 'English translation'
-                      : 'Original (untranslated)'
-                    : LABEL[selectedSource]}
+                  {multilingual ? reportSourceLabel : LABEL[selectedSource]}
                 </Text>
               </View>
             </View>
@@ -819,15 +823,38 @@ const TranscriptReviewScreen = ({ navigation }) => {
                       : 'This usually takes a few seconds.'}
                   </Text>
                 </View>
-              ) : translation.status === TRANSLATION_STATUS.READY ? (
-                <TextInput
-                  style={styles.editorInput}
-                  multiline
-                  value={translation.text}
-                  onChangeText={setTranslationText}
-                  placeholder="The English translation will appear here..."
-                  placeholderTextColor="#94A3B8"
-                />
+              ) : translation.text ? (
+                // Show the editor whenever English exists — including English
+                // kept after a failed retry, because that is what the report
+                // will be built from. Saying otherwise would be a lie.
+                <>
+                  {translation.stale ? (
+                    <Text style={styles.placeholder}>
+                      This is an earlier translation — the most recent dictation
+                      could not be translated ({describeTranslationError(
+                        translation.error,
+                      )}), so it is not included below. Translate again, or edit
+                      the English directly.
+                    </Text>
+                  ) : null}
+                  <TextInput
+                    style={styles.editorInput}
+                    multiline
+                    value={translation.text}
+                    onChangeText={setTranslationText}
+                    placeholder="The English translation will appear here..."
+                    placeholderTextColor="#94A3B8"
+                  />
+                  {translation.stale ? (
+                    <Pressable
+                      onPress={handleRetryTranslation}
+                      accessibilityRole="button"
+                      accessibilityLabel="Translate again"
+                    >
+                      <Text style={styles.retry}>Translate again</Text>
+                    </Pressable>
+                  ) : null}
+                </>
               ) : (
                 <View style={styles.pendingBlock}>
                   <Text style={styles.placeholder}>
