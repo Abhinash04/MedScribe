@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
 import useStartConsultation from '../hooks/useStartConsultation';
-import styles, { BAR_HEIGHT, FAB_LIFT, FAB_SIZE } from './styles/BottomDock.styles';
+import styles, { BAR_HEIGHT } from './styles/BottomDock.styles';
 
 const DESTINATIONS = [
   { route: 'Dashboard', label: 'Home', icon: 'home' },

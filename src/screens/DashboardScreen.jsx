@@ -2,7 +2,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   Text,
@@ -17,17 +16,7 @@ import IPCLogo from '../components/IPCLogo';
 import BottomDock, { useDockClearance } from '../components/BottomDock';
 import useStartConsultation from '../hooks/useStartConsultation';
 import { REPORT_STATUS } from '../db/reportsRepository';
-import { purgeAbandoned } from '../services/consultationAudio';
-import { clearRefinementState } from '../services/transcriptRefinement';
-import {
-  clearActiveSession,
-  getActiveSession,
-} from '../services/sessionPersistenceService';
-import useRecordingStore, {
-  CONSULTATION_STAGE,
-} from '../store/useRecordingStore';
 import useReportsStore from '../store/useReportsStore';
-import { colors } from '../theme';
 import { formatRelativeDateTime } from '../utils/datetime';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useScaledStyles from '../hooks/useScaledStyles';
@@ -74,13 +63,13 @@ const QuickAction = ({ action, onPress, styles }) => (
   <Pressable style={styles.quickActionBtn} onPress={() => onPress(action.label)}>
     <View
       style={[
-        styles.reportIconBox, // Reusing size shape
-        { backgroundColor: action.bg, marginBottom: 8, marginRight: 0 },
+        styles.quickActionIconBox,
+        { backgroundColor: action.bg },
       ]}
     >
-      <Text style={{ fontSize: 22, color: action.color }}>{action.icon}</Text>
+      <Text style={[styles.quickActionIconText, { color: action.color }]}>{action.icon}</Text>
     </View>
-    <Text style={[styles.quickActionLabel, { color: '#0f1628' }]}>{action.label}</Text>
+    <Text style={styles.quickActionLabel}>{action.label}</Text>
   </Pressable>
 );
 
@@ -92,13 +81,10 @@ const DashboardScreen = ({ navigation }) => {
   const loaded = useReportsStore(state => state.loaded);
   const error = useReportsStore(state => state.error);
   const loadAll = useReportsStore(state => state.loadAll);
-  const remove = useReportsStore(state => state.remove);
-  const restoreSession = useRecordingStore(state => state.restoreSession);
   const startConsultation = useStartConsultation();
   const clearance = useDockClearance();
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const [unfinished, setUnfinished] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -136,21 +122,6 @@ const DashboardScreen = ({ navigation }) => {
     }, [loadAll]),
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      (async () => {
-        const active = await getActiveSession();
-        if (!cancelled) {
-          setUnfinished(active?.segments?.length ? active : null);
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, []),
-  );
-
   const statsObj = useMemo(() => {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -174,8 +145,6 @@ const DashboardScreen = ({ navigation }) => {
   const quickActions = [
     { icon: '🔍', label: 'Search', color: '#6c63ff', bg: '#ede9ff' },
     { icon: '✏️', label: 'Drafts', color: '#f97316', bg: '#fff0e6' },
-    // { icon: '🗓️', label: 'Schedule', color: '#06b6d4', bg: '#e0f9ff' },
-    // { icon: '📝', label: 'Templates', color: '#10b981', bg: '#e6f9f2' },
   ];
 
   const visibleReports = useMemo(() => {
@@ -217,7 +186,7 @@ const DashboardScreen = ({ navigation }) => {
           <View
             style={[
               styles.reportIconBox,
-              { backgroundColor: isFinal ? '#e6f9f2' : '#fff0e6' },
+              isFinal ? styles.bgFinal : styles.bgDraft,
             ]}
           >
             <Text style={styles.reportIconText}>{isFinal ? '✅' : '✏️'}</Text>
@@ -232,13 +201,13 @@ const DashboardScreen = ({ navigation }) => {
             <View
               style={[
                 styles.reportStatusBadge,
-                { backgroundColor: isFinal ? '#e6f9f2' : '#fff0e6' },
+                isFinal ? styles.bgFinal : styles.bgDraft,
               ]}
             >
               <Text
                 style={[
                   styles.reportStatusText,
-                  { color: isFinal ? '#10b981' : '#f97316' },
+                  isFinal ? styles.textFinal : styles.textDraft,
                 ]}
               >
                 {isFinal ? 'Finalized' : 'Draft'}
@@ -281,7 +250,7 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.searchBar}>
           <Icon name="search" size={18} color="rgba(255,255,255,0.7)" />
           <TextInput
-            style={[styles.searchText, { flex: 1, color: '#fff', padding: 0 }]}
+            style={styles.searchText}
             placeholder="Search patients, reports…"
             placeholderTextColor="rgba(255,255,255,0.6)"
             value={searchQuery}
@@ -373,7 +342,7 @@ const DashboardScreen = ({ navigation }) => {
         <ActivityIndicator color="#6c63ff" />
       </View>
     ) : error ? (
-      <View style={[styles.recentReportsContainer, { paddingTop: 0 }]}>
+      <View style={[styles.recentReportsContainer, styles.paddingTopZero]}>
         <View style={styles.errorCard}>
           <Text style={styles.errorText}>{error}</Text>
           <Pressable
@@ -386,11 +355,10 @@ const DashboardScreen = ({ navigation }) => {
         </View>
       </View>
     ) : (
-      <View style={[styles.recentReportsContainer, { paddingTop: 0 }]}>
+      <View style={[styles.recentReportsContainer, styles.paddingTopZero]}>
         <View style={styles.emptyCard}>
           <Text style={styles.emptyEmoji}>📭</Text>
           <Text style={styles.emptyTitle}>No reports here</Text>
-          {/* <Text style={styles.emptyBody}>Try a different filter</Text> */}
         </View>
       </View>
     );
@@ -408,7 +376,7 @@ const DashboardScreen = ({ navigation }) => {
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         ListFooterComponent={footer}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       />

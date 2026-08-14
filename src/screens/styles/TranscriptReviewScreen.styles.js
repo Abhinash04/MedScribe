@@ -265,6 +265,9 @@ export const createStyles = scale =>
     elevation: 3,
     gap: 5,
   },
+  tabPressable: {
+    flex: 1,
+  },
   tabBtn: {
     flex: 1,
     paddingVertical: 12,
@@ -273,6 +276,9 @@ export const createStyles = scale =>
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
+  },
+  tabBtnActive: {
+    elevation: 6,
   },
   tabBtnIconBox: {
     width: 24,
@@ -287,9 +293,19 @@ export const createStyles = scale =>
     fontWeight: '700',
     lineHeight: scale(16),
   },
+  tabBtnLabelActive: {
+    color: '#fff',
+  },
   tabBtnSub: {
     fontSize: scale(12),
     marginTop: 3,
+  },
+  tabBtnSubActive: {
+    color: 'rgba(255,255,255,0.85)',
+    opacity: 1,
+  },
+  tabBtnSubInactive: {
+    opacity: 0.7,
   },
 
   // Transcript Panel
@@ -353,6 +369,26 @@ export const createStyles = scale =>
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 2,
+  },
+  useBadgeActive: {
+    backgroundColor: '#D1FAE5',
+    borderColor: 'rgba(5,150,105,0.25)',
+  },
+  useBadgeTextActive: {
+    color: '#059669',
+  },
+  useBadgeButton: {
+    borderColor: 'transparent',
+  },
+  useBadgeTextButton: {
+    color: '#fff',
+  },
+  useBadgePending: {
+    backgroundColor: '#FEF3C7',
+    borderColor: 'rgba(217,119,6,0.25)',
+  },
+  useBadgeTextPending: {
+    color: '#D97706',
   },
   useBadgeText: {
     fontSize: scale(10),

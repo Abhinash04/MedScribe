@@ -46,8 +46,6 @@ const ReportsScreen = ({ navigation, route }) => {
     }, [loadAll]),
   );
 
-  // Arriving from Patients or a Home quick tile pops back to this screen rather
-  // than mounting it again, so the params have to be applied on change.
   const patientParam = route?.params?.patient;
   const filterParam = route?.params?.filter;
 
@@ -135,7 +133,7 @@ const ReportsScreen = ({ navigation, route }) => {
         <View style={styles.searchBar}>
           <Icon name="search" size={18} color="rgba(255,255,255,0.7)" />
           <TextInput
-            style={[styles.searchText, { flex: 1, color: '#fff', padding: 0 }]}
+            style={styles.searchText}
             value={query}
             onChangeText={setQuery}
             placeholder="Search by patient or diagnosis"

@@ -152,7 +152,7 @@ const PatientsScreen = ({ navigation }) => {
         <View style={styles.searchBar}>
           <Icon name="search" size={18} color="rgba(255,255,255,0.7)" />
           <TextInput
-            style={[styles.searchText, { flex: 1, color: '#fff', padding: 0 }]}
+            style={styles.searchText}
             value={query}
             onChangeText={setQuery}
             placeholder="Search by patient name"

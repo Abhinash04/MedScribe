@@ -121,8 +121,10 @@ export const createStyles = scale =>
   },
   searchText: {
     fontSize: scale(16),
-    color: 'rgba(255,255,255,0.6)',
+    color: '#fff',
     marginLeft: 10,
+    flex: 1,
+    padding: 0,
   },
   recordCardContainer: {
     paddingHorizontal: 20,
@@ -299,13 +301,22 @@ export const createStyles = scale =>
     alignItems: 'center',
     width: '23%',
   },
+  quickActionIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    marginRight: 0,
+  },
   quickActionIconText: {
     fontSize: scale(22),
-    marginBottom: 8,
   },
   quickActionLabel: {
     fontSize: scale(13),
     fontWeight: '600',
+    color: '#0f1628',
   },
   recentReportsContainer: {
     paddingTop: 28,
@@ -315,6 +326,24 @@ export const createStyles = scale =>
     color: '#6c63ff',
     fontSize: scale(15),
     fontWeight: '600',
+  },
+  bgFinal: {
+    backgroundColor: '#e6f9f2',
+  },
+  bgDraft: {
+    backgroundColor: '#fff0e6',
+  },
+  textFinal: {
+    color: '#10b981',
+  },
+  textDraft: {
+    color: '#f97316',
+  },
+  paddingTopZero: {
+    paddingTop: 0,
+  },
+  listContainer: {
+    paddingBottom: 20,
   },
   tabsRow: {
     flexDirection: 'row',

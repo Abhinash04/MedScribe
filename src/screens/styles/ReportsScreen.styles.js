@@ -66,8 +66,10 @@ export const createStyles = scale =>
   },
   searchText: {
     fontSize: scale(16),
-    color: 'rgba(255,255,255,0.6)',
+    color: '#fff',
     marginLeft: 10,
+    flex: 1,
+    padding: 0,
   },
   contentContainer: {
     paddingHorizontal: 20,

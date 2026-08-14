@@ -127,18 +127,18 @@ function StatCard({ gradient, shadowColor, icon, label, value, sub, subColor, ba
 function TabBtn({ active, gradient, shadow, onPress, label, sub, icon, styles }) {
   const inactiveColor = gradient[0];
   return (
-    <Pressable onPress={onPress} style={{ flex: 1 }}>
+    <Pressable onPress={onPress} style={styles.tabPressable}>
       <LinearGradient
         colors={active ? gradient : ['transparent', 'transparent']}
         start={{x:0, y:0}} end={{x:1, y:1}}
-        style={[styles.tabBtn, active && { shadowColor: shadow, elevation: 6 }]}
+        style={[styles.tabBtn, active && styles.tabBtnActive, active && { shadowColor: shadow }]}
       >
         <View style={styles.tabBtnIconBox}>
           {icon}
         </View>
         <View style={styles.tabBtnTextCol}>
-          <Text style={[styles.tabBtnLabel, { color: active ? '#fff' : inactiveColor }]}>{label}</Text>
-          <Text style={[styles.tabBtnSub, { color: active ? 'rgba(255,255,255,0.85)' : inactiveColor, opacity: active ? 1 : 0.7 }]}>{sub}</Text>
+          <Text style={[styles.tabBtnLabel, active ? styles.tabBtnLabelActive : { color: inactiveColor }]}>{label}</Text>
+          <Text style={[styles.tabBtnSub, active ? styles.tabBtnSubActive : [styles.tabBtnSubInactive, { color: inactiveColor }]]}>{sub}</Text>
         </View>
       </LinearGradient>
     </Pressable>
@@ -732,17 +732,17 @@ const TranscriptReviewScreen = ({ navigation }) => {
               </View>
               
               {selectedSource === viewedSource ? (
-                <View style={[styles.useBadge, { backgroundColor: '#D1FAE5', borderColor: 'rgba(5,150,105,0.25)' }]}>
-                  <Text style={[styles.useBadgeText, { color: '#059669' }]}>✓ For Report</Text>
+                <View style={[styles.useBadge, styles.useBadgeActive]}>
+                  <Text style={[styles.useBadgeText, styles.useBadgeTextActive]}>✓ For Report</Text>
                 </View>
               ) : canSelectViewed ? (
                 <Pressable onPress={() => selectForReport(viewedSource)}>
                   <LinearGradient
                     colors={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? ['#6D4FFF', '#A855F7'] : ['#EC4899', '#F97316']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={[styles.useBadge, { borderColor: 'transparent' }]}
+                    style={[styles.useBadge, styles.useBadgeButton]}
                   >
-                    <Text style={[styles.useBadgeText, { color: '#fff' }]}>Use This</Text>
+                    <Text style={[styles.useBadgeText, styles.useBadgeTextButton]}>Use This</Text>
                   </LinearGradient>
                 </Pressable>
               ) : null}
@@ -822,21 +822,13 @@ const TranscriptReviewScreen = ({ navigation }) => {
                 <View
                   style={[
                     styles.useBadge,
-                    englishInUse
-                      ? {
-                          backgroundColor: '#D1FAE5',
-                          borderColor: 'rgba(5,150,105,0.25)',
-                        }
-                      : {
-                          backgroundColor: '#FEF3C7',
-                          borderColor: 'rgba(217,119,6,0.25)',
-                        },
+                    englishInUse ? styles.useBadgeActive : styles.useBadgePending,
                   ]}
                 >
                   <Text
                     style={[
                       styles.useBadgeText,
-                      { color: englishInUse ? '#059669' : '#D97706' },
+                      englishInUse ? styles.useBadgeTextActive : styles.useBadgeTextPending,
                     ]}
                   >
                     {englishInUse ? '✓ For Report' : 'Not used yet'}
