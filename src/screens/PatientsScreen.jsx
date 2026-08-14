@@ -15,7 +15,9 @@ import { initialsOf, tintFor } from '../components/ReportListRow';
 import useReportsStore from '../store/useReportsStore';
 import { colors } from '../theme';
 import { formatRelativeDateTime } from '../utils/datetime';
-import styles from './styles/PatientsScreen.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import useScaledStyles from '../hooks/useScaledStyles';
+import createStyles from './styles/PatientsScreen.styles';
 
 const UNNAMED = 'Unnamed patient';
 
@@ -56,6 +58,8 @@ function groupByPatient(reports) {
 }
 
 const PatientsScreen = ({ navigation }) => {
+  const styles = useScaledStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const reports = useReportsStore(state => state.reports);
   const loading = useReportsStore(state => state.loading);
   const loaded = useReportsStore(state => state.loaded);
@@ -127,7 +131,7 @@ const PatientsScreen = ({ navigation }) => {
         </Pressable>
       );
     },
-    [handleOpen],
+    [handleOpen, styles],
   );
 
   const header = (
@@ -136,7 +140,7 @@ const PatientsScreen = ({ navigation }) => {
         colors={['#6c63ff', '#8b5cf6', '#a78bfa']}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
-        style={styles.heroHeader}
+        style={[styles.heroHeader, { paddingTop: insets.top + 16 }]}
       >
         <View style={styles.heroDecorCircle1} />
         <View style={styles.heroDecorCircle2} />

@@ -30,7 +30,9 @@ import {
 } from '../services/consultationTranscripts';
 import useRecordingStore, {
   CONSULTATION_STAGE,
+  REPORT_SOURCE_KIND,
   selectFullTranscript,
+  selectReportSourceKind,
   selectReportTranscript,
 } from '../store/useRecordingStore';
 import {
@@ -38,7 +40,8 @@ import {
   needsTranslation,
 } from '../services/consultationTranslation';
 import { ensureTranslation } from '../services/transcriptTranslation';
-import styles from './styles/TranscriptReviewScreen.styles';
+import useScaledStyles from '../hooks/useScaledStyles';
+import createStyles from './styles/TranscriptReviewScreen.styles';
 import dictationSessionManager from '../services/dictationSessionManager';
 import { isRetryableFailure } from '../services/captureOutcome';
 import { extractForReport } from '../services/extractionService';
@@ -88,15 +91,20 @@ const TRANSLATION_ERROR_TEXT = {
 const describeTranslationError = reason =>
   TRANSLATION_ERROR_TEXT[reason] || `an unexpected error: ${reason}`;
 
-function GlassBtn({ children, onPress }) {
+function GlassBtn({ children, onPress, accessibilityLabel, styles }) {
   return (
-    <Pressable style={styles.glassBtn} onPress={onPress}>
+    <Pressable
+      style={styles.glassBtn}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
       {children}
     </Pressable>
   );
 }
 
-function StatCard({ gradient, shadowColor, icon, label, value, sub, subColor, badge, badgeColor }) {
+function StatCard({ gradient, shadowColor, icon, label, value, sub, subColor, badge, badgeColor, styles }) {
   return (
     <LinearGradient colors={gradient} start={{x:0, y:0}} end={{x:1, y:1}} style={[styles.statCard, { shadowColor }]}>
       <View style={styles.statCardBlob1} />
@@ -116,7 +124,7 @@ function StatCard({ gradient, shadowColor, icon, label, value, sub, subColor, ba
   );
 }
 
-function TabBtn({ active, gradient, shadow, onPress, label, sub, icon }) {
+function TabBtn({ active, gradient, shadow, onPress, label, sub, icon, styles }) {
   const inactiveColor = gradient[0];
   return (
     <Pressable onPress={onPress} style={{ flex: 1 }}>
@@ -138,6 +146,7 @@ function TabBtn({ active, gradient, shadow, onPress, label, sub, icon }) {
 }
 
 const TranscriptReviewScreen = ({ navigation }) => {
+  const styles = useScaledStyles(createStyles);
   const fullTranscript = useRecordingStore(selectFullTranscript);
   const durationSeconds = useRecordingStore(state => state.durationSeconds);
   const setFullTranscript = useRecordingStore(state => state.setFullTranscript);
@@ -165,14 +174,12 @@ const TranscriptReviewScreen = ({ navigation }) => {
   );
   const multilingual = needsTranslation(language);
   const languageName = displayFor(language).englishName;
-  // Key off the TEXT, not the status: selectReportTranscript uses whatever
-  // English exists, including a kept-but-stale one after a failed retry. The
-  // chip has to describe what the report actually used.
-  const reportSourceLabel = !translation.text
-    ? 'Original (untranslated)'
-    : translation.stale
-    ? 'English · may be out of date'
-    : 'English translation';
+  const reportSourceKind = useRecordingStore(selectReportSourceKind);
+  const englishInUse =
+    reportSourceKind === REPORT_SOURCE_KIND.ENGLISH_TRANSLATION;
+  const reportSourceLabel = englishInUse
+    ? 'English translation'
+    : 'Original (untranslated)';
 
   const [languageNoticeDismissed, setLanguageNoticeDismissed] = useState(false);
   const [viewedSource, setViewedSource] = useState(() =>
@@ -210,7 +217,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
       }),
     ]).start();
 
-    Animated.loop(
+    const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.3,
@@ -223,7 +230,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
           useNativeDriver: true,
         }),
       ]),
-    ).start();
+    );
+    pulse.start();
+    return () => pulse.stop();
   }, [fadeAnim, slideAnim, pulseAnim]);
 
   const beginSubmit = useCallback(() => {
@@ -565,13 +574,11 @@ const TranscriptReviewScreen = ({ navigation }) => {
           
           {/* Header */}
           <View style={styles.headerRow}>
-            <GlassBtn onPress={goBack}>
+            <GlassBtn onPress={goBack} accessibilityLabel="Go back" styles={styles}>
               <Icon name="arrow-left" size={17} color="#6D4FFF" />
             </GlassBtn>
             <Text style={styles.headerTitle}>Transcript Review</Text>
-            <GlassBtn>
-              <Icon name="more-horizontal" size={17} color="#6D4FFF" />
-            </GlassBtn>
+            <View style={styles.glassBtn} />
           </View>
 
           {/* Hero band */}
@@ -597,7 +604,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
           {/* Stat cards */}
           <View style={styles.statCardsGrid}>
-            <StatCard
+            <StatCard styles={styles}
               gradient={['#6D4FFF', '#818CF8']}
               shadowColor="#6D4FFF"
               icon={<Icon name="mic" size={16} color="#fff" />}
@@ -608,7 +615,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
               badge="● REC"
               badgeColor="rgba(255,255,255,0.2)"
             />
-            <StatCard
+            <StatCard styles={styles}
               gradient={['#EC4899', '#F97316']}
               shadowColor="#EC4899"
               icon={<Icon name="layers" size={16} color="#fff" />}
@@ -627,23 +634,9 @@ const TranscriptReviewScreen = ({ navigation }) => {
             />
           </View>
 
-          {/* Mini stats row */}
-          {/* <View style={styles.miniStatsGrid}>
-            {[
-              { label: 'Words', value: `${wordCount}`, color: '#6D4FFF', bg: '#EDE9FF' },
-              { label: 'Quality', value: '98%', color: '#059669', bg: '#ECFDF5' },
-              { label: 'Source', value: selectedSource === TRANSCRIPT_SOURCE.NATIVE ? 'Orig' : 'AI', color: '#D97706', bg: '#FFF7ED' },
-            ].map(s => (
-              <View key={s.label} style={[styles.miniStatBox, { backgroundColor: s.bg, borderColor: `${s.color}22` }]}>
-                <Text style={[styles.miniStatValue, { color: s.color }]}>{s.value}</Text>
-                <Text style={[styles.miniStatLabel, { color: s.color }]}>{s.label}</Text>
-              </View>
-            ))}
-          </View> */}
-
           {/* Tab switcher */}
           <View style={styles.tabSwitcher}>
-            <TabBtn
+            <TabBtn styles={styles}
               active={viewedSource === TRANSCRIPT_SOURCE.NATIVE}
               gradient={['#6D4FFF', '#A855F7']}
               shadow="#6D4FFF"
@@ -652,7 +645,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
               sub={selectedSource === TRANSCRIPT_SOURCE.NATIVE ? '✓ For Report' : 'Dictated'}
               icon={<Icon name="check-circle" size={16} color={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? '#fff' : (selectedSource === TRANSCRIPT_SOURCE.NATIVE ? '#6D4FFF' : '#C4BFDB')} />}
             />
-            <TabBtn
+            <TabBtn styles={styles}
               active={viewedSource === TRANSCRIPT_SOURCE.ANUVADINI}
               gradient={['#EC4899', '#F97316']}
               shadow="#EC4899"
@@ -829,14 +822,24 @@ const TranscriptReviewScreen = ({ navigation }) => {
                 <View
                   style={[
                     styles.useBadge,
-                    {
-                      backgroundColor: '#D1FAE5',
-                      borderColor: 'rgba(5,150,105,0.25)',
-                    },
+                    englishInUse
+                      ? {
+                          backgroundColor: '#D1FAE5',
+                          borderColor: 'rgba(5,150,105,0.25)',
+                        }
+                      : {
+                          backgroundColor: '#FEF3C7',
+                          borderColor: 'rgba(217,119,6,0.25)',
+                        },
                   ]}
                 >
-                  <Text style={[styles.useBadgeText, { color: '#059669' }]}>
-                    ✓ For Report
+                  <Text
+                    style={[
+                      styles.useBadgeText,
+                      { color: englishInUse ? '#059669' : '#D97706' },
+                    ]}
+                  >
+                    {englishInUse ? '✓ For Report' : 'Not used yet'}
                   </Text>
                 </View>
               </View>

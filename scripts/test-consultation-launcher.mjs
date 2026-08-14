@@ -101,5 +101,14 @@ check(
   plan({ sharedMicSupported: 1 }).mode,
   PLAY_MODE.OPEN_APP,
 );
+check(
+  'C6.5 only a strict true blocks on an unfinished session',
+  plan({
+    micGranted: true,
+    sharedMicSupported: true,
+    hasUnfinishedSession: 1,
+  }).mode,
+  PLAY_MODE.HEADLESS,
+);
 
 report();

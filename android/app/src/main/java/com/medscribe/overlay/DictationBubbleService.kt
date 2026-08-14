@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -27,7 +28,7 @@ import java.lang.ref.WeakReference
 
 class DictationBubbleService : Service() {
 
-  private var overlay: OverlayViewController? = null
+  @Volatile private var overlay: OverlayViewController? = null
   private var headlessTaskId: Int? = null
   private var reactContextRef: WeakReference<ReactContext>? = null
   private var dictationForeground = false
@@ -48,6 +49,7 @@ class DictationBubbleService : Service() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     if (!promoteForeground(dictationForeground)) {
       running = false
+      stopSelf()
       return START_NOT_STICKY
     }
 
@@ -104,7 +106,7 @@ class DictationBubbleService : Service() {
       ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
       true
     } catch (error: Exception) {
-      stopSelf()
+      Log.w(TAG, "startForeground(type=$type) failed", error)
       false
     }
   }
@@ -252,6 +254,7 @@ class DictationBubbleService : Service() {
     const val ACTION_STOP_DICTATION = "com.medscribe.overlay.STOP_DICTATION"
     const val ACTION_BEGIN_DICTATION = "com.medscribe.overlay.BEGIN_DICTATION"
     const val ACTION_END_DICTATION = "com.medscribe.overlay.END_DICTATION"
+    private const val TAG = "DictationBubbleService"
     private const val HEADLESS_RETRY_MS = 750L
     private const val HEADLESS_MAX_RETRIES = 20
 
@@ -262,14 +265,22 @@ class DictationBubbleService : Service() {
     @Volatile private var instance: WeakReference<DictationBubbleService>? = null
 
     fun showMessage(text: String): Boolean {
-      val controller = instance?.get()?.overlay ?: return false
-      UiThreadUtil.runOnUiThread { controller.showMessage(text) }
+      if (instance?.get()?.overlay == null) {
+        return false
+      }
+      UiThreadUtil.runOnUiThread {
+        instance?.get()?.overlay?.showMessage(text)
+      }
       return true
     }
 
     fun setExpanded(expanded: Boolean): Boolean {
-      val controller = instance?.get()?.overlay ?: return false
-      UiThreadUtil.runOnUiThread { controller.setExpanded(expanded) }
+      if (instance?.get()?.overlay == null) {
+        return false
+      }
+      UiThreadUtil.runOnUiThread {
+        instance?.get()?.overlay?.setExpanded(expanded)
+      }
       return true
     }
 

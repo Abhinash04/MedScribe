@@ -291,4 +291,14 @@ export const selectEnglishTranscript = state =>
 export const selectReportTranscript = state =>
   selectEnglishTranscript(state) || selectActiveTranscript(state);
 
+export const REPORT_SOURCE_KIND = {
+  ENGLISH_TRANSLATION: 'english_translation',
+  ORIGINAL: 'original',
+};
+
+export const selectReportSourceKind = state =>
+  selectEnglishTranscript(state)
+    ? REPORT_SOURCE_KIND.ENGLISH_TRANSLATION
+    : REPORT_SOURCE_KIND.ORIGINAL;
+
 export default useRecordingStore;

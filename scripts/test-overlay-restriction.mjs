@@ -26,12 +26,21 @@ const diag = overrides => ({
 
 check('R1.1 an adb install reports none', isAdbInstall('none'), true);
 check('R1.2 and com.android.shell', isAdbInstall('com.android.shell'), true);
-check('R1.3 and a null string', isAdbInstall('null'), true);
-check('R1.4 an unreadable installer is treated as adb', isAdbInstall('unknown'), true);
+check(
+  'R1.3 an unreadable installer is NOT an adb install, because it means we could not tell',
+  isAdbInstall('unknown'),
+  false,
+);
+check(
+  'R1.4 nor is a missing value',
+  isAdbInstall(null),
+  false,
+);
 check('R1.5 a file manager is not an adb install', isAdbInstall(FILE_MANAGER), false);
 check('R1.6 Play is not an adb install', isAdbInstall(PLAY), false);
 check('R1.7 Play is the trusted installer', isTrustedInstall(PLAY), true);
 check('R1.8 a file manager is not trusted', isTrustedInstall(FILE_MANAGER), false);
+check('R1.9 an unreadable installer is not trusted either', isTrustedInstall('unknown'), false);
 
 check(
   'R2.1 a file-manager install on API 34 can be restricted',
@@ -54,6 +63,16 @@ check(
   false,
 );
 check('R2.5 no arguments cannot be restricted', canBeRestricted(), false);
+check(
+  'R2.6 an unreadable installer on API 34 is treated as possibly restricted',
+  canBeRestricted({ sdkInt: 34, installerPackage: 'unknown' }),
+  true,
+);
+check(
+  'R2.7 the native unavailable fallback carries sdkInt 0, which short-circuits',
+  canBeRestricted({ sdkInt: 0, installerPackage: 'unavailable' }),
+  false,
+);
 
 check(
   'R3.1 the release sideload case resolves to restricted settings',
@@ -87,6 +106,16 @@ check(
 check(
   'R3.6 an old device that refuses is simply not granted',
   resolveOverlayState(diag({ sdkInt: 30 })),
+  OVERLAY_STATE.NOT_GRANTED,
+);
+check(
+  'R3.7 an unreadable installer shows the restricted guidance rather than hiding it',
+  resolveOverlayState(diag({ installerPackage: 'unknown' })),
+  OVERLAY_STATE.RESTRICTED_SETTINGS,
+);
+check(
+  'R3.8 a Play install that refuses is simply not granted',
+  resolveOverlayState(diag({ installerPackage: PLAY })),
   OVERLAY_STATE.NOT_GRANTED,
 );
 check(

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, Pressable, Text, View } from 'react-native';
+import { Alert, AppState, Image, Pressable, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import LanguagePickerModal from '../components/LanguagePickerModal';
 import ScreenContainer from '../components/ScreenContainer';
@@ -105,15 +105,32 @@ const OverlayOnboardingScreen = ({ navigation }) => {
 
   useEffect(() => {
     let cancelled = false;
-    checkMicPermission()
-      .then(result => {
-        if (!cancelled && isGranted(result)) {
+
+    const syncMicPermission = () => {
+      checkMicPermission()
+        .then(result => {
+          if (cancelled || !isGranted(result)) {
+            return;
+          }
           setMicGrantedAlready(true);
-        }
-      })
-      .catch(() => {});
+          setMicBlocked(false);
+          setStep(current =>
+            current === STEP.MICROPHONE ? STEP.OVERLAY : current,
+          );
+        })
+        .catch(() => {});
+    };
+
+    syncMicPermission();
+    const subscription = AppState.addEventListener('change', next => {
+      if (next === 'active') {
+        syncMicPermission();
+      }
+    });
+
     return () => {
       cancelled = true;
+      subscription.remove();
     };
   }, []);
 
@@ -284,14 +301,16 @@ const OverlayOnboardingScreen = ({ navigation }) => {
           }
         >
           <Text style={styles.primaryText}>
-            {requesting
-              ? 'Opening settings…'
-              : onLanguageStep
+            {onLanguageStep
               ? 'Continue'
               : onMicrophoneStep
               ? micBlocked
                 ? 'Open Settings'
+                : requesting
+                ? 'Requesting…'
                 : 'Allow microphone'
+              : requesting
+              ? 'Opening settings…'
               : 'Enable floating bubble'}
           </Text>
         </Pressable>

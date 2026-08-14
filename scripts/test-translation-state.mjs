@@ -15,6 +15,11 @@ import {
   setTranslationProgress,
   translationText,
 } from '../src/services/consultationTranslation.js';
+import {
+  REPORT_SOURCE_KIND,
+  selectReportSourceKind,
+  selectReportTranscript,
+} from '../src/store/useRecordingStore.js';
 
 import { check, report } from './lib/fixture-harness.mjs';
 
@@ -247,6 +252,62 @@ check(
 check(
   'T9.5 the stale edit is still flagged as edited, which is what protects it',
   doctorEdit.edited,
+  true,
+);
+
+const reportState = translationOverrides => ({
+  language: 'hi',
+  segments: [{ text: 'मरीज को बुखार है।', edited: false }],
+  chunks: [],
+  transcriptSource: 'native',
+  anuvadini: { text: '', status: 'idle' },
+  translation: { ...emptyTranslation(), ...translationOverrides },
+});
+
+const kindFor = translationOverrides =>
+  selectReportSourceKind(reportState(translationOverrides));
+
+check(
+  'T10.1 a ready translation is what the report uses',
+  kindFor({ status: TRANSLATION_STATUS.READY, text: 'The patient has a fever.' }),
+  REPORT_SOURCE_KIND.ENGLISH_TRANSLATION,
+);
+check(
+  'T10.2 an idle translation means the report uses the original',
+  kindFor({ status: TRANSLATION_STATUS.IDLE, text: '' }),
+  REPORT_SOURCE_KIND.ORIGINAL,
+);
+check(
+  'T10.3 a pending translation means the report uses the original',
+  kindFor({ status: TRANSLATION_STATUS.PENDING, text: '' }),
+  REPORT_SOURCE_KIND.ORIGINAL,
+);
+check(
+  'T10.4 a failed translation with no text uses the original',
+  kindFor({ status: TRANSLATION_STATUS.FAILED, text: '' }),
+  REPORT_SOURCE_KIND.ORIGINAL,
+);
+check(
+  'T10.5 a failed translation that kept stale English still uses the original, because the selector gates on READY',
+  kindFor({
+    status: TRANSLATION_STATUS.FAILED,
+    text: 'An earlier translation.',
+    stale: true,
+  }),
+  REPORT_SOURCE_KIND.ORIGINAL,
+);
+check(
+  'T10.6 the kind always agrees with the transcript the report is built from',
+  [
+    { status: TRANSLATION_STATUS.READY, text: 'English.' },
+    { status: TRANSLATION_STATUS.PENDING, text: '' },
+    { status: TRANSLATION_STATUS.FAILED, text: 'Stale.', stale: true },
+  ].every(overrides => {
+    const state = reportState(overrides);
+    const usesEnglish =
+      selectReportSourceKind(state) === REPORT_SOURCE_KIND.ENGLISH_TRANSLATION;
+    return usesEnglish === (selectReportTranscript(state) === state.translation.text);
+  }),
   true,
 );
 

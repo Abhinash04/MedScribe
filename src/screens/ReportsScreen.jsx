@@ -16,7 +16,9 @@ import ReportListRow from '../components/ReportListRow';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import useReportsStore from '../store/useReportsStore';
 import { colors } from '../theme';
-import styles from './styles/ReportsScreen.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import useScaledStyles from '../hooks/useScaledStyles';
+import createStyles from './styles/ReportsScreen.styles';
 
 const FILTERS = [
   { key: 'all', label: 'All', icon: 'layers' },
@@ -25,6 +27,8 @@ const FILTERS = [
 ];
 
 const ReportsScreen = ({ navigation, route }) => {
+  const styles = useScaledStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const reports = useReportsStore(state => state.reports);
   const loading = useReportsStore(state => state.loading);
   const loaded = useReportsStore(state => state.loaded);
@@ -119,7 +123,7 @@ const ReportsScreen = ({ navigation, route }) => {
         colors={['#6c63ff', '#8b5cf6', '#a78bfa']}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
-        style={styles.heroHeader}
+        style={[styles.heroHeader, { paddingTop: insets.top + 16 }]}
       >
         <View style={styles.heroDecorCircle1} />
         <View style={styles.heroDecorCircle2} />

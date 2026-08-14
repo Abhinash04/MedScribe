@@ -7,7 +7,7 @@ export const OVERLAY_STATE = {
 
 const RESTRICTED_SETTINGS_SDK = 33;
 
-const ADB_INSTALLERS = ['none', 'null', 'unknown', 'com.android.shell'];
+const ADB_INSTALLERS = ['none', 'com.android.shell'];
 
 const TRUSTED_INSTALLERS = ['com.android.vending'];
 

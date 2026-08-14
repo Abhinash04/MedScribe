@@ -1,10 +1,8 @@
-import { Platform, StyleSheet, Dimensions } from 'react-native';
+import {Platform, StyleSheet} from 'react-native';
 import { colors, spacing } from '../../theme';
 
-const { width } = Dimensions.get('window');
-const scale = size => Math.round((width / 390) * size);
-
-export const styles = StyleSheet.create({
+export const createStyles = scale =>
+  StyleSheet.create({
   container: {
     backgroundColor: '#FAF8FF',
     flex: 1,
@@ -251,33 +249,6 @@ export const styles = StyleSheet.create({
   },
 
   // Mini Stats Row
-  miniStatsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-    gap: 8,
-  },
-  miniStatBox: {
-    flex: 1,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    borderWidth: 1.5,
-  },
-  miniStatValue: {
-    fontSize: scale(16),
-    fontWeight: '800',
-    marginBottom: 3,
-  },
-  miniStatLabel: {
-    fontSize: scale(9),
-    fontWeight: '600',
-    opacity: 0.7,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-
   // Tab Switcher
   tabSwitcher: {
     flexDirection: 'row',
@@ -584,4 +555,4 @@ export const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
-export default styles;
+export default createStyles;

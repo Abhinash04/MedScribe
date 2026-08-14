@@ -29,9 +29,11 @@ import useRecordingStore, {
 import useReportsStore from '../store/useReportsStore';
 import { colors } from '../theme';
 import { formatRelativeDateTime } from '../utils/datetime';
-import styles from './styles/DashboardScreen.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import useScaledStyles from '../hooks/useScaledStyles';
+import createStyles from './styles/DashboardScreen.styles';
 
-const MiniBarChart = ({ color, bars }) => {
+const MiniBarChart = ({ color, bars, styles }) => {
   const max = Math.max(...bars, 1);
   return (
     <View style={styles.miniBarChart}>
@@ -52,13 +54,13 @@ const MiniBarChart = ({ color, bars }) => {
   );
 };
 
-const StatTile = ({ stat }) => (
+const StatTile = ({ stat, styles }) => (
   <View style={styles.statTile}>
     <View style={styles.statTileHeader}>
       <View style={[styles.statChip, { backgroundColor: stat.bg }]}>
         <Icon name={stat.icon} size={20} color={stat.color} />
       </View>
-      <MiniBarChart color={stat.color} bars={stat.bars} />
+      <MiniBarChart color={stat.color} bars={stat.bars} styles={styles} />
     </View>
     <View>
       <Text style={styles.statValue}>{stat.value}</Text>
@@ -68,7 +70,7 @@ const StatTile = ({ stat }) => (
   </View>
 );
 
-const QuickAction = ({ action, onPress }) => (
+const QuickAction = ({ action, onPress, styles }) => (
   <Pressable style={styles.quickActionBtn} onPress={() => onPress(action.label)}>
     <View
       style={[
@@ -83,6 +85,8 @@ const QuickAction = ({ action, onPress }) => (
 );
 
 const DashboardScreen = ({ navigation }) => {
+  const styles = useScaledStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const reports = useReportsStore(state => state.reports);
   const loading = useReportsStore(state => state.loading);
   const loaded = useReportsStore(state => state.loaded);
@@ -98,8 +102,16 @@ const DashboardScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      return 'Good Morning';
+    }
+    return hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  }, []);
+
   useEffect(() => {
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.2,
@@ -112,7 +124,9 @@ const DashboardScreen = ({ navigation }) => {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    loop.start();
+    return () => loop.stop();
   }, [pulseAnim]);
 
   useFocusEffect(
@@ -235,7 +249,7 @@ const DashboardScreen = ({ navigation }) => {
         </Pressable>
       );
     },
-    [handleOpen],
+    [handleOpen, styles],
   );
 
   const header = (
@@ -244,7 +258,7 @@ const DashboardScreen = ({ navigation }) => {
         colors={['#6c63ff', '#8b5cf6', '#a78bfa']}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
-        style={styles.heroHeader}
+        style={[styles.heroHeader, { paddingTop: insets.top + 16 }]}
       >
         <View style={styles.heroDecorCircle1} />
         <View style={styles.heroDecorCircle2} />
@@ -254,14 +268,14 @@ const DashboardScreen = ({ navigation }) => {
           <View>
             <View style={styles.greetingPill}>
               <Animated.View style={[styles.greetingDot, { transform: [{ scale: pulseAnim }] }]} />
-              <Text style={styles.greetingText}>Good Afternoon, Doctor</Text>
+              <Text style={styles.greetingText}>{greeting}, Doctor</Text>
             </View>
             <Text style={styles.brandTitle}>MedScribe</Text>
             <Text style={styles.brandSub}>Medical Dictation Assistant</Text>
           </View>
-          <Pressable style={styles.bellBtn}>
+          <View style={styles.bellBtn}>
             <IPCLogo size={44} />
-          </Pressable>
+          </View>
         </View>
 
         <View style={styles.searchBar}>
@@ -303,13 +317,13 @@ const DashboardScreen = ({ navigation }) => {
             <Text style={styles.sectionTitle}>Overview</Text>
             <Text style={styles.sectionSubtitle}>Quick summary of your reports</Text>
           </View>
-          <Pressable style={styles.weekBtn}>
+          <View style={styles.weekBtn}>
             <Text style={styles.weekBtnText}>This week</Text>
-          </Pressable>
+          </View>
         </View>
         <View style={styles.statGrid}>
           {statsList.map((s, i) => (
-            <StatTile key={i} stat={s} />
+            <StatTile key={i} stat={s} styles={styles} />
           ))}
         </View>
       </View>
@@ -318,7 +332,7 @@ const DashboardScreen = ({ navigation }) => {
         <Text style={styles.quickActionsTitle}>Quick Actions</Text>
         <View style={styles.quickGrid}>
           {quickActions.map((a, i) => (
-            <QuickAction key={i} action={a} onPress={handleQuickAction} />
+            <QuickAction key={i} action={a} onPress={handleQuickAction} styles={styles} />
           ))}
         </View>
       </View>
@@ -355,8 +369,21 @@ const DashboardScreen = ({ navigation }) => {
 
   const empty =
     loading && !loaded ? (
-      <View style={styles.emptyBox}>
+      <View style={styles.emptyCard}>
         <ActivityIndicator color="#6c63ff" />
+      </View>
+    ) : error ? (
+      <View style={[styles.recentReportsContainer, { paddingTop: 0 }]}>
+        <View style={styles.errorCard}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable
+            onPress={loadAll}
+            accessibilityRole="button"
+            accessibilityLabel="Try loading reports again"
+          >
+            <Text style={styles.linkText}>Try again</Text>
+          </Pressable>
+        </View>
       </View>
     ) : (
       <View style={[styles.recentReportsContainer, { paddingTop: 0 }]}>

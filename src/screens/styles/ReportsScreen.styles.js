@@ -1,10 +1,8 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import {StyleSheet} from 'react-native';
 import { colors, spacing, typography } from '../../theme';
 
-const { width } = Dimensions.get('window');
-const scale = size => Math.round((width / 390) * size);
-
-export const styles = StyleSheet.create({
+export const createStyles = scale =>
+  StyleSheet.create({
   pageBackground: {
     backgroundColor: '#f8f5ff',
     flex: 1,
@@ -174,4 +172,4 @@ export const styles = StyleSheet.create({
   },
 });
 
-export default styles;
+export default createStyles;

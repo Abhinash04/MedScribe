@@ -188,8 +188,28 @@ check(
   3,
 );
 check(
-  'G6.2 and centres the fan when it cannot fully fit',
-  Number.isFinite(verticalBiasDegrees(200, NARROW_H, RADIUS, CLEARANCE)),
+  'G6.2 a fan taller than the screen cannot fit, so full visibility is impossible',
+  2 * Math.round(RADIUS * Math.sin((SPREAD_DEGREES * Math.PI) / 180)) +
+    SATELLITE >
+    NARROW_H,
+  true,
+);
+check(
+  'G6.3 and the clamp still keeps the top button fully on screen',
+  (() => {
+    const cy = 200;
+    return offsets(60, cy, SCREEN_W, NARROW_H, RADIUS, CLEARANCE).every(
+      offset => cy + offset.y - HALF >= 0,
+    );
+  })(),
+  true,
+);
+check(
+  'G6.4 the bias stays finite and bounded on a short screen',
+  (() => {
+    const bias = verticalBiasDegrees(200, NARROW_H, RADIUS, CLEARANCE);
+    return Number.isFinite(bias) && Math.abs(bias) <= SPREAD_DEGREES;
+  })(),
   true,
 );
 

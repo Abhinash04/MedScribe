@@ -30,7 +30,7 @@ export function resolveCommand({
   status,
   stage,
   micGranted = false,
-  sharedMicSupported = true,
+  sharedMicSupported = false,
   hasForeignActiveSession = false,
 } = {}) {
   switch (action) {
@@ -50,7 +50,10 @@ export function resolveCommand({
       if (status === RECORDING_STATE.PROCESSING) {
         return reject(OVERLAY_REJECTION.BUSY);
       }
-      if (stage === CONSULTATION_STAGE.REPORT) {
+      if (
+        stage === CONSULTATION_STAGE.REPORT ||
+        stage === CONSULTATION_STAGE.REVIEW
+      ) {
         return reject(OVERLAY_REJECTION.SESSION_IN_PROGRESS);
       }
 

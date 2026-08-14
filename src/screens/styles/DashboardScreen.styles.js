@@ -1,10 +1,8 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import {StyleSheet} from 'react-native';
 import { colors, spacing, typography } from '../../theme';
 
-const { width } = Dimensions.get('window');
-const scale = size => Math.round((width / 390) * size);
-
-export const styles = StyleSheet.create({
+export const createStyles = scale =>
+  StyleSheet.create({
   pageBackground: {
     backgroundColor: '#f8f5ff',
     flex: 1,
@@ -413,6 +411,25 @@ export const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 2,
   },
+  errorCard: {
+    backgroundColor: colors.errorSoft,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  errorText: {
+    ...typography.body,
+    fontSize: 14,
+    color: colors.danger,
+  },
+  linkText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primaryAccent,
+  },
   emptyEmoji: {
     fontSize: scale(32),
     marginBottom: 10,
@@ -483,4 +500,4 @@ export const styles = StyleSheet.create({
   }
 });
 
-export default styles;
+export default createStyles;

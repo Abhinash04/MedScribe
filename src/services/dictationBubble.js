@@ -27,7 +27,7 @@ import {
 let commandSubscription = null;
 let storeSubscription = null;
 let micGranted = false;
-let sharedMicSupported = true;
+let sharedMicSupported = false;
 let foreignSessionId = null;
 
 const REASON_MESSAGES = {

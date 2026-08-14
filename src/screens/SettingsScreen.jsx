@@ -29,9 +29,12 @@ import useRecordingStore from '../store/useRecordingStore';
 import useSettingsStore, { ensureHydrated } from '../store/useSettingsStore';
 import { colors } from '../theme';
 import packageJson from '../../package.json';
-import styles from './styles/SettingsScreen.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import useScaledStyles from '../hooks/useScaledStyles';
+import createStyles from './styles/SettingsScreen.styles';
 
 const SettingRow = ({
+  styles,
   icon,
   label,
   value,
@@ -76,7 +79,7 @@ const SettingRow = ({
   );
 };
 
-const StatusBadge = ({ on, onLabel, offLabel }) => (
+const StatusBadge = ({ on, onLabel, offLabel, styles }) => (
   <View style={[styles.statusPill, on ? styles.statusOn : styles.statusOff]}>
     <Text
       style={[
@@ -90,6 +93,8 @@ const StatusBadge = ({ on, onLabel, offLabel }) => (
 );
 
 const SettingsScreen = ({ navigation }) => {
+  const styles = useScaledStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const resetRecording = useRecordingStore(state => state.reset);
   const recordingStatus = useRecordingStore(state => state.status);
   const dictationLanguage = useSettingsStore(state => state.dictationLanguage);
@@ -263,7 +268,7 @@ const SettingsScreen = ({ navigation }) => {
           colors={['#6c63ff', '#8b5cf6', '#a78bfa']}
           start={{ x: 0.1, y: 0 }}
           end={{ x: 0.9, y: 1 }}
-          style={styles.heroHeader}
+          style={[styles.heroHeader, { paddingTop: insets.top + 16 }]}
         >
           <View style={styles.heroDecorCircle1} />
           <View style={styles.heroDecorCircle2} />
@@ -277,7 +282,7 @@ const SettingsScreen = ({ navigation }) => {
 
           <Text style={styles.sectionTitle}>Dictation</Text>
           <View style={styles.card}>
-            <SettingRow
+            <SettingRow styles={styles}
               first
               icon="globe"
               label="Language"
@@ -288,7 +293,7 @@ const SettingsScreen = ({ navigation }) => {
                 <Icon name="chevron-right" size={18} color={colors.textMuted} />
               }
             />
-            <SettingRow
+            <SettingRow styles={styles}
               icon="help-circle"
               label="How it works"
               value={(() => {
@@ -304,7 +309,7 @@ const SettingsScreen = ({ navigation }) => {
                   : `${recognizerText}, then translated to English for the report. Prompts for missing details are spoken back in ${language.englishName}.`;
               })()}
             />
-            <SettingRow
+            <SettingRow styles={styles}
               icon="message-circle"
               label="Floating dictation bubble"
               value={
@@ -317,14 +322,14 @@ const SettingsScreen = ({ navigation }) => {
               onPress={handleToggleBubble}
               accessibilityHint="Shows a draggable dictation control over other apps"
               trailing={
-                <StatusBadge
+                <StatusBadge styles={styles}
                   on={bubbleActive}
                   onLabel="ON"
                   offLabel={overlayGranted ? 'OFF' : 'NEEDS PERMISSION'}
                 />
               }
             />
-            <SettingRow
+            <SettingRow styles={styles}
               icon="cpu"
               label="AI transcription"
               value={
@@ -333,10 +338,10 @@ const SettingsScreen = ({ navigation }) => {
                   : 'No transcription endpoint in this build — the original transcript is used.'
               }
               trailing={
-                <StatusBadge on={transcriptionOn} onLabel="ON" offLabel="OFF" />
+                <StatusBadge styles={styles} on={transcriptionOn} onLabel="ON" offLabel="OFF" />
               }
             />
-            <SettingRow
+            <SettingRow styles={styles}
               icon="mic"
               label="Shared microphone capture"
               value={
@@ -348,7 +353,7 @@ const SettingsScreen = ({ navigation }) => {
               }
               trailing={
                 captureSupported === null ? null : (
-                  <StatusBadge
+                  <StatusBadge styles={styles}
                     on={captureSupported}
                     onLabel="READY"
                     offLabel="NO"
@@ -360,7 +365,7 @@ const SettingsScreen = ({ navigation }) => {
 
           <Text style={styles.sectionTitle}>Storage</Text>
           <View style={styles.card}>
-            <SettingRow
+            <SettingRow styles={styles}
               first
               icon="trash-2"
               label="Clear recorded audio"
@@ -369,7 +374,7 @@ const SettingsScreen = ({ navigation }) => {
               accessibilityHint="Asks for confirmation first"
             />
             {unfinished ? (
-              <SettingRow
+              <SettingRow styles={styles}
                 icon="x-circle"
                 label="Discard consultation in progress"
                 value={`${unfinished.segments.length} ${
@@ -383,7 +388,7 @@ const SettingsScreen = ({ navigation }) => {
 
           <Text style={styles.sectionTitle}>Troubleshooting</Text>
           <View style={styles.card}>
-            <SettingRow
+            <SettingRow styles={styles}
               first
               icon="layers"
               label="Overlay diagnostics"
@@ -396,14 +401,14 @@ const SettingsScreen = ({ navigation }) => {
             <>
               <Text style={styles.sectionTitle}>Developer</Text>
               <View style={styles.card}>
-                <SettingRow
+                <SettingRow styles={styles}
                   first
                   icon="bar-chart-2"
                   label="STT measurement"
                   value="Speech-to-text accuracy harness."
                   onPress={() => navigation.navigate('SttMeasure')}
                 />
-                <SettingRow
+                <SettingRow styles={styles}
                   icon="activity"
                   label="Mic spike"
                   value="Raw capture and recogniser diagnostics."
@@ -415,7 +420,7 @@ const SettingsScreen = ({ navigation }) => {
 
           <Text style={styles.sectionTitle}>About</Text>
           <View style={styles.card}>
-            <SettingRow
+            <SettingRow styles={styles}
               first
               icon="info"
               label="MedScribe"
