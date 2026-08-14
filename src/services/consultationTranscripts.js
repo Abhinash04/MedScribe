@@ -16,9 +16,18 @@ export function emptyAnuvadini() {
     raw: '',
     passes: [],
     textBase: '',
+    edited: false,
     status: ANUVADINI_STATUS.IDLE,
     error: null,
     updatedAt: 0,
+  };
+}
+
+export function editAnuvadini(anuvadini, text) {
+  return {
+    ...normalizeAnuvadini(anuvadini),
+    text: text ?? '',
+    edited: true,
   };
 }
 
@@ -83,18 +92,25 @@ export function applyResult(anuvadini, result, options = {}) {
   const requested = Number(options.passIndex);
   const index =
     Number.isFinite(requested) && requested > 0 ? requested : highest + 1;
-  const textBase = index > highest ? current.text : current.textBase ?? '';
+  const appending = index > highest;
+  const textBase = appending ? current.text : current.textBase ?? '';
   const passes = upsertPass(current.passes, index, result.text);
   const newest = passes[passes.length - 1];
   const rebuilt = index < newest.index;
 
+  const recovering = current.status === ANUVADINI_STATUS.FAILED;
+  const keepsEdit = current.edited === true && !appending && !recovering;
+
   return {
-    text: rebuilt
+    text: keepsEdit
+      ? current.text
+      : rebuilt
       ? passes.map(pass => pass.text).join(JOIN)
       : joined(textBase, newest.text),
     textBase,
     raw: passes.map(pass => pass.text).join(JOIN),
     passes,
+    edited: keepsEdit || (current.edited === true && appending),
     status: ANUVADINI_STATUS.READY,
     error: null,
     updatedAt: now,

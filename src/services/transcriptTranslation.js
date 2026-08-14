@@ -306,6 +306,9 @@ export async function ensureTranslation({ force = false } = {}) {
     if (!isStale(translation, source)) {
       return { ok: true, text: translation.text, errorKind: null };
     }
+    if (translation.edited) {
+      return { ok: true, text: translation.text, errorKind: null };
+    }
     if (!canTranslate(translation, source)) {
       return failed(ERROR_KIND.CANCELLED);
     }

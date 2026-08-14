@@ -4,6 +4,7 @@ import {
   activeText,
   applyResult,
   canOffer,
+  editAnuvadini,
   nextPassIndex,
   normalizeAnuvadini,
   emptyAnuvadini,
@@ -452,5 +453,75 @@ check('T14.10 and reports pass one next', nextPassIndex(null), 1);
     false,
   );
 }
+
+const firstPass = applyResult(
+  markPending(emptyAnuvadini()),
+  { ok: true, text: 'patient has fevr' },
+  { passIndex: 1 },
+);
+const corrected = editAnuvadini(firstPass, 'patient has fever');
+
+check('E1.1 an edit is recorded', corrected.edited, true);
+check('E1.2 and keeps the correction', corrected.text, 'patient has fever');
+check(
+  'E1.3 a late result for the same pass must not overwrite the correction',
+  applyResult(corrected, { ok: true, text: 'patient has fevr' }, { passIndex: 1 })
+    .text,
+  'patient has fever',
+);
+check(
+  'E1.4 and the edit flag survives it',
+  applyResult(corrected, { ok: true, text: 'patient has fevr' }, { passIndex: 1 })
+    .edited,
+  true,
+);
+check(
+  'E1.5 but the raw AI text is still recorded underneath',
+  applyResult(corrected, { ok: true, text: 'patient has fevr' }, { passIndex: 1 })
+    .raw,
+  'patient has fevr',
+);
+
+const appended = applyResult(
+  corrected,
+  { ok: true, text: 'and a cough' },
+  { passIndex: 2 },
+);
+check(
+  'E2.1 more dictation appends to the corrected text, not the raw text',
+  appended.text.startsWith('patient has fever'),
+  true,
+);
+check('E2.2 and includes the new pass', appended.text.includes('and a cough'), true);
+check('E2.3 the transcript is still marked edited', appended.edited, true);
+
+const failedAfterEdit = applyResult(corrected, {
+  ok: false,
+  errorKind: ERROR_KIND.NETWORK,
+});
+check(
+  'E3.1 a failure leaves the corrected text alone',
+  failedAfterEdit.text,
+  'patient has fever',
+);
+check(
+  'E3.2 retrying a failed refinement does take the new text',
+  applyResult(failedAfterEdit, { ok: true, text: 'patient has a fever' }, {
+    passIndex: 1,
+  }).text,
+  'patient has a fever',
+);
+
+check(
+  'E4.1 an untouched transcript is not marked edited',
+  firstPass.edited,
+  false,
+);
+check(
+  'E4.2 and is replaced normally by a same-pass result',
+  applyResult(firstPass, { ok: true, text: 'patient has a fever' }, { passIndex: 1 })
+    .text,
+  'patient has a fever',
+);
 
 report();

@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Alert, Image, Pressable, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import LanguagePickerModal from '../components/LanguagePickerModal';
 import ScreenContainer from '../components/ScreenContainer';
-import { requestOverlayPermission } from '../services/dictationOverlayService';
+import { displayFor } from '../constants/languages';
+import {
+  getOverlayDiagnostics,
+  requestOverlayPermission,
+} from '../services/dictationOverlayService';
+import { capabilityList } from '../services/languageCapabilities';
+import {
+  OVERLAY_STATE,
+  guidanceFor,
+  resolveOverlayState,
+} from '../services/overlayRestriction';
 import {
   RESULTS,
   checkMicPermission,
@@ -15,9 +26,28 @@ import { colors } from '../theme';
 import styles from './styles/OverlayOnboardingScreen.styles';
 
 const STEP = {
+  LANGUAGE: 'language',
   MICROPHONE: 'microphone',
   OVERLAY: 'overlay',
 };
+
+const LANGUAGE_BENEFITS = [
+  {
+    icon: 'globe',
+    title: 'Dictate in your language',
+    body: 'MedScribe recognises 24 Indian languages, including English.',
+  },
+  {
+    icon: 'file-text',
+    title: 'Reports stay in English',
+    body: 'Whatever you dictate is translated so the report reads in English.',
+  },
+  {
+    icon: 'settings',
+    title: 'Change it whenever',
+    body: 'You can switch languages later from Settings.',
+  },
+];
 
 const MIC_BENEFITS = [
   {
@@ -58,16 +88,27 @@ const BENEFITS = [
 const OverlayOnboardingScreen = ({ navigation }) => {
   const setBubbleEnabled = useSettingsStore(state => state.setBubbleEnabled);
   const markOnboardingSeen = useSettingsStore(state => state.markOnboardingSeen);
+  const dictationLanguage = useSettingsStore(state => state.dictationLanguage);
+  const setDictationLanguage = useSettingsStore(
+    state => state.setDictationLanguage,
+  );
+  const deviceLocales = useSettingsStore(
+    state => state.deviceRecognizerLocales,
+  );
   const [requesting, setRequesting] = useState(false);
-  const [step, setStep] = useState(STEP.MICROPHONE);
+  const [step, setStep] = useState(STEP.LANGUAGE);
   const [micBlocked, setMicBlocked] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [micGrantedAlready, setMicGrantedAlready] = useState(false);
+
+  const language = displayFor(dictationLanguage);
 
   useEffect(() => {
     let cancelled = false;
     checkMicPermission()
       .then(result => {
         if (!cancelled && isGranted(result)) {
-          setStep(STEP.OVERLAY);
+          setMicGrantedAlready(true);
         }
       })
       .catch(() => {});
@@ -79,6 +120,20 @@ const OverlayOnboardingScreen = ({ navigation }) => {
   const goToDashboard = useCallback(() => {
     navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
   }, [navigation]);
+
+  const handleSelectLanguage = useCallback(
+    async code => {
+      setPickerOpen(false);
+      if (code !== dictationLanguage) {
+        await setDictationLanguage(code);
+      }
+    },
+    [dictationLanguage, setDictationLanguage],
+  );
+
+  const handleLanguageContinue = useCallback(() => {
+    setStep(micGrantedAlready ? STEP.OVERLAY : STEP.MICROPHONE);
+  }, [micGrantedAlready]);
 
   const handleGrantMicrophone = useCallback(async () => {
     setRequesting(true);
@@ -102,8 +157,21 @@ const OverlayOnboardingScreen = ({ navigation }) => {
     const granted = await requestOverlayPermission();
     if (granted) {
       await setBubbleEnabled(true);
+      setRequesting(false);
+      goToDashboard();
+      return;
     }
+
     setRequesting(false);
+    const state = resolveOverlayState(getOverlayDiagnostics());
+    if (state === OVERLAY_STATE.RESTRICTED_SETTINGS) {
+      const guidance = guidanceFor(state);
+      Alert.alert(guidance.title, guidance.body, [
+        { text: 'Later', style: 'cancel', onPress: goToDashboard },
+        { text: 'Open settings', onPress: openAppSettings },
+      ]);
+      return;
+    }
     goToDashboard();
   }, [markOnboardingSeen, setBubbleEnabled, goToDashboard]);
 
@@ -112,6 +180,7 @@ const OverlayOnboardingScreen = ({ navigation }) => {
     goToDashboard();
   }, [markOnboardingSeen, goToDashboard]);
 
+  const onLanguageStep = step === STEP.LANGUAGE;
   const onMicrophoneStep = step === STEP.MICROPHONE;
 
   return (
@@ -123,17 +192,49 @@ const OverlayOnboardingScreen = ({ navigation }) => {
           resizeMode="contain"
         />
         <Text style={styles.title}>
-          {onMicrophoneStep ? 'Allow the microphone' : 'Dictate from anywhere'}
+          {onLanguageStep
+            ? 'Choose your language'
+            : onMicrophoneStep
+            ? 'Allow the microphone'
+            : 'Dictate from anywhere'}
         </Text>
         <Text style={styles.subtitle}>
-          {onMicrophoneStep
+          {onLanguageStep
+            ? 'Pick the language you will dictate in. MedScribe transcribes in that language and writes the report in English.'
+            : onMicrophoneStep
             ? 'Dictation cannot record without microphone access. This is the one permission MedScribe genuinely needs.'
             : 'MedScribe can show a floating button over your other apps so a consultation is always one tap away.'}
         </Text>
       </View>
 
+      {onLanguageStep ? (
+        <Pressable
+          style={({ pressed }) => [styles.benefitRow, pressed && styles.pressed]}
+          onPress={() => setPickerOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Choose dictation language"
+          accessibilityHint="Opens the list of supported languages"
+        >
+          <View style={styles.benefitIcon}>
+            <Icon name="globe" size={18} color={colors.primaryAccent} />
+          </View>
+          <View style={styles.benefitBody}>
+            <Text style={styles.benefitTitle}>
+              {language.nativeName} · {language.tag}
+            </Text>
+            <Text style={styles.benefitText}>Tap to choose another language</Text>
+          </View>
+          <Icon name="chevron-right" size={18} color={colors.textMuted} />
+        </Pressable>
+      ) : null}
+
       <View style={styles.benefits}>
-        {(onMicrophoneStep ? MIC_BENEFITS : BENEFITS).map(benefit => (
+        {(onLanguageStep
+          ? LANGUAGE_BENEFITS
+          : onMicrophoneStep
+          ? MIC_BENEFITS
+          : BENEFITS
+        ).map(benefit => (
           <View key={benefit.title} style={styles.benefitRow}>
             <View style={styles.benefitIcon}>
               <Icon name={benefit.icon} size={18} color={colors.primaryAccent} />
@@ -147,7 +248,9 @@ const OverlayOnboardingScreen = ({ navigation }) => {
       </View>
 
       <Text style={styles.note}>
-        {onMicrophoneStep
+        {onLanguageStep
+          ? 'You can change this at any time in Settings.'
+          : onMicrophoneStep
           ? micBlocked
             ? 'Microphone access is blocked. Open Settings, then allow the microphone for MedScribe.'
             : 'You can revoke this at any time in Android Settings.'
@@ -162,7 +265,9 @@ const OverlayOnboardingScreen = ({ navigation }) => {
             requesting && styles.disabled,
           ]}
           onPress={
-            onMicrophoneStep
+            onLanguageStep
+              ? handleLanguageContinue
+              : onMicrophoneStep
               ? micBlocked
                 ? openAppSettings
                 : handleGrantMicrophone
@@ -171,7 +276,9 @@ const OverlayOnboardingScreen = ({ navigation }) => {
           disabled={requesting}
           accessibilityRole="button"
           accessibilityLabel={
-            onMicrophoneStep
+            onLanguageStep
+              ? 'Continue with the selected language'
+              : onMicrophoneStep
               ? 'Allow microphone access'
               : 'Enable the floating bubble'
           }
@@ -179,11 +286,13 @@ const OverlayOnboardingScreen = ({ navigation }) => {
           <Text style={styles.primaryText}>
             {requesting
               ? 'Opening settings…'
+              : onLanguageStep
+              ? 'Continue'
               : onMicrophoneStep
-                ? micBlocked
-                  ? 'Open Settings'
-                  : 'Allow microphone'
-                : 'Enable floating bubble'}
+              ? micBlocked
+                ? 'Open Settings'
+                : 'Allow microphone'
+              : 'Enable floating bubble'}
           </Text>
         </Pressable>
 
@@ -201,6 +310,14 @@ const OverlayOnboardingScreen = ({ navigation }) => {
           <Text style={styles.skipText}>Not now</Text>
         </Pressable>
       </View>
+
+      <LanguagePickerModal
+        visible={pickerOpen}
+        languages={capabilityList({ deviceLocales })}
+        selected={dictationLanguage}
+        onSelect={handleSelectLanguage}
+        onDismiss={() => setPickerOpen(false)}
+      />
     </ScreenContainer>
   );
 };

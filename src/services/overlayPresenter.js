@@ -12,14 +12,6 @@ export const OVERLAY_PHASE = {
   COMPLETED: 'completed',
 };
 
-export const PROCESSING_MESSAGES = [
-  'Refining your text…',
-  'AI is working…',
-  'Generating the final transcript…',
-  'Translating…',
-  'Almost done…',
-];
-
 const TRANSCRIPT_PREVIEW_CHARS = 320;
 
 export function resolvePhase(state) {
@@ -76,13 +68,13 @@ export function resolveDetail(state, phase) {
   }
   if (state.translation?.status === TRANSLATION_STATUS.PENDING) {
     const { done, total } = state.translation.progress ?? { done: 0, total: 0 };
-    return total > 1 ? `Translating… ${done} of ${total}` : PROCESSING_MESSAGES[3];
+    return total > 1 ? `Translating… ${done} of ${total}` : '';
   }
   if (state.anuvadini?.status === ANUVADINI_STATUS.PENDING) {
     const { done, total } = state.refineProgress ?? { done: 0, total: 0 };
-    return total > 1 ? `Refining… ${done} of ${total}` : PROCESSING_MESSAGES[0];
+    return total > 1 ? `Refining… ${done} of ${total}` : '';
   }
-  return PROCESSING_MESSAGES[1];
+  return '';
 }
 
 export function truncateTranscript(text, limit = TRANSCRIPT_PREVIEW_CHARS) {

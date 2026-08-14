@@ -18,6 +18,7 @@ import {
   getOverlayDiagnostics,
   requestOverlayPermission,
 } from '../services/dictationOverlayService';
+import { describeDiagnostics } from '../services/overlayRestriction';
 import * as sharedMic from '../services/sharedMicService';
 import {
   clearActiveSession,
@@ -147,32 +148,10 @@ const SettingsScreen = ({ navigation }) => {
   );
 
   const handleOverlayDiagnostics = useCallback(() => {
-    const info = getOverlayDiagnostics();
-    const sideloaded =
-      info.installerPackage === 'none' ||
-      info.installerPackage === 'null' ||
-      info.installerPackage === 'com.android.shell';
-
-    const verdict = info.canDrawOverlays
-      ? info.windowAttached
-        ? 'Granted and the window is attached.'
-        : 'Granted, but the window never attached. This is the OEM background-popup block — look for a separate "Display pop-up windows while running in background" toggle in the app permissions.'
-      : sideloaded && info.sdkInt >= 33
-      ? 'Not granted, and the installer is untrusted on Android 13+. This is Restricted Settings. Reinstall with "adb install -r -i com.android.vending", or use Settings > Apps > MedScribe > three-dot menu > Allow restricted settings.'
-      : 'Not granted. Open the permission screen from the bubble toggle above.';
-
+    const report = describeDiagnostics(getOverlayDiagnostics());
     Alert.alert(
-      'Overlay diagnostics',
-      [
-        `canDrawOverlays: ${info.canDrawOverlays}`,
-        `windowAttached: ${info.windowAttached}`,
-        `serviceRunning: ${info.serviceRunning}`,
-        `installer: ${info.installerPackage}`,
-        `android: API ${info.sdkInt}`,
-        `device: ${info.manufacturer} ${info.model}`,
-        '',
-        verdict,
-      ].join('\n'),
+      report.title,
+      [...report.lines, '', report.body].join('\n'),
     );
   }, []);
 
@@ -402,6 +381,17 @@ const SettingsScreen = ({ navigation }) => {
             ) : null}
           </View>
 
+          <Text style={styles.sectionTitle}>Troubleshooting</Text>
+          <View style={styles.card}>
+            <SettingRow
+              first
+              icon="layers"
+              label="Overlay diagnostics"
+              value="Why the floating bubble permission was refused."
+              onPress={handleOverlayDiagnostics}
+            />
+          </View>
+
           {__DEV__ ? (
             <>
               <Text style={styles.sectionTitle}>Developer</Text>
@@ -418,12 +408,6 @@ const SettingsScreen = ({ navigation }) => {
                   label="Mic spike"
                   value="Raw capture and recogniser diagnostics."
                   onPress={() => navigation.navigate('MicSpike')}
-                />
-                <SettingRow
-                  icon="layers"
-                  label="Overlay diagnostics"
-                  value="Why the floating bubble permission was refused."
-                  onPress={handleOverlayDiagnostics}
                 />
               </View>
             </>

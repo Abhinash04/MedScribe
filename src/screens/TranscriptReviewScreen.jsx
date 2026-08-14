@@ -25,6 +25,7 @@ import { ERROR_KIND } from '../services/anuvadini/proxyContract';
 import {
   ANUVADINI_STATUS,
   TRANSCRIPT_SOURCE,
+  canOffer,
   shouldAutoSelectAi,
 } from '../services/consultationTranscripts';
 import useRecordingStore, {
@@ -174,7 +175,11 @@ const TranscriptReviewScreen = ({ navigation }) => {
     : 'English translation';
 
   const [languageNoticeDismissed, setLanguageNoticeDismissed] = useState(false);
-  const [viewedSource, setViewedSource] = useState(selectedSource);
+  const [viewedSource, setViewedSource] = useState(() =>
+    canOffer({ nativeText: fullTranscript, anuvadini })
+      ? TRANSCRIPT_SOURCE.ANUVADINI
+      : selectedSource,
+  );
   const [blocked, setBlocked] = useState(null);
   const [promptReason, setPromptReason] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -272,7 +277,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
       return;
     }
     ensureTranslation().catch(() => {});
-  }, [multilingual, anuvadini.status, anuvadini.updatedAt]);
+  }, [multilingual, anuvadini.status, anuvadini.updatedAt, selectedSource]);
 
   const handleRetryTranslation = useCallback(() => {
     ensureTranslation({ force: true }).catch(() => {});
@@ -765,11 +770,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
                 )
               ) : (
                 <TextInput
-                  style={[styles.panelEditor, viewingAi && { opacity: 0.72 }]}
+                  style={styles.panelEditor}
                   multiline
                   value={editableText}
                   onChangeText={setEditableText}
-                  readOnly={viewingAi}
                   placeholder="Dictated text will appear here..."
                   placeholderTextColor="#9E9BB5"
                 />

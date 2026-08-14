@@ -13,7 +13,11 @@ import {
   resolveCommand,
 } from './overlayCommandRouter';
 import { OPEN_APP_CAUSE, RECORDING_ROUTE } from './consultationLauncher';
-import { OVERLAY_PHASE, toOverlaySnapshot } from './overlayPresenter';
+import {
+  OVERLAY_PHASE,
+  resolvePhase,
+  toOverlaySnapshot,
+} from './overlayPresenter';
 import { requestReportHandoff } from './overlayHandoff';
 import {
   isBubbleSessionActive,
@@ -128,6 +132,7 @@ async function handleCommand(action) {
         useRecordingStore.getState().setStatus(RECORDING_STATE.SUCCESS);
         await overlay.endDictationForeground();
         setBubbleSessionActive(false);
+        await awaitProcessingComplete();
         await overlay.openReviewSurface();
         break;
 
@@ -154,6 +159,27 @@ async function handleCommand(action) {
   } finally {
     publish();
   }
+}
+
+function processingSettled() {
+  return (
+    resolvePhase(useRecordingStore.getState()) !== OVERLAY_PHASE.PROCESSING
+  );
+}
+
+function awaitProcessingComplete() {
+  if (processingSettled()) {
+    return Promise.resolve();
+  }
+  return new Promise(resolve => {
+    const unsubscribe = useRecordingStore.subscribe(() => {
+      if (!processingSettled()) {
+        return;
+      }
+      unsubscribe();
+      resolve();
+    });
+  });
 }
 
 async function beginForeground() {

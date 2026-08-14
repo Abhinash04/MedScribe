@@ -222,4 +222,32 @@ check('T7.6 still protected after a restore', canTranslate(restored, HINDI), fal
   );
 }
 
+const HINDI_SOURCE = 'मरीज को बुखार है।';
+const translated = applyTranslation(
+  markTranslationPending(emptyTranslation(), HINDI_SOURCE),
+  { ok: true, text: 'The patient has a fever.' },
+  { sourceText: HINDI_SOURCE },
+);
+const doctorEdit = editTranslation(translated, 'The patient has a high fever.');
+
+check('T9.1 the correction is kept', doctorEdit.text, 'The patient has a high fever.');
+check('T9.2 and marked as edited', doctorEdit.edited, true);
+check(
+  'T9.3 an edited translation of unchanged text is not re-translated',
+  canTranslate(doctorEdit, HINDI_SOURCE),
+  false,
+);
+
+const CHANGED_SOURCE = 'मरीज को तेज बुखार है।';
+check(
+  'T9.4 editing the transcript makes the edited translation stale',
+  isStale(doctorEdit, CHANGED_SOURCE),
+  true,
+);
+check(
+  'T9.5 the stale edit is still flagged as edited, which is what protects it',
+  doctorEdit.edited,
+  true,
+);
+
 report();

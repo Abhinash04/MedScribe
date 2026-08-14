@@ -3,7 +3,6 @@ import { ANUVADINI_STATUS } from '../src/services/consultationTranscripts.js';
 import { TRANSLATION_STATUS } from '../src/services/consultationTranslation.js';
 import {
   OVERLAY_PHASE,
-  PROCESSING_MESSAGES,
   resolveDetail,
   resolvePhase,
   toOverlaySnapshot,
@@ -97,12 +96,12 @@ check(
 
 check('S3.1 no detail outside processing', resolveDetail(state(), OVERLAY_PHASE.IDLE), '');
 check(
-  'S3.2 refinement without a chunk count uses a friendly message',
+  'S3.2 refinement without a chunk count yields no detail, so the overlay rotates its own messages',
   resolveDetail(
     state({ anuvadini: { status: ANUVADINI_STATUS.PENDING } }),
     OVERLAY_PHASE.PROCESSING,
   ),
-  PROCESSING_MESSAGES[0],
+  '',
 );
 check(
   'S3.3 refinement with chunks shows progress',
@@ -126,7 +125,7 @@ check(
   'Translating… 2 of 4',
 );
 check(
-  'S3.5 translation outranks refinement in the message',
+  'S3.5 an indeterminate translation also yields no detail',
   resolveDetail(
     state({
       anuvadini: { status: ANUVADINI_STATUS.PENDING },
@@ -134,7 +133,24 @@ check(
     }),
     OVERLAY_PHASE.PROCESSING,
   ),
-  PROCESSING_MESSAGES[3],
+  '',
+);
+check(
+  'S3.6 translation progress still outranks refinement progress',
+  resolveDetail(
+    state({
+      anuvadini: { status: ANUVADINI_STATUS.PENDING },
+      refineProgress: { done: 1, total: 3 },
+      translation: { status: TRANSLATION_STATUS.PENDING, progress: { done: 2, total: 4 } },
+    }),
+    OVERLAY_PHASE.PROCESSING,
+  ),
+  'Translating… 2 of 4',
+);
+check(
+  'S3.7 settled pipelines in processing yield no detail',
+  resolveDetail(state(), OVERLAY_PHASE.PROCESSING),
+  '',
 );
 
 check('S4.1 short text is untouched', truncateTranscript('fever and cough'), 'fever and cough');

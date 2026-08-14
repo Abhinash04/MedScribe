@@ -14,18 +14,41 @@ It is Android 13+ **Restricted Settings**, which blocks Accessibility,
 Notification access and Display-over-apps for apps installed from an untrusted
 source. The manifest is correct and the permission is declared.
 
-**Settings › Developer › Overlay diagnostics** prints the exact reason. Read
-`installer` and `windowAttached`:
+**Settings › Troubleshooting › Overlay diagnostics** prints the exact reason.
+That row is available in **release builds too** — it is the one screen that
+explains this failure, so hiding it behind `__DEV__` made it useless in the
+build where it is needed.
 
 | Reading | Meaning | Fix |
 |---|---|---|
-| `installer` is `none` / `com.android.shell`, API ≥ 33 | Restricted Settings | Reinstall with `adb install -r -i com.android.vending app-debug.apk`, or Settings › Apps › MedScribe › ⋮ › **Allow restricted settings** |
+| `canDrawOverlays: false`, `installer` is a package installer or file manager, API ≥ 33 | Restricted Settings | Settings › Apps › MedScribe › ⋮ › **Allow restricted settings**, then retry |
 | `canDrawOverlays: true` but `windowAttached: false` | OEM background-popup block (common on MIUI) | Grant the separate "Display pop-up windows while running in background" toggle in the OEM app-permissions screen |
-| `canDrawOverlays: false`, trusted installer | Simply not granted yet | Use the bubble toggle in Settings |
+| `canDrawOverlays: false`, `installer` is `none` / `com.android.shell` | Simply not granted yet | Use the bubble toggle in Settings |
 
-The `-i com.android.vending` flag is a **development convenience only**. It must
-never appear in a release process, and it changes nothing for users installing
-from the Play Store.
+### Why debug works and release does not
+
+This difference is **not** caused by the build type. Debug and release share the
+same `applicationId`, the same signing certificate and the same merged manifest
+permissions; `minifyEnabled` is false, so R8 never runs and cannot strip the
+overlay module.
+
+What differs is **who installed the APK**:
+
+| Install route | `installer` reads | Restricted Settings |
+|---|---|---|
+| `adb install` (how debug arrives) | `none` / `com.android.shell` | **exempt** |
+| Tapping the APK in a file manager (how release is shared) | a package-installer package | **applies** |
+| Play Store, including internal testing | `com.android.vending` | **exempt** |
+
+So the same release APK behaves differently depending on how it reaches the
+device. To prove it: `adb install -r app-release.apk` and the toggle works.
+
+For a test team, either have them clear the restriction once via the ⋮ menu, or
+publish to a **Play internal testing track**, which removes the step entirely.
+
+The `-i com.android.vending` flag on `adb install` is a **development
+convenience only**. It must never appear in a release process, and it changes
+nothing for users installing from the Play Store.
 
 ---
 

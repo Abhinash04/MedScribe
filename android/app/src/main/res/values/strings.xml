@@ -18,13 +18,15 @@
     <string name="overlay_action_toggle">MedScribe actions</string>
 
     <string-array name="overlay_processing_messages">
-        <item>AI is working…</item>
-        <item>Processing audio…</item>
+        <item>Loading…</item>
+        <item>AI is refining…</item>
+        <item>Refining in progress…</item>
+        <item>Processing your speech…</item>
         <item>Recognizing medical terminology…</item>
-        <item>Refining your speech…</item>
         <item>Correcting spelling mistakes…</item>
         <item>Improving punctuation…</item>
-        <item>Formatting transcript…</item>
-        <item>Finalizing transcription…</item>
+        <item>Processing translation…</item>
+        <item>Almost done…</item>
+        <item>Please wait a while…</item>
     </string-array>
 </resources>

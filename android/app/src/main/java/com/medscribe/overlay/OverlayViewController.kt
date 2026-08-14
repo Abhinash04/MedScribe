@@ -166,9 +166,13 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
       startRotation()
     } else {
       stopRotation()
+      hideProcessingMessage()
     }
 
-    if (snapshot.phase == OverlaySnapshot.PHASE_IDLE && expanded) {
+    val collapses =
+      snapshot.phase == OverlaySnapshot.PHASE_IDLE ||
+        snapshot.phase == OverlaySnapshot.PHASE_PROCESSING
+    if (collapses && expanded) {
       setExpanded(false)
     }
   }
@@ -177,9 +181,7 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
     phase == OverlaySnapshot.PHASE_RECORDING || phase == OverlaySnapshot.PHASE_PAUSED
 
   private fun showsTranscript(phase: String): Boolean =
-    phase == OverlaySnapshot.PHASE_RECORDING ||
-      phase == OverlaySnapshot.PHASE_PAUSED ||
-      phase == OverlaySnapshot.PHASE_PROCESSING
+    phase == OverlaySnapshot.PHASE_RECORDING || phase == OverlaySnapshot.PHASE_PAUSED
 
   private fun buildBubbleParams(): WindowManager.LayoutParams {
     val type =
@@ -593,17 +595,46 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
   }
 
   private fun applyProcessingMessage() {
+    if (snapshot.phase == OverlaySnapshot.PHASE_PROCESSING) {
+      showProcessingMessage(
+        if (snapshot.detail.isNotEmpty()) snapshot.detail else currentRotatingMessage(),
+      )
+      return
+    }
+
     if (transcriptRoot == null) {
       return
     }
     transcriptStatus.text =
       when {
         snapshot.detail.isNotEmpty() -> snapshot.detail
-        snapshot.phase == OverlaySnapshot.PHASE_PROCESSING -> currentRotatingMessage()
         snapshot.phase == OverlaySnapshot.PHASE_PAUSED ->
           context.getString(R.string.overlay_status_paused)
         else -> context.getString(R.string.overlay_status_listening)
       }
+  }
+
+  private fun showProcessingMessage(text: String) {
+    if (bubbleRoot == null || text.isEmpty()) {
+      return
+    }
+    main.removeCallbacks(hideMessage)
+    messageStrip.text = text
+    if (!messageVisible) {
+      messageStrip.visibility = View.VISIBLE
+      messageVisible = true
+      applyWindowBounds()
+      messageStrip.animate().cancel()
+      messageStrip.animate().alpha(1f).setDuration(MESSAGE_FADE_MS).start()
+    }
+  }
+
+  private fun hideProcessingMessage() {
+    if (!messageVisible) {
+      return
+    }
+    main.removeCallbacks(hideMessage)
+    main.post(hideMessage)
   }
 
   private fun currentRotatingMessage(): String {
@@ -840,7 +871,7 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
     private const val SATELLITE_STAGGER_MS = 45L
     private const val SATELLITE_DURATION_MS = 220L
     private const val SNAP_DURATION_MS = 220L
-    private const val ROTATION_INTERVAL_MS = 2500L
+    private const val ROTATION_INTERVAL_MS = 1000L
     private const val MESSAGE_FADE_MS = 160L
     private const val MESSAGE_HOLD_MS = 3000L
     const val ACTION_PLAY = "play"

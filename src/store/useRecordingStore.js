@@ -3,6 +3,7 @@ import { RECORDING_STATE } from '../constants/recordingStates.js';
 import {
   activeText,
   applyResult,
+  editAnuvadini,
   emptyAnuvadini,
   markPending,
   normalizeAnuvadini,
@@ -195,7 +196,7 @@ const useRecordingStore = create((set, get) => ({
     })),
 
   setAnuvadiniText: text =>
-    set(state => ({ anuvadini: { ...state.anuvadini, text: text ?? '' } })),
+    set(state => ({ anuvadini: editAnuvadini(state.anuvadini, text) })),
 
   setTranscriptSource: source =>
     set(state => ({
