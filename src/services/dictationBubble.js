@@ -151,6 +151,12 @@ async function handleCommand(action) {
         await overlay.handoffToReport();
         break;
 
+      case 'dismissBubble': {
+        const settingsStore = require('../store/useSettingsStore').default;
+        await settingsStore.getState().setBubbleEnabled(false);
+        break;
+      }
+
       default:
         break;
     }

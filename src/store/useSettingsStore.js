@@ -4,9 +4,11 @@ import { DEFAULT_LANGUAGE_CODE, isKnownLanguage } from '../constants/languages';
 import * as speech from '../services/speechService';
 import {
   loadBubbleEnabled,
+  loadBubbleEnablePending,
   loadDictationLanguage,
   loadOnboardingSeen,
   saveBubbleEnabled,
+  saveBubbleEnablePending,
   saveDictationLanguage,
   saveOnboardingSeen,
 } from '../services/settingsService';
@@ -157,9 +159,20 @@ export function watchOverlayGrant() {
     const wasGranted = state.overlayGranted;
     const granted = state.refreshOverlayGrant();
 
-    if (granted && !wasGranted && state.bubbleEnabled) {
-      enableBubble();
+    if (!granted || wasGranted) {
+      return;
     }
+
+    (async () => {
+      const pending = await loadBubbleEnablePending();
+      if (!pending && !state.bubbleEnabled) {
+        return;
+      }
+      await useSettingsStore.getState().setBubbleEnabled(true);
+      if (pending) {
+        await saveBubbleEnablePending(false);
+      }
+    })().catch(() => {});
   });
 }
 

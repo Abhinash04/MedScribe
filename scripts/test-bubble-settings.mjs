@@ -1,7 +1,9 @@
 import {
   SETTING_KEY,
   loadBubbleEnabled,
+  loadBubbleEnablePending,
   saveBubbleEnabled,
+  saveBubbleEnablePending,
 } from '../src/services/settingsService.js';
 
 import { check, report } from './lib/fixture-harness.mjs';
@@ -82,6 +84,40 @@ check(
   SETTING_KEY.DICTATION_BUBBLE === SETTING_KEY.DICTATION_LANGUAGE,
   false,
 );
+
+check(
+  'U4.1 no pending intent by default, so a stray grant never enables the bubble',
+  await loadBubbleEnablePending(dbReturning([])),
+  false,
+);
+check(
+  'U4.2 a recorded intent round trips',
+  await loadBubbleEnablePending(dbReturning([{ value: '1' }])),
+  true,
+);
+check(
+  'U4.3 a consumed intent reads as false',
+  await loadBubbleEnablePending(dbReturning([{ value: '0' }])),
+  false,
+);
+check(
+  'U4.4 a db error reads as no intent',
+  await loadBubbleEnablePending(dbThrowing(new Error('no such table'))),
+  false,
+);
+
+const pendingWrite = dbReturning();
+check(
+  'U4.5 recording the intent succeeds',
+  await saveBubbleEnablePending(true, pendingWrite),
+  true,
+);
+check(
+  'U4.6 under its own key, distinct from the bubble preference',
+  pendingWrite.calls[0].params[0] === SETTING_KEY.DICTATION_BUBBLE,
+  false,
+);
+check('U4.7 as "1"', pendingWrite.calls[0].params[1], '1');
 
 console.warn = originalWarn;
 

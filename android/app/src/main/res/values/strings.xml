@@ -16,6 +16,9 @@
     <string name="overlay_action_stop">Stop dictation</string>
     <string name="overlay_action_home">Open MedScribe</string>
     <string name="overlay_action_toggle">MedScribe actions</string>
+    <string name="overlay_dismiss_hint">Drag here to remove</string>
+    <string name="overlay_dismiss_armed">Release to remove</string>
+    <string name="overlay_dismiss_blocked">Stop the dictation first</string>
 
     <string-array name="overlay_processing_messages">
         <item>Loading…</item>

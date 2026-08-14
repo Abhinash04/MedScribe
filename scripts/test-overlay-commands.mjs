@@ -150,4 +150,26 @@ check(
   null,
 );
 
+check(
+  'C8.1 dismiss resolves to the bubble teardown',
+  run({ action: OVERLAY_ACTION.DISMISS }).method,
+  'dismissBubble',
+);
+check(
+  'C8.2 dismiss is allowed even mid-review, because native gates it by phase',
+  run({ action: OVERLAY_ACTION.DISMISS, stage: CONSULTATION_STAGE.REVIEW })
+    .method,
+  'dismissBubble',
+);
+check(
+  'C8.3 dismiss carries no rejection reason',
+  run({ action: OVERLAY_ACTION.DISMISS }).reason,
+  null,
+);
+check(
+  'C8.4 an unknown action is still rejected',
+  run({ action: 'nonsense' }).method,
+  null,
+);
+
 report();

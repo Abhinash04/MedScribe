@@ -8,6 +8,7 @@ export const OVERLAY_ACTION = {
   STOP: 'stop',
   HOME: 'home',
   REVIEW: 'review',
+  DISMISS: 'dismiss',
 };
 
 export const OVERLAY_REJECTION = {
@@ -39,6 +40,9 @@ export function resolveCommand({
 
     case OVERLAY_ACTION.REVIEW:
       return invoke('openReview');
+
+    case OVERLAY_ACTION.DISMISS:
+      return invoke('dismissBubble');
 
     case OVERLAY_ACTION.PLAY: {
       if (status === RECORDING_STATE.PAUSED) {

@@ -8,6 +8,7 @@ export const SETTING_KEY = {
   DICTATION_LANGUAGE: 'dictation_language',
   DICTATION_BUBBLE: 'dictation_bubble',
   OVERLAY_ONBOARDING_SEEN: 'overlay_onboarding_seen',
+  BUBBLE_ENABLE_PENDING: 'bubble_enable_pending',
 };
 
 function openSettingsDb() {
@@ -77,6 +78,19 @@ export async function saveOnboardingSeen(seen, db = null) {
   return writeSetting(
     SETTING_KEY.OVERLAY_ONBOARDING_SEEN,
     seen ? '1' : '0',
+    db,
+  );
+}
+
+export async function loadBubbleEnablePending(db = null) {
+  const stored = await readSetting(SETTING_KEY.BUBBLE_ENABLE_PENDING, null, db);
+  return stored === '1';
+}
+
+export async function saveBubbleEnablePending(pending, db = null) {
+  return writeSetting(
+    SETTING_KEY.BUBBLE_ENABLE_PENDING,
+    pending ? '1' : '0',
     db,
   );
 }

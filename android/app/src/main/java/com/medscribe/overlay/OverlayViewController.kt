@@ -47,6 +47,8 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
   private var bubbleParams: WindowManager.LayoutParams? = null
   private var transcriptRoot: LinearLayout? = null
   private var transcriptParams: WindowManager.LayoutParams? = null
+  private var dismissRoot: FrameLayout? = null
+  private var dismissParams: WindowManager.LayoutParams? = null
 
   private lateinit var canvas: FrameLayout
   private lateinit var bubble: FrameLayout
@@ -59,9 +61,12 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
   private lateinit var messageStrip: TextView
   private lateinit var transcriptLabel: TextView
   private lateinit var transcriptStatus: TextView
+  private lateinit var dismissTarget: LinearLayout
+  private lateinit var dismissLabel: TextView
 
   private var expanded = false
   private var messageVisible = false
+  private var dismissArmed = false
   private var anchorX = 0
   private var anchorY = 0
   private var snapshot: OverlaySnapshot = OverlaySnapshot.idle()
@@ -101,6 +106,8 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
     val params = buildBubbleParams()
     val view = buildBubbleViews()
 
+    attachDismissZone()
+
     return try {
       windowManager.addView(view, params)
       bubbleRoot = view
@@ -110,6 +117,7 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
       render(DictationOverlayBridge.latest)
       true
     } catch (error: Exception) {
+      detachDismissZone()
       DictationOverlayBridge.windowAttached = false
       false
     }
@@ -120,6 +128,7 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
     main.removeCallbacks(hideMessage)
     messageVisible = false
     detachTranscript()
+    detachDismissZone()
     val view = bubbleRoot ?: return
     bubbleRoot = null
     bubbleParams = null
@@ -501,6 +510,170 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
     }
   }
 
+  private fun buildDismissParams(): WindowManager.LayoutParams {
+    val type =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+      } else {
+        @Suppress("DEPRECATION")
+        WindowManager.LayoutParams.TYPE_PHONE
+      }
+
+    return WindowManager.LayoutParams(
+        WindowManager.LayoutParams.MATCH_PARENT,
+        dp(DISMISS_ZONE_DP),
+        type,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+          WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+          WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+          WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        PixelFormat.TRANSLUCENT,
+      )
+      .apply { gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL }
+  }
+
+  private fun buildDismissViews(): FrameLayout {
+    val holder = FrameLayout(context).apply { alpha = 0f; visibility = View.GONE }
+
+    dismissTarget =
+      LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
+        background =
+          GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(OverlayPalette.PANEL)
+          }
+        layoutParams =
+          FrameLayout.LayoutParams(dp(DISMISS_TARGET_DP), dp(DISMISS_TARGET_DP))
+            .apply { gravity = Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM }
+      }
+
+    dismissTarget.addView(
+      ImageView(context).apply {
+        setImageResource(R.drawable.ic_overlay_dismiss)
+        layoutParams =
+          LinearLayout.LayoutParams(dp(22), dp(22)).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+          }
+      },
+    )
+
+    dismissLabel =
+      TextView(context).apply {
+        setTextColor(OverlayPalette.MUTED)
+        textSize = 10f
+        gravity = Gravity.CENTER
+        setPadding(0, dp(4), 0, 0)
+        text = context.getString(R.string.overlay_dismiss_hint)
+      }
+    dismissTarget.addView(dismissLabel)
+
+    holder.addView(dismissTarget)
+    return holder
+  }
+
+  private fun attachDismissZone() {
+    if (dismissRoot != null) {
+      return
+    }
+    if (!Settings.canDrawOverlays(context)) {
+      return
+    }
+    val params = buildDismissParams()
+    val view = buildDismissViews()
+    try {
+      windowManager.addView(view, params)
+      dismissRoot = view
+      dismissParams = params
+    } catch (error: Exception) {
+      dismissRoot = null
+      dismissParams = null
+    }
+  }
+
+  private fun detachDismissZone() {
+    dismissArmed = false
+    val view = dismissRoot ?: return
+    dismissRoot = null
+    dismissParams = null
+    try {
+      windowManager.removeView(view)
+    } catch (error: Exception) {
+      Unit
+    }
+  }
+
+  private fun allowsDismiss(): Boolean =
+    snapshot.phase != OverlaySnapshot.PHASE_RECORDING &&
+      snapshot.phase != OverlaySnapshot.PHASE_PAUSED
+
+  private fun showDismissZone() {
+    val view = dismissRoot ?: return
+    if (!allowsDismiss()) {
+      return
+    }
+    dismissArmed = false
+    applyDismissArmed(false)
+    view.visibility = View.VISIBLE
+    view.animate().cancel()
+    view.animate().alpha(1f).setDuration(DISMISS_FADE_MS).start()
+  }
+
+  private fun hideDismissZone() {
+    dismissArmed = false
+    val view = dismissRoot ?: return
+    view.animate().cancel()
+    view
+      .animate()
+      .alpha(0f)
+      .setDuration(DISMISS_FADE_MS)
+      .withEndAction { view.visibility = View.GONE }
+      .start()
+  }
+
+  private fun inDismissRegion(): Boolean {
+    val centreX = anchorCentreX()
+    val centreY = anchorCentreY()
+    return centreY >= screenHeight() - dp(DISMISS_ZONE_DP) &&
+      abs(centreX - screenWidth() / 2) <= dp(DISMISS_TARGET_DP)
+  }
+
+  private fun overDismissZone(): Boolean =
+    dismissRoot != null && allowsDismiss() && inDismissRegion()
+
+  private fun dismissBubble() {
+    DictationOverlayBridge.dispatch(ACTION_DISMISS)
+    main.post { DictationBubbleService.stop(context) }
+  }
+
+  private fun applyDismissArmed(armed: Boolean) {
+    val background = dismissTarget.background as? GradientDrawable ?: return
+    background.setColor(if (armed) OverlayPalette.DANGER else OverlayPalette.PANEL)
+    dismissLabel.text =
+      context.getString(
+        if (armed) R.string.overlay_dismiss_armed else R.string.overlay_dismiss_hint,
+      )
+    val scale = if (armed) 1.15f else 1f
+    dismissTarget.animate().cancel()
+    dismissTarget
+      .animate()
+      .scaleX(scale)
+      .scaleY(scale)
+      .setDuration(DISMISS_FADE_MS)
+      .setInterpolator(DecelerateInterpolator())
+      .start()
+  }
+
+  private fun updateDismissArmed() {
+    val armed = overDismissZone()
+    if (armed == dismissArmed) {
+      return
+    }
+    dismissArmed = armed
+    applyDismissArmed(armed)
+  }
+
   private fun detachTranscript() {
     val view = transcriptRoot ?: return
     transcriptRoot = null
@@ -728,10 +901,17 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
           if (!dragging && abs(dx) < touchSlop && abs(dy) < touchSlop) {
             return true
           }
+          if (!dragging) {
+            if (expanded) {
+              setExpanded(false)
+            }
+            showDismissZone()
+          }
           dragging = true
           anchorX = startX + dx
           anchorY = startY + dy
           applyWindowBounds()
+          updateDismissArmed()
           return true
         }
         MotionEvent.ACTION_UP,
@@ -741,6 +921,17 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
           target.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
 
           if (dragging) {
+            val released = event.action == MotionEvent.ACTION_UP
+            val dismissing = released && overDismissZone()
+            val blocked = released && !allowsDismiss() && inDismissRegion()
+            hideDismissZone()
+            if (dismissing) {
+              dismissBubble()
+              return true
+            }
+            if (blocked) {
+              showMessage(context.getString(R.string.overlay_dismiss_blocked))
+            }
             snapToEdge()
             return true
           }
@@ -872,11 +1063,15 @@ class OverlayViewController(private val context: Context) : OverlayRenderer {
     private const val SATELLITE_DURATION_MS = 220L
     private const val SNAP_DURATION_MS = 220L
     private const val ROTATION_INTERVAL_MS = 1000L
+    private const val DISMISS_ZONE_DP = 190
+    private const val DISMISS_TARGET_DP = 64
+    private const val DISMISS_FADE_MS = 160L
     private const val MESSAGE_FADE_MS = 160L
     private const val MESSAGE_HOLD_MS = 3000L
     const val ACTION_PLAY = "play"
     const val ACTION_PAUSE = "pause"
     const val ACTION_STOP = "stop"
     const val ACTION_HOME = "home"
+    const val ACTION_DISMISS = "dismiss"
   }
 }

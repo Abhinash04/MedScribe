@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Image, Pressable, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import LanguagePickerModal from '../components/LanguagePickerModal';
@@ -21,6 +21,7 @@ import {
   openAppSettings,
   requestMicPermission,
 } from '../services/permissionService';
+import { saveBubbleEnablePending } from '../services/settingsService';
 import useSettingsStore from '../store/useSettingsStore';
 import { colors } from '../theme';
 import styles from './styles/OverlayOnboardingScreen.styles';
@@ -100,6 +101,7 @@ const OverlayOnboardingScreen = ({ navigation }) => {
   const [micBlocked, setMicBlocked] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [micGrantedAlready, setMicGrantedAlready] = useState(false);
+  const awaitingGrantRef = useRef(false);
 
   const language = displayFor(dictationLanguage);
 
@@ -123,8 +125,13 @@ const OverlayOnboardingScreen = ({ navigation }) => {
 
     syncMicPermission();
     const subscription = AppState.addEventListener('change', next => {
-      if (next === 'active') {
-        syncMicPermission();
+      if (next !== 'active') {
+        return;
+      }
+      syncMicPermission();
+      if (awaitingGrantRef.current) {
+        awaitingGrantRef.current = false;
+        navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
       }
     });
 
@@ -132,7 +139,7 @@ const OverlayOnboardingScreen = ({ navigation }) => {
       cancelled = true;
       subscription.remove();
     };
-  }, []);
+  }, [navigation]);
 
   const goToDashboard = useCallback(() => {
     navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
@@ -170,26 +177,30 @@ const OverlayOnboardingScreen = ({ navigation }) => {
 
   const handleEnable = useCallback(async () => {
     setRequesting(true);
-    await markOnboardingSeen();
-    const granted = await requestOverlayPermission();
-    if (granted) {
-      await setBubbleEnabled(true);
-      setRequesting(false);
-      goToDashboard();
-      return;
-    }
+    try {
+      await markOnboardingSeen();
+      await saveBubbleEnablePending(true);
 
-    setRequesting(false);
-    const state = resolveOverlayState(getOverlayDiagnostics());
-    if (state === OVERLAY_STATE.RESTRICTED_SETTINGS) {
-      const guidance = guidanceFor(state);
-      Alert.alert(guidance.title, guidance.body, [
-        { text: 'Later', style: 'cancel', onPress: goToDashboard },
-        { text: 'Open settings', onPress: openAppSettings },
-      ]);
-      return;
+      if (await requestOverlayPermission()) {
+        await setBubbleEnabled(true);
+        await saveBubbleEnablePending(false);
+        goToDashboard();
+        return;
+      }
+
+      const state = resolveOverlayState(getOverlayDiagnostics());
+      if (state === OVERLAY_STATE.RESTRICTED_SETTINGS) {
+        const guidance = guidanceFor(state);
+        Alert.alert(guidance.title, guidance.body, [
+          { text: 'Later', style: 'cancel', onPress: goToDashboard },
+          { text: 'Open settings', onPress: openAppSettings },
+        ]);
+        return;
+      }
+      awaitingGrantRef.current = true;
+    } finally {
+      setRequesting(false);
     }
-    goToDashboard();
   }, [markOnboardingSeen, setBubbleEnabled, goToDashboard]);
 
   const handleSkip = useCallback(async () => {
@@ -296,7 +307,9 @@ const OverlayOnboardingScreen = ({ navigation }) => {
             onLanguageStep
               ? 'Continue with the selected language'
               : onMicrophoneStep
-              ? 'Allow microphone access'
+              ? micBlocked
+                ? 'Open system settings to allow the microphone'
+                : 'Allow microphone access'
               : 'Enable the floating bubble'
           }
         >
