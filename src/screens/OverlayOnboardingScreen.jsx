@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Image, Pressable, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import AnuvadiniLogo from '../components/AnuvadiniLogo';
 import LanguagePickerModal from '../components/LanguagePickerModal';
 import ScreenContainer from '../components/ScreenContainer';
 import { displayFor } from '../constants/languages';
@@ -341,6 +342,11 @@ const OverlayOnboardingScreen = ({ navigation }) => {
         >
           <Text style={styles.skipText}>Not now</Text>
         </Pressable>
+
+        <View style={styles.credit}>
+          <Text style={styles.creditLabel}>Developed by</Text>
+          <AnuvadiniLogo width={148} />
+        </View>
       </View>
 
       <LanguagePickerModal

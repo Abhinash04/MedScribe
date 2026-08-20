@@ -91,6 +91,18 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  credit: {
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  creditLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+    marginBottom: spacing.xs,
+  },
   skipText: {
     fontSize: 14,
     fontWeight: '600',
