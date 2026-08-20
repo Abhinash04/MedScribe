@@ -107,3 +107,8 @@ dist/
 *.temp
 *.log
 
+# Agent Skills
+.agent/
+.agents/
+
+
