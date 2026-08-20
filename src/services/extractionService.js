@@ -1,5 +1,6 @@
 import { CONFIDENCE, FIELD_MARKERS } from '../constants/fieldMarkers.js';
 import { PATIENT_FIELDS } from '../constants/patientFields.js';
+import { ALL_DRAFT_FIELDS } from './reportDraft.js';
 import { classifySegment } from './extraction/classifySegment.js';
 import { inferGender } from './extraction/collectEvidence.js';
 import { splitFindings } from './extraction/detectNegation.js';
@@ -50,7 +51,7 @@ export function extractPatientFields(transcript) {
 
   for (const segment of segments) {
     const config = FIELD_MARKERS[segment.field];
-    const value = applyPostProcessor(config.postProcessor, segment.value);
+    const value = applyPostProcessor(config.postProcessor, segment.value, segment);
 
     if (segment.field === 'symptoms') {
       denied.push(...splitFindings(retractionTail(segment.value)).negative);
@@ -304,8 +305,13 @@ function collectFallbacks(text, markers, segments) {
 }
 
 function emptyRecord() {
-  return PATIENT_FIELDS.reduce((acc, field) => {
-    acc[field.key] = null;
+  const keys = new Set([
+    ...PATIENT_FIELDS.map(f => f.key),
+    ...(ALL_DRAFT_FIELDS?.map(f => f.key) ?? []),
+    ...Object.keys(FIELD_MARKERS),
+  ]);
+  return [...keys].reduce((acc, key) => {
+    acc[key] = null;
     return acc;
   }, {});
 }

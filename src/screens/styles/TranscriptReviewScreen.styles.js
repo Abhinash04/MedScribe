@@ -1,4 +1,4 @@
-import {Platform, StyleSheet} from 'react-native';
+import {StyleSheet} from 'react-native';
 import { colors, spacing } from '../../theme';
 
 export const createStyles = scale =>
@@ -46,10 +46,20 @@ export const createStyles = scale =>
     backgroundColor: 'rgba(52, 211, 153, 0.1)',
   },
   
+  // Fixed Header Stop Container
+  fixedHeaderContainer: {
+    zIndex: 100,
+    backgroundColor: 'rgba(250, 248, 255, 0.95)',
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(109, 79, 255, 0.08)',
+  },
+
   // Content container
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingTop: 16,
     paddingBottom: 40,
     zIndex: 10,
   },
@@ -62,7 +72,11 @@ export const createStyles = scale =>
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+  },
+  glassBtnPlaceholder: {
+    width: 40,
+    height: 40,
+    opacity: 0,
   },
   glassBtn: {
     width: 40,

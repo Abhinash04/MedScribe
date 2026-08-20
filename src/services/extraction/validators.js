@@ -35,6 +35,8 @@ const validators = {
 
   gender: value => /^(Male|Female|Transgender|Other)$/i.test(value || ''),
 
+  caseType: value => /^(Initial|Follow-up)$/i.test(value || ''),
+
   pinCode: value => /^\d{6}$/.test(value || ''),
 
   phone: value => {
@@ -46,6 +48,14 @@ const validators = {
     typeof value === 'string' && value.trim().length > 1,
 
   nonEmptyList: value => Array.isArray(value) && value.length > 0,
+
+  dateString: value =>
+    typeof value === 'string' && value.trim().length >= 8,
+
+  weightNumber: value => {
+    const val = parseFloat(value);
+    return Number.isFinite(val) && val > 0 && val < 500;
+  },
 };
 
 export function isValid(name, value) {

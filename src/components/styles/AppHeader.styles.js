@@ -6,9 +6,14 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.xs,
     position: 'relative',
-    height: 56,
+    minHeight: 56,
+  },
+  titleContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 2,
   },
   logoBadge: {
     width: 32,

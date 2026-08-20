@@ -32,11 +32,27 @@ export const CLINICAL_CONDITIONS =
   'diabetic|hypertensive|asthmatic|epileptic|hypothyroid|hyperthyroid|anaemic|anemic|obese|immunocompromised|arthritic|tubercular';
 
 export const FIELD_MARKERS = {
+  caseType: {
+    priority: 10,
+    postProcessor: 'caseType',
+    validator: 'caseType',
+    markers: [
+      m(/\b(?:this\s+is\s+(?:an?\s+)?)?initial\s+(?:case|report|adr\s+report)\b/i, CONFIDENCE.EXPLICIT, 'initial case'),
+      m(/\b(?:first|first-time|new)\s+(?:report|adr\s+report|time)\b/i, CONFIDENCE.STRONG, 'first report'),
+      m(/\bfirst\s+time\b/i, CONFIDENCE.STRONG, 'first time'),
+      m(/\b(?:this\s+is\s+a\s+)?follow[- ]up\s+(?:case|report|adr\s+report)\b/i, CONFIDENCE.EXPLICIT, 'follow-up case'),
+      m(/\bpatient\s+is\s+here\s+for\s+follow[- ]up\b/i, CONFIDENCE.STRONG, 'follow-up patient'),
+      m(/\binitial(?:\s+case)?\b/i, CONFIDENCE.EXPLICIT, 'initial case'),
+      m(/\bfollow[\s-]*up(?:\s+case)?\b/i, CONFIDENCE.EXPLICIT, 'follow-up case'),
+    ],
+  },
   patientName: {
     priority: 10,
     postProcessor: 'name',
     validator: 'personName',
     markers: [
+      m(/\bpatient(?:'s|s)?\s+initials?\s+(?:are|is)?\s*/i, CONFIDENCE.EXPLICIT, "patient's initials are"),
+      m(/\binitials\s+(?:are|is)\s*/i, CONFIDENCE.EXPLICIT, 'initials are'),
       m(/\bpatient(?:'s|s)?\s+name\s+(?:is[\s,]+)?/i, CONFIDENCE.EXPLICIT, "patient's name is"),
       m(/\bname\s+of\s+the\s+patient\s+(?:is[\s,]+)?/i, CONFIDENCE.EXPLICIT, 'name of the patient is'),
       m(
@@ -57,6 +73,7 @@ export const FIELD_MARKERS = {
     ],
   },
 
+
   age: {
     priority: 9,
     postProcessor: 'age',
@@ -76,6 +93,89 @@ export const FIELD_MARKERS = {
     validator: 'gender',
     markers: [
       m(/\b(?:gender|sex)\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'gender'),
+      m(/\btransgender(?:\s+(?:individual|patient|person))?\b/i, CONFIDENCE.EXPLICIT, 'transgender'),
+    ],
+  },
+
+  dateOfBirth: {
+    priority: 9,
+    postProcessor: 'dateString',
+    validator: 'dateString',
+    markers: [
+      m(/\b(?:date\s+of\s+birth|dob|birth\s*date)\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'date of birth'),
+      m(/\bborn\s+on\s+/i, CONFIDENCE.EXPLICIT, 'born on'),
+      m(/\bborn\s+(?=\d{1,2}(?:st|nd|rd|th)?[\s/-])/i, CONFIDENCE.STRONG, 'born date'),
+      m(/\bpatient\s+was\s+born\s+on\s+/i, CONFIDENCE.EXPLICIT, 'patient was born on'),
+    ],
+  },
+
+  weight: {
+    priority: 8,
+    postProcessor: 'weight',
+    validator: 'weightNumber',
+    markers: [
+      m(/\b(?:weight|wt\.?)\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'weight is'),
+      m(/\bpatient\s+weighs\s+/i, CONFIDENCE.EXPLICIT, 'patient weighs'),
+      m(/\b(?:weighs|weighing)\s+(?:about\s+)?/i, CONFIDENCE.EXPLICIT, 'weighing'),
+      m(/\bwith\s+a\s+weight\s+of\s+/i, CONFIDENCE.EXPLICIT, 'with a weight of'),
+      m(/\baround\s+(?=\d{2,3}\s*(?:kg|kilograms|kilos|kg\.?)\b)/i, CONFIDENCE.STRONG, 'around N kg'),
+      m(/\bweight\s+is\s+around\s+/i, CONFIDENCE.STRONG, 'weight is around'),
+    ],
+  },
+
+  reactionManagement: {
+    priority: 8,
+    postProcessor: 'reactionManagement',
+    validator: 'nonEmptyText',
+    combine: 'sentences',
+    markers: [
+      m(/\btreatment\s+was\s+given\b/i, CONFIDENCE.EXPLICIT, 'treatment was given'),
+      m(/\bsymptoms?\s+improved\b/i, CONFIDENCE.STRONG, 'symptoms improved'),
+      m(/\btreatment\s+(?:was\s+)?given\s+and\s+(?:the\s+)?symptoms?\s+improved\b/i, CONFIDENCE.EXPLICIT, 'treatment given and symptoms improved'),
+      m(/\b(?:suspected\s+)?medication\s+was\s+stopped\b/i, CONFIDENCE.EXPLICIT, 'medication was stopped'),
+      m(/\btreated\s+with\b/i, CONFIDENCE.STRONG, 'treated with'),
+      m(/\badministered\b/i, CONFIDENCE.STRONG, 'administered'),
+      m(/\bgiven\s+(?:iv\s+|supportive\s+)?(?:fluids|treatment|medication)\b/i, CONFIDENCE.STRONG, 'given treatment'),
+      m(/\bkept\s+under\s+observation\b/i, CONFIDENCE.STRONG, 'kept under observation'),
+      m(/\badmitted\s+for\s+observation\b/i, CONFIDENCE.STRONG, 'admitted for observation'),
+      m(/\bsymptoms?\s+improved\s+after\s+treatment\b/i, CONFIDENCE.STRONG, 'symptoms improved'),
+      m(/\btreated\s+symptomatically\b/i, CONFIDENCE.STRONG, 'treated symptomatically'),
+    ],
+  },
+
+  reactionStartDate: {
+    priority: 8,
+    postProcessor: 'dateString',
+    validator: 'dateString',
+    markers: [
+      m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+start\s+date\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction start date'),
+      m(/\b(?:event|reaction|adverse\s+event|adverse\s+reaction|symptoms?)\s+(?:had\s+)?commenced\s+(?:on\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction commenced on'),
+      m(/\b(?:event|reaction|adverse\s+event|adverse\s+reaction|symptoms?)\s+(?:had\s+)?start(?:ed|ing)?\s+(?:on\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction started on'),
+      m(/\b(?:event|reaction|adverse\s+reaction|symptoms?)\s+began\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction began on'),
+      m(/\bcommenced\s+on\s+/i, CONFIDENCE.STRONG, 'commenced on'),
+      m(/\bhad\s+started\s+on\s+/i, CONFIDENCE.STRONG, 'had started on'),
+      m(/\bstarted\s+on\s+(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b|\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}\b)/i, CONFIDENCE.STRONG, 'started on date'),
+      m(/\breaction\s+date\s+is\s+/i, CONFIDENCE.STRONG, 'reaction date is'),
+      m(/\b(?:reaction\s+)?onset\s+(?:of\s+(?:the\s+)?(?:symptoms|reaction|event|adverse\s+reaction)\s+)?(?:date\s+)?(?:was|is)\s+/i, CONFIDENCE.EXPLICIT, 'onset of reaction'),
+      m(/\bonset\s+date\s+(?:was|is)\s+/i, CONFIDENCE.EXPLICIT, 'onset date'),
+    ],
+  },
+
+  reactionStopDate: {
+    priority: 8,
+    postProcessor: 'dateString',
+    validator: 'dateString',
+    markers: [
+      m(/\b(?:event|reaction|adverse\s+reaction|symptoms?)\s+stop\s+date\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction stop date'),
+      m(/\b(?:event|reaction|adverse\s+reaction|symptoms?)\s+stopped\s+(?:on\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction stopped on'),
+      m(/\b(?:event|reaction|adverse\s+reaction|symptoms?)\s+ended\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction ended on'),
+      m(/\b(?:event|reaction|adverse\s+reaction|symptoms?)\s+resolved\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction resolved on'),
+      m(/\b(?:event|reaction|adverse\s+reaction|symptoms?)\s+(?:settled|subsided)\s+(?:by|on)\s+/i, CONFIDENCE.STRONG, 'reaction settled by'),
+      m(/\bby\s+(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b)/i, CONFIDENCE.STRONG, 'by date'),
+      m(/\b(?:resolved|ended|stopped|settled|subsided)\s+(?:on\s+)?(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b)/i, CONFIDENCE.STRONG, 'resolved date'),
+      m(/\b(?:subsided|settled)\s+(?:on|by)\s+/i, CONFIDENCE.STRONG, 'subsided on'),
+      m(/\b(?:reaction\s+)?cessation\s+date\s+(?:was|is)\s+/i, CONFIDENCE.STRONG, 'cessation date'),
+      m(/\b(?:resolved|ended|stopped)\s+on\s+/i, CONFIDENCE.STRONG, 'resolved on'),
     ],
   },
 

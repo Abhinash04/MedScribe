@@ -20,7 +20,6 @@ import AppHeader from '../components/AppHeader';
 import MissingFieldsModal from '../components/MissingFieldsModal';
 import ReportField from '../components/ReportField';
 import ScreenContainer from '../components/ScreenContainer';
-import { REQUIRED_FIELDS } from '../constants/patientFields';
 import { HALF_WIDTH, REPORT_SECTIONS } from '../constants/reportSections';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import { extractForReport } from '../services/extractionService';
@@ -31,7 +30,6 @@ import {
 } from '../services/reportCompleteness';
 import {
   applyEdit,
-  countRequiredFilled,
   draftNotes,
   draftValues,
   fromStored,
@@ -62,11 +60,11 @@ import { colors } from '../theme';
 import { formatDateTime } from '../utils/datetime';
 import styles from './styles/ReportScreen.styles';
 
-const TOTAL_REQUIRED = REQUIRED_FIELDS.length;
+const TOTAL_REQUIRED = 4;
 
 const SECTION_TINTS = {
-  patient: { fill: colors.accentSoft, glyph: colors.primaryAccent },
-  clinical: { fill: colors.violetSoft, glyph: colors.violet },
+  sectionA: { fill: colors.accentSoft, glyph: colors.primaryAccent },
+  sectionB: { fill: colors.violetSoft, glyph: colors.violet },
   additional: { fill: colors.warningSoft, glyph: colors.warningText },
 };
 
@@ -241,13 +239,13 @@ const ReportScreen = ({ route }) => {
     };
   }, [openedId, fetchReport]);
 
-  const captured = useMemo(
-    () => (draft ? countRequiredFilled(draft) : 0),
-    [draft],
-  );
   const completeness = useMemo(
     () => (draft ? validateReportCompleteness(draft) : null),
     [draft],
+  );
+  const captured = useMemo(
+    () => (completeness ? completeness.capturedCount : 0),
+    [completeness],
   );
   const blocking = useMemo(
     () => (completeness ? blockingFields(completeness) : []),

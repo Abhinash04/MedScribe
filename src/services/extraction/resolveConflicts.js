@@ -41,7 +41,7 @@ const bare = value =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const denies = value => /^(?:no|not|never|denies|denied|nothing|negative)\b/.test(bare(value));
+const denies = value => /^(?:no|not|never|denies|denied|nothing|negative|non)\b/.test(bare(value));
 
 const restates = (outer, inner) =>
   !!inner && !!outer && ` ${outer} `.includes(` ${inner} `);
@@ -57,10 +57,12 @@ function combineSentences(current, next) {
     const firstBare = bare(first.value);
     const secondBare = bare(second.value);
     if (restates(secondBare, firstBare)) {
-      return { ...second, start: first.start, end: second.end };
+      const end = second.start - first.end < 100 ? second.end : first.end;
+      return { ...second, start: first.start, end };
     }
     if (restates(firstBare, secondBare)) {
-      return { ...first, start: first.start, end: second.end };
+      const end = second.start - first.end < 100 ? second.end : first.end;
+      return { ...first, start: first.start, end };
     }
   }
 
@@ -69,11 +71,13 @@ function combineSentences(current, next) {
     .filter(Boolean)
     .join('. ');
 
+  const end = Math.abs(second.start - first.end) < 100 ? Math.max(current.end, next.end) : first.end;
+
   return {
     ...(next.confidence > current.confidence ? next : current),
     value,
     start: Math.min(current.start, next.start),
-    end: Math.max(current.end, next.end),
+    end,
   };
 }
 

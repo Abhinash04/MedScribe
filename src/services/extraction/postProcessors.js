@@ -140,6 +140,9 @@ const capitalizeToken = token => {
   if (!token) {
     return token;
   }
+  if (/^[A-Z]{2,4}$/.test(token)) {
+    return token;
+  }
   const normalized = token === token.toUpperCase() ? token.toLowerCase() : token;
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
@@ -280,17 +283,18 @@ const processors = {
     return '';
   },
 
-  gender: raw => {
+  gender: (raw, segment) => {
     const text = trimLeading(raw);
+    const source = segment?.source || '';
+    if (/\btransgender\b/i.test(text) || /\btransgender\b/i.test(source)) {
+      return 'Transgender';
+    }
     // "female" before "male" — "male" is a substring of "female".
     if (/\b(?:female|woman|lady|girl)\b/i.test(text)) {
       return 'Female';
     }
     if (/\b(?:male|man|gentleman|boy)\b/i.test(text)) {
       return 'Male';
-    }
-    if (/\btransgender\b/i.test(text)) {
-      return 'Transgender';
     }
     return '';
   },
@@ -380,6 +384,78 @@ const processors = {
       sentenceCase(parts.length > 1 && tail.trim().length > 2 ? tail : corrected),
     );
   },
+
+  dateString: raw => {
+    if (!raw || typeof raw !== 'string') return '';
+    const text = afterLastCorrection(raw).trim();
+    if (!text) return '';
+    const numericMatch = text.match(/\b([0-3]?\d)[/.-]([0-1]?\d)[/.-](\d{4})\b/);
+    if (numericMatch) {
+      const day = numericMatch[1].padStart(2, '0');
+      const month = numericMatch[2].padStart(2, '0');
+      const year = numericMatch[3];
+      return `${day}/${month}/${year}`;
+    }
+    const MONTHS = {
+      jan: '01', january: '01', feb: '02', february: '02', mar: '03', march: '03',
+      apr: '04', april: '04', may: '05', jun: '06', june: '06', jul: '07', july: '07',
+      aug: '08', august: '08', sep: '09', sept: '09', september: '09', oct: '10', october: '10',
+      nov: '11', november: '11', dec: '12', december: '12',
+    };
+    const wordMatch = text.match(/\b([0-3]?\d)(?:st|nd|rd|th)?(?:\s+of)?\s+([a-zA-Z]+)\s+(\d{4})\b/i);
+    if (wordMatch) {
+      const day = wordMatch[1].padStart(2, '0');
+      const monthKey = wordMatch[2].toLowerCase();
+      const month = MONTHS[monthKey] || MONTHS[monthKey.slice(0, 3)];
+      const year = wordMatch[3];
+      if (month) return `${day}/${month}/${year}`;
+    }
+    const wordMatchAlt = text.match(/\b([a-zA-Z]+)\s+([0-3]?\d)(?:st|nd|rd|th)?[\s,]+(\d{4})\b/i);
+    if (wordMatchAlt) {
+      const monthKey = wordMatchAlt[1].toLowerCase();
+      const month = MONTHS[monthKey] || MONTHS[monthKey.slice(0, 3)];
+      const day = wordMatchAlt[2].padStart(2, '0');
+      const year = wordMatchAlt[3];
+      if (month) return `${day}/${month}/${year}`;
+    }
+    return text;
+  },
+
+  weight: raw => {
+    if (!raw || typeof raw !== 'string') return '';
+    const text = afterLastCorrection(raw).trim();
+    const match = text.match(/(\d+(?:\.\d+)?)\s*(?:kilos?|kilograms?|kg)?/i);
+    if (match) return match[1];
+
+    const words = text.toLowerCase().split(/[\s-]+/).filter(Boolean);
+    for (let start = 0; start < words.length; start += 1) {
+      for (let take = Math.min(3, words.length - start); take >= 1; take -= 1) {
+        const parsed = wordsToNumber(words.slice(start, start + take).join(' '));
+        if (parsed !== null && parsed > 0 && parsed < 500) {
+          return `${parsed}`;
+        }
+      }
+    }
+    return text;
+  },
+
+  caseType: (raw, segment) => {
+    const text = ((raw || '') + ' ' + (segment?.source || '')).toLowerCase();
+    if (/\b(?:follow[- ]up)\b/i.test(text)) {
+      return 'Follow-up';
+    }
+    if (/\b(?:initial|first|first-time|new)\b/i.test(text)) {
+      return 'Initial';
+    }
+    return '';
+  },
+
+  reactionManagement: (raw, segment) => {
+    const rawStr = typeof raw === 'string' ? raw.trim() : '';
+    const srcStr = typeof segment?.source === 'string' ? segment.source.trim() : '';
+    const combined = rawStr ? `${srcStr} ${rawStr}` : srcStr;
+    return trimTrailing(sentenceCase(combined.trim()));
+  },
 };
 
 /**
@@ -392,7 +468,7 @@ export const retractionTail = raw => afterLastCorrection(raw || '');
 /** Shared so `classifySegment` trims a segment exactly as a value is trimmed. */
 export const trimTrailingConnectives = trimTrailing;
 
-export function applyPostProcessor(name, raw) {
+export function applyPostProcessor(name, raw, segment) {
   const processor = processors[name] || processors.text;
-  return processor(raw);
+  return processor(raw, segment);
 }

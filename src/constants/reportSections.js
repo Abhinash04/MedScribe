@@ -1,48 +1,50 @@
-import { PATIENT_FIELDS } from './patientFields.js';
+import { CORE_ADR_FIELDS } from './patientFields.js';
 
 /**
  * Presentation-only grouping for the report screen.
  *
- * Fields are referenced by key and resolved against PATIENT_FIELDS, which stays
- * the single contract shared with extraction, completeness and PDF export.
+ * Fields are referenced by key and resolved against CORE_ADR_FIELDS, which stays
+ * the contract shared with extraction and UI presentation.
  */
 const SECTION_DEFINITIONS = [
   {
-    key: 'patient',
-    title: 'Patient Details',
+    key: 'sectionA',
+    title: 'A. Patient Information',
     icon: 'user',
+    keys: ['caseType', 'patientName', 'age', 'dateOfBirth', 'gender', 'weight'],
+  },
+  {
+    key: 'sectionB',
+    title: 'B. Suspected Adverse Reaction',
+    icon: 'alert-triangle',
     keys: [
-      'patientName',
-      'age',
-      'gender',
-      'address',
-      'pinCode',
-      'contactNumber',
+      'reactionStartDate',
+      'reactionStopDate',
+      'reactionDescription',
+      'reactionManagement',
     ],
   },
   {
-    key: 'clinical',
-    title: 'Clinical',
-    icon: 'activity',
-    keys: ['symptoms', 'medicalHistory', 'diagnosis', 'prescriptionNotes'],
-  },
-  {
     key: 'additional',
-    title: 'Additional',
-    icon: 'edit-3',
+    title: 'Additional Information',
+    icon: 'file-text',
     keys: ['additionalRemarks'],
   },
 ];
 
 /** Short fields that read well two to a row on a phone. */
 export const HALF_WIDTH = new Set([
+  'caseType',
+  'patientName',
   'age',
+  'dateOfBirth',
   'gender',
-  'pinCode',
-  'contactNumber',
+  'weight',
+  'reactionStartDate',
+  'reactionStopDate',
 ]);
 
-const fieldFor = key => PATIENT_FIELDS.find(field => field.key === key);
+const fieldFor = key => CORE_ADR_FIELDS.find(field => field.key === key);
 
 export const REPORT_SECTIONS = SECTION_DEFINITIONS.map(section => ({
   ...section,
@@ -50,3 +52,4 @@ export const REPORT_SECTIONS = SECTION_DEFINITIONS.map(section => ({
 }));
 
 export default REPORT_SECTIONS;
+

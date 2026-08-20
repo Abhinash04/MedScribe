@@ -14,6 +14,7 @@ import {
 import Clipboard from '@react-native-clipboard/clipboard';
 import Icon from 'react-native-vector-icons/Feather';
 import LinearGradient from 'react-native-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import RefiningOverlay from '../components/RefiningOverlay';
 import MissingFieldsModal from '../components/MissingFieldsModal';
@@ -147,6 +148,7 @@ function TabBtn({ active, gradient, shadow, onPress, label, sub, icon, styles })
 
 const TranscriptReviewScreen = ({ navigation }) => {
   const styles = useScaledStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const fullTranscript = useRecordingStore(selectFullTranscript);
   const durationSeconds = useRecordingStore(state => state.durationSeconds);
   const setFullTranscript = useRecordingStore(state => state.setFullTranscript);
@@ -565,22 +567,28 @@ const TranscriptReviewScreen = ({ navigation }) => {
         <View style={styles.blob3} />
       </View>
 
+      {/* Fixed Top Header Stop */}
+      <View
+        style={[
+          styles.fixedHeaderContainer,
+          { paddingTop: Math.max(insets.top, 12) },
+        ]}
+      >
+        <View style={styles.headerRow}>
+          <GlassBtn onPress={goBack} accessibilityLabel="Go back" styles={styles}>
+            <Icon name="arrow-left" size={17} color="#6D4FFF" />
+          </GlassBtn>
+          <Text style={styles.headerTitle}>Transcript Review</Text>
+          <View style={styles.glassBtnPlaceholder} />
+        </View>
+      </View>
+
       <ScrollView
         style={styles.flexOne}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          
-          {/* Header */}
-          <View style={styles.headerRow}>
-            <GlassBtn onPress={goBack} accessibilityLabel="Go back" styles={styles}>
-              <Icon name="arrow-left" size={17} color="#6D4FFF" />
-            </GlassBtn>
-            <Text style={styles.headerTitle}>Transcript Review</Text>
-            <View style={styles.glassBtn} />
-          </View>
-
           {/* Hero band */}
           <LinearGradient
             colors={['#6D4FFF', '#8B5CF6', '#EC4899']}
