@@ -2,7 +2,7 @@ import {
   getPatientInitials,
   toDraft,
 } from '../src/services/reportDraft.js';
-import { extractForReport, extractPatientFields } from '../src/services/extractionService.js';
+import { extractForReport } from '../src/services/extractionService.js';
 import { buildReportDocument } from '../src/services/reportDocument.js';
 
 let passed = 0;

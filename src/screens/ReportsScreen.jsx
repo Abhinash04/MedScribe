@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
+import AnuvadiniMark from '../components/AnuvadiniMark';
 import BottomDock, { useDockClearance } from '../components/BottomDock';
 import ReportListRow from '../components/ReportListRow';
 import { REPORT_STATUS } from '../db/reportsRepository';
@@ -126,10 +127,17 @@ const ReportsScreen = ({ navigation, route }) => {
         <View style={styles.heroDecorCircle1} />
         <View style={styles.heroDecorCircle2} />
         <View style={styles.heroDecorCircle3} />
-        <Text style={styles.brandTitle}>Reports</Text>
-        <Text style={styles.brandSub}>
-          Every consultation you have saved on this device.
-        </Text>
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroTitleColumn}>
+            <Text style={styles.brandTitle}>Reports</Text>
+            <Text style={styles.brandSub}>
+              Every consultation you have saved on this device.
+            </Text>
+          </View>
+          <View style={styles.brandBadge}>
+            <AnuvadiniMark size={32} />
+          </View>
+        </View>
         <View style={styles.searchBar}>
           <Icon name="search" size={18} color="rgba(255,255,255,0.7)" />
           <TextInput

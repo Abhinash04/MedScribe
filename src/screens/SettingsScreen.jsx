@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
+import AnuvadiniMark from '../components/AnuvadiniMark';
 import BottomDock, { useDockClearance } from '../components/BottomDock';
 import LanguagePickerModal from '../components/LanguagePickerModal';
 import { isTranscriptionAvailable } from '../config/features';
@@ -273,10 +274,17 @@ const SettingsScreen = ({ navigation }) => {
           <View style={styles.heroDecorCircle1} />
           <View style={styles.heroDecorCircle2} />
           <View style={styles.heroDecorCircle3} />
-          <Text style={styles.brandTitle}>Settings</Text>
-          <Text style={styles.brandSub}>
-            Dictation, storage and device capability.
-          </Text>
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroTitleColumn}>
+              <Text style={styles.brandTitle}>Settings</Text>
+              <Text style={styles.brandSub}>
+                Dictation, storage and device capability.
+              </Text>
+            </View>
+            <View style={styles.brandBadge}>
+              <AnuvadiniMark size={32} />
+            </View>
+          </View>
         </LinearGradient>
         <View style={[styles.contentContainer, { paddingBottom: clearance + 20 }]}>
 
@@ -428,6 +436,13 @@ const SettingsScreen = ({ navigation }) => {
               trailing={
                 <Text style={styles.rowTrailing}>v{packageJson.version}</Text>
               }
+            />
+            <SettingRow
+              styles={styles}
+              icon="award"
+              label="Developed by"
+              value="Anuvadini · Language, Technology, Scalability"
+              trailing={<AnuvadiniMark size={28} />}
             />
           </View>
 

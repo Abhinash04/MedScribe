@@ -164,7 +164,7 @@ export const FIELD_MARKERS = {
       m(/\b(?:reaction|event|adverse\s+event|adverse\s+reaction)\s+(?:triggered|originated|manifested|first\s+noticed)\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction triggered on'),
       m(/\bcommenced\s+on\s+/i, CONFIDENCE.STRONG, 'commenced on'),
       m(/\bhad\s+started\s+on\s+/i, CONFIDENCE.STRONG, 'had started on'),
-      m(/\bstarted\s+on\s+(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b|\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}\b)/i, CONFIDENCE.STRONG, 'started on date'),
+      m(/\bstarted\s+on\s+(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b)/i, CONFIDENCE.STRONG, 'started on date'),
       m(/\breaction\s+date\s+is\s+/i, CONFIDENCE.STRONG, 'reaction date is'),
       m(/\b(?:reaction\s+)?onset\s+(?:of\s+(?:the\s+)?(?:symptoms|reaction|event|adverse\s+reaction)\s+)?(?:date\s+)?(?:was|is)\s+/i, CONFIDENCE.EXPLICIT, 'onset of reaction'),
       m(/\bonset\s+date\s+(?:was|is)\s+/i, CONFIDENCE.EXPLICIT, 'onset date'),

@@ -41,6 +41,26 @@ export const createStyles = scale =>
     borderRadius: 60,
     backgroundColor: 'rgba(255,255,255,0.07)',
   },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    zIndex: 1,
+  },
+  heroTitleColumn: {
+    flex: 1,
+    paddingRight: scale(12),
+  },
+  brandBadge: {
+    width: scale(46),
+    height: scale(46),
+    borderRadius: scale(16),
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   brandTitle: {
     fontSize: scale(36),
     fontWeight: '900',
