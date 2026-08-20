@@ -37,6 +37,7 @@ const SAMPLES = [
       reactionStartDate: '10/08/2026',
       reactionStopDate: '12/08/2026',
     },
+    expectedKeywords: ['fever', 'itching', 'rash', 'antihistamine'],
   },
   {
     id: 2,
@@ -53,6 +54,7 @@ const SAMPLES = [
       reactionStartDate: '11/08/2026',
       reactionStopDate: '13/08/2026',
     },
+    expectedKeywords: ['nausea', 'vomiting', 'dizziness'],
   },
   {
     id: 3,
@@ -69,6 +71,7 @@ const SAMPLES = [
       reactionStartDate: '08/08/2026',
       reactionStopDate: '10/08/2026',
     },
+    expectedKeywords: ['itching', 'hives', 'swelling'],
   },
   {
     id: 4,
@@ -85,6 +88,7 @@ const SAMPLES = [
       reactionStartDate: '15/08/2026',
       reactionStopDate: '16/08/2026',
     },
+    expectedKeywords: ['stomach pain', 'nausea', 'weakness'],
   },
   {
     id: 5,
@@ -101,6 +105,7 @@ const SAMPLES = [
       reactionStartDate: '09/08/2026',
       reactionStopDate: '11/08/2026',
     },
+    expectedKeywords: ['fever', 'cough', 'rash', 'itching'],
   },
   {
     id: 6,
@@ -117,6 +122,7 @@ const SAMPLES = [
       reactionStartDate: '12/08/2026',
       reactionStopDate: '13/08/2026',
     },
+    expectedKeywords: ['facial swelling', 'urticaria', 'breathing'],
   },
   {
     id: 7,
@@ -133,6 +139,7 @@ const SAMPLES = [
       reactionStartDate: '07/08/2026',
       reactionStopDate: '09/08/2026',
     },
+    expectedKeywords: ['dizziness', 'vomiting', 'weakness'],
   },
   {
     id: 8,
@@ -149,6 +156,7 @@ const SAMPLES = [
       reactionStartDate: '05/08/2026',
       reactionStopDate: '07/08/2026',
     },
+    expectedKeywords: ['fever', 'vomiting', 'itching', 'edema'],
   },
   {
     id: 9,
@@ -165,6 +173,7 @@ const SAMPLES = [
       reactionStartDate: '06/08/2026',
       reactionStopDate: '08/08/2026',
     },
+    expectedKeywords: ['headache', 'dizziness', 'weakness', 'eruption'],
   },
   {
     id: 10,
@@ -181,6 +190,7 @@ const SAMPLES = [
       reactionStartDate: '14/08/2026',
       reactionStopDate: '16/08/2026',
     },
+    expectedKeywords: ['itching', 'hives', 'swelling', 'breathing'],
   },
   {
     id: 11,
@@ -197,6 +207,7 @@ const SAMPLES = [
       reactionStartDate: '10/08/2026',
       reactionStopDate: '11/08/2026',
     },
+    expectedKeywords: ['nausea', 'vomiting', 'dizziness'],
   },
   {
     id: 12,
@@ -213,6 +224,7 @@ const SAMPLES = [
       reactionStartDate: '04/08/2026',
       reactionStopDate: '06/08/2026',
     },
+    expectedKeywords: ['fever', 'cough', 'rash', 'swelling'],
   },
   {
     id: 13,
@@ -229,6 +241,7 @@ const SAMPLES = [
       reactionStartDate: '13/08/2026',
       reactionStopDate: '15/08/2026',
     },
+    expectedKeywords: ['fever', 'itching', 'hives', 'swelling'],
   },
   {
     id: 14,
@@ -245,6 +258,8 @@ const SAMPLES = [
       reactionStartDate: '16/08/2026',
       reactionStopDate: '17/08/2026',
     },
+    expectedKeywords: ['fever', 'headache', 'sore throat', 'cough'],
+    forbiddenKeywords: ['chest pain', 'breathing difficulty'],
   },
   {
     id: 15,
@@ -261,6 +276,7 @@ const SAMPLES = [
       reactionStartDate: '10/08/2026',
       reactionStopDate: '13/08/2026',
     },
+    expectedKeywords: ['itching', 'rash', 'edema', 'dizziness', 'breath'],
   },
   {
     id: 16,
@@ -277,6 +293,7 @@ const SAMPLES = [
       reactionStartDate: '09/08/2026',
       reactionStopDate: '11/08/2026',
     },
+    expectedKeywords: ['fever', 'cough', 'itching', 'rash', 'weakness'],
   },
   {
     id: 17,
@@ -293,6 +310,7 @@ const SAMPLES = [
       reactionStartDate: '12/08/2026',
       reactionStopDate: '14/08/2026',
     },
+    expectedKeywords: ['sneezing', 'runny nose', 'fever', 'itching'],
   },
   {
     id: 18,
@@ -309,6 +327,7 @@ const SAMPLES = [
       reactionStartDate: '08/08/2026',
       reactionStopDate: '10/08/2026',
     },
+    expectedKeywords: ['pruritus', 'urticaria', 'edema', 'nausea', 'dyspnea'],
   },
   {
     id: 19,
@@ -325,6 +344,7 @@ const SAMPLES = [
       reactionStartDate: '15/08/2026',
       reactionStopDate: '17/08/2026',
     },
+    expectedKeywords: ['itching', 'vomiting', 'swelling'],
   },
   {
     id: 20,
@@ -341,6 +361,7 @@ const SAMPLES = [
       reactionStartDate: '12/08/2026',
       reactionStopDate: '14/08/2026',
     },
+    expectedKeywords: ['fever', 'cough', 'itching', 'rash'],
   },
 ];
 
@@ -361,6 +382,26 @@ for (const sample of SAMPLES) {
   check(`${sample.title} - Reaction Start Date`, doc.sectionB.reactionStartDate, sample.expected.reactionStartDate);
   check(`${sample.title} - Reaction Stop Date`, doc.sectionB.reactionStopDate, sample.expected.reactionStopDate);
   check(`${sample.title} - Combined Field 7 Description & Management Non-empty`, doc.sectionB.description.length > 0, true);
+
+  if (sample.expectedKeywords) {
+    for (const kw of sample.expectedKeywords) {
+      check(
+        `${sample.title} - Description contains "${kw}"`,
+        doc.sectionB.description.toLowerCase().includes(kw.toLowerCase()),
+        true
+      );
+    }
+  }
+
+  if (sample.forbiddenKeywords) {
+    for (const kw of sample.forbiddenKeywords) {
+      check(
+        `${sample.title} - Description excludes negated term "${kw}"`,
+        doc.sectionB.description.toLowerCase().includes(kw.toLowerCase()),
+        false
+      );
+    }
+  }
 }
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
