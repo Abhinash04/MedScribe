@@ -90,25 +90,16 @@ const INTERPRETERS = ['python3', 'python'];
 const REQUIREMENT = 'Requires Python 3 with Pillow. Install it with: pip install Pillow';
 
 function run() {
-  let missingInterpreter = 0;
-
   for (const interpreter of INTERPRETERS) {
     try {
       execFileSync(interpreter, ['-c', script], { stdio: 'inherit' });
       return true;
-    } catch (error) {
-      if (error?.code === 'ENOENT') {
-        missingInterpreter += 1;
-        continue;
-      }
-      console.error(REQUIREMENT);
-      return false;
+    } catch {
+      continue;
     }
   }
 
-  if (missingInterpreter === INTERPRETERS.length) {
-    console.error(`Python was not found on PATH. ${REQUIREMENT}`);
-  }
+  console.error(REQUIREMENT);
   return false;
 }
 
