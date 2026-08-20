@@ -139,6 +139,15 @@ check('6.2 Onset synonym phrasing', rec6_2.reactionStartDate?.value, '10/08/2026
 const rec6_3 = extractPatientFields('Event began on 10th of August 2026');
 check('6.3 Event began synonym phrasing', rec6_3.reactionStartDate?.value, '10/08/2026');
 
+const rec6_4 = extractPatientFields('The reaction started on 10/08/2026');
+check('6.4 Started on, slash-separated numeric date', rec6_4.reactionStartDate?.value, '10/08/2026');
+
+const rec6_5 = extractPatientFields('The reaction started on 10.08.2026');
+check('6.5 Started on, dot-separated numeric date', rec6_5.reactionStartDate?.value, '10/08/2026');
+
+const rec6_6 = extractPatientFields('The reaction started on 10-08-2026');
+check('6.6 Started on, hyphen-separated numeric date', rec6_6.reactionStartDate?.value, '10/08/2026');
+
 
 // ==========================================
 // 7. EVENT / REACTION STOP DATE (dd/mm/yyyy)
