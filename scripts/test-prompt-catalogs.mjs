@@ -1,6 +1,13 @@
-
-import { LANGUAGE_BY_CODE } from '../src/constants/languages.js';
-import { PATIENT_FIELDS, REQUIRED_FIELDS } from '../src/constants/patientFields.js';
+import {
+  DICTATION_LANGUAGES,
+  LANGUAGE_BY_CODE,
+} from '../src/constants/languages.js';
+import {
+  ADR_SPOKEN_FIELDS,
+  PATIENT_FIELDS,
+  REQUIRED_FIELDS,
+  SPOKEN_FIELD_KEYS,
+} from '../src/constants/patientFields.js';
 import {
   allCatalogs,
   catalogCodes,
@@ -13,9 +20,10 @@ import { missingFieldPrompt } from '../src/services/missingFieldPrompt.js';
 
 import { check, report } from './lib/fixture-harness.mjs';
 
-const FIELD_KEYS = PATIENT_FIELDS.map(field => field.key).sort();
+const FIELD_KEYS = [...SPOKEN_FIELD_KEYS].sort();
+const ALL_SPOKEN_FIELDS = [...PATIENT_FIELDS, ...ADR_SPOKEN_FIELDS];
 const asFields = keys =>
-  keys.map(key => PATIENT_FIELDS.find(field => field.key === key));
+  keys.map(key => ALL_SPOKEN_FIELDS.find(field => field.key === key));
 
 check('P1.1 English is registered', hasCatalog('en'), true);
 check('P1.2 an unregistered code is absent', hasCatalog('zz'), false);
@@ -35,7 +43,7 @@ for (const catalog of allCatalogs()) {
   const id = catalog.code;
 
   check(
-    `P2.1 ${id} labels match PATIENT_FIELDS exactly`,
+    `P2.1 ${id} labels match every spoken field key exactly`,
     Object.keys(catalog.labels ?? {}).sort(),
     FIELD_KEYS,
   );
@@ -155,7 +163,7 @@ check(
 );
 check(
   'P5.3 a known language with no catalog falls back to English',
-  missingFieldPrompt(three, 'ta'),
+  missingFieldPrompt(three, 'sat'),
   missingFieldPrompt(three, 'en'),
 );
 check('P5.4 empty field list is silent', missingFieldPrompt([], 'hi'), '');
@@ -210,13 +218,6 @@ check(
   true,
 );
 
-// P8 — placeholder integrity
-//
-// P2.4/P2.5 assert a token is PRESENT. That is not enough: machine translation
-// duplicates a token as readily as it drops one, and a duplicate would pass
-// every assertion above while substituting twice at runtime. These assert
-// exactly-once, and that no mangled variant slipped past the seeder's repair.
-
 const TOKENS = {
   one: ['{names}'],
   few: ['{names}'],
@@ -242,8 +243,6 @@ for (const catalog of allCatalogs()) {
     );
   }
 
-  // Braces outside the three exact tokens mean a mangled placeholder:
-  // '{ names }', a fullwidth '｛', or a half-restored '{names)'.
   const braces = Object.values(catalog.frames ?? {})
     .map(frame =>
       String(frame).replace(/\{names\}|\{count\}|\{detailWord\}/g, ''),
@@ -251,7 +250,6 @@ for (const catalog of allCatalogs()) {
     .filter(frame => /[{}｛｝]/.test(frame));
   check(`P8.3 ${catalog.code} has no mangled placeholder`, braces, []);
 
-  // Labels are substituted INTO {names}; a placeholder inside one would nest.
   check(
     `P8.4 ${catalog.code} labels carry no placeholders`,
     Object.entries(catalog.labels ?? {})
@@ -260,8 +258,6 @@ for (const catalog of allCatalogs()) {
     [],
   );
 }
-
-// P9 — a catalog cannot exist for a language we cannot translate
 
 for (const catalog of allCatalogs()) {
   const language = LANGUAGE_BY_CODE[catalog.code];
@@ -274,6 +270,59 @@ for (const catalog of allCatalogs()) {
     `P9.2 ${catalog.code} translation code is one the API accepts`,
     isPravahLanguage(language?.translationCode),
     true,
+  );
+}
+
+check(
+  'P10.1 every language with a voice has a prompt catalog',
+  DICTATION_LANGUAGES.filter(
+    language => language.voice && !hasCatalog(language.code),
+  ).map(language => language.code),
+  [],
+);
+check(
+  'P10.2 no catalog exists for a language with no voice',
+  catalogCodes().filter(code => !LANGUAGE_BY_CODE[code]?.voice),
+  [],
+);
+
+const ADR_BLOCKING = [
+  { key: 'patientInitials', label: 'Patient Initials' },
+  { key: 'age', label: 'Age / Date of Birth' },
+  { key: 'reactionStartDate', label: 'Event / Reaction Start Date' },
+  { key: 'reactionDescription', label: 'Describe Event / Reaction' },
+];
+
+for (const catalog of allCatalogs()) {
+  const language = LANGUAGE_BY_CODE[catalog.code];
+  const spoken = missingFieldPrompt(ADR_BLOCKING, catalog.code);
+
+  check(`P11.1 ${catalog.code} speaks every ADR blocking field`, spoken.length > 0, true);
+  check(
+    `P11.2 ${catalog.code} leaves no placeholder in the ADR prompt`,
+    /\{\w+\}/.test(spoken),
+    false,
+  );
+  check(
+    `P11.3 ${catalog.code} ADR prompt fits in ${MAX_SPEECH_CHARS} chars (${spoken.length})`,
+    spoken.length <= MAX_SPEECH_CHARS,
+    true,
+  );
+
+  if (language?.script === 'latin') {
+    continue;
+  }
+  check(
+    `P11.4 ${catalog.code} names no ADR field in English`,
+    ADR_BLOCKING.filter(field =>
+      spoken.toLowerCase().includes(field.label.toLowerCase()),
+    ).map(field => field.key),
+    [],
+  );
+  check(
+    `P11.5 ${catalog.code} ADR prompt has no Latin run at all`,
+    /[A-Za-z]{4,}/.test(spoken),
+    false,
   );
 }
 

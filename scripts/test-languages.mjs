@@ -18,9 +18,11 @@ import {
 } from '../src/services/anuvadini/language.js';
 import { voiceFor } from '../src/services/anuvadini/speechContract.js';
 import {
+  DEVANAGARI_VOICE_FALLBACK,
   RECOGNIZER,
   capabilitiesFor,
   capabilityList,
+  speechLanguageFor,
 } from '../src/services/languageCapabilities.js';
 
 import { check, report } from './lib/fixture-harness.mjs';
@@ -255,6 +257,76 @@ check(
   'L6.9d the migration target is a real row',
   isKnownLanguage(resolveLegacyCode('ks')),
   true,
+);
+
+const voiced = DICTATION_LANGUAGES.filter(language => language.voice);
+const voiceless = DICTATION_LANGUAGES.filter(language => !language.voice);
+
+check('L7.1 fourteen of the twenty-four rows carry a voice', voiced.length, 14);
+check('L7.2 the other ten do not', voiceless.length, 10);
+check(
+  'L7.3 a row with a voice is a confirmed row',
+  voiced.filter(language => !language.confirmed).map(language => language.code),
+  [],
+);
+check(
+  'L7.4 every voice-less row resolves to a fallback',
+  voiceless
+    .filter(language => !speechLanguageFor(language.code).fallbackLanguage)
+    .map(language => language.code),
+  [],
+);
+check(
+  'L7.5 no fallback is a dead end — every target has a voice of its own',
+  voiceless
+    .map(language => speechLanguageFor(language.code).fallbackLanguage)
+    .filter(code => !LANGUAGE_BY_CODE[code]?.voice),
+  [],
+);
+check(
+  'L7.6 no fallback chains — a target never needs a fallback itself',
+  voiceless
+    .map(language => speechLanguageFor(language.code).fallbackLanguage)
+    .filter(code => speechLanguageFor(code).fallbackLanguage !== null),
+  [],
+);
+check(
+  'L7.7 a row with a voice never asks for a fallback',
+  voiced
+    .filter(language => speechLanguageFor(language.code).fallbackLanguage)
+    .map(language => language.code),
+  [],
+);
+check(
+  'L7.8 voice-less Devanagari rows fall back to Hindi',
+  voiceless
+    .filter(language => language.script === 'devanagari')
+    .filter(
+      language =>
+        speechLanguageFor(language.code).fallbackLanguage !==
+        DEVANAGARI_VOICE_FALLBACK,
+    )
+    .map(language => language.code),
+  [],
+);
+check(
+  'L7.9 voice-less non-Devanagari rows fall back to English',
+  voiceless
+    .filter(language => language.script !== 'devanagari')
+    .filter(
+      language =>
+        speechLanguageFor(language.code).fallbackLanguage !==
+        DEFAULT_LANGUAGE_CODE,
+    )
+    .map(language => language.code),
+  [],
+);
+check(
+  'L7.10 the spoken language is always the doctor\'s own, never the fallback',
+  DICTATION_LANGUAGES.filter(
+    language => speechLanguageFor(language.code).language !== language.code,
+  ).map(language => language.code),
+  [],
 );
 
 report();
