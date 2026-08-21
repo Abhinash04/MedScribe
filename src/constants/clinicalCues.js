@@ -10,8 +10,12 @@ export const NEGATION_TERMINATORS = new RegExp(
   'i',
 );
 
+// "previously" and "formerly" mark a finding as historical. Without them, "the patient
+// previously had nausea" was filed as the CURRENT adverse reaction — which on an ADR
+// form attributes an old complaint to the suspect drug. PRESENTATION_CUES still wins,
+// so "previously had nausea, now has nausea again today" stays current.
 export const CHRONICITY_CUES =
-  /\b(?:for\s+(?:the\s+)?(?:last\s+|past\s+)?\w+\s+(?:years?|months?|decades?)|since\s+(?:childhood|birth|years)|known|chronic|long[\s-]standing|past\s+(?:medical\s+)?history|old\s+case|k\/c\/o)\b/i;
+  /\b(?:for\s+(?:the\s+)?(?:last\s+|past\s+)?\w+\s+(?:years?|months?|decades?)|since\s+(?:childhood|birth|years)|known|chronic|long[\s-]standing|past\s+(?:medical\s+)?history|old\s+case|k\/c\/o|previously|formerly|in\s+the\s+past)\b/i;
 
 export const ADVERB_GAP =
   '(?:\\s+(?:today|now|currently|yesterday|recently|lately|again|still|this\\s+morning|last\\s+night|since\\s+morning))?';
