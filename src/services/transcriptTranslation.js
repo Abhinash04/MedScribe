@@ -18,6 +18,16 @@ import {
   translateTexts,
 } from './pravah/translationClient.js';
 import { PRAVAH_TARGET_ENGLISH } from './pravah/translationContract.js';
+import {
+  protect,
+  reconcile,
+  restore,
+  stripSentinels,
+} from './pravah/protectNumerals.js';
+import {
+  inferMissingYears,
+  repairOrphanedYears,
+} from './pravah/repairDates.js';
 import { translationCodeFor } from '../constants/languages.js';
 import useRecordingStore, {
   selectActiveTranscript,
@@ -25,12 +35,6 @@ import useRecordingStore, {
 
 let inFlight = null;
 
-// The promise for the run `inFlight` belongs to. markTranslationPending stamps
-// sourceText to the CURRENT source, so isStale reports false the moment a run
-// starts — which means a caller asking "is the translation current?" during a
-// PENDING run would otherwise get back the PREVIOUS text (empty on pass one)
-// and build the report from untranslated Hindi. ensureTranslation awaits this
-// instead.
 let inFlightPromise = null;
 
 const MAX_BATCHES = 8;
@@ -39,6 +43,7 @@ const RETRYABLE = new Set([
   ERROR_KIND.TIMEOUT,
   ERROR_KIND.SERVER_ERROR,
   ERROR_KIND.EMPTY_TRANSLATION,
+  ERROR_KIND.UNSUPPORTED_LANGUAGE,
 ]);
 
 const RETRY_DELAYS_MS = [600, 1800];
@@ -121,7 +126,8 @@ async function runTranslation({ text, language, key, signal, onProgress }) {
     return failed(ERROR_KIND.QUOTA_EXCEEDED);
   }
 
-  const chunks = splitForTranslation(text);
+  const { masked, entities } = protect(text);
+  const chunks = splitForTranslation(masked);
   const batches = planBatches(chunks, {
     maxItems: MAX_BATCH_ITEMS,
     maxChars: MAX_BATCH_CHARS,
@@ -187,9 +193,32 @@ async function runTranslation({ text, language, key, signal, onProgress }) {
   }
 
   const joined = joinTranslated(out);
-  return joined
-    ? { ok: true, text: joined, errorKind: null }
-    : failed(ERROR_KIND.EMPTY_TRANSLATION);
+  if (!joined) {
+    return failed(ERROR_KIND.EMPTY_TRANSLATION);
+  }
+
+  const { text: restored, missing, duplicated } = restore(joined, entities);
+  const sourceYears = entities
+    .map(entity => entity.value)
+    .filter(value => /^(?:19|20)\d{2}$/.test(value));
+  const repaired = inferMissingYears(
+    repairOrphanedYears(stripSentinels(restored)),
+    sourceYears,
+  );
+  const numerals = reconcile(text, repaired);
+
+  return {
+    ok: true,
+    text: repaired,
+    errorKind: null,
+    numerals: {
+      expected: numerals.expected,
+      restored: entities.length - missing.length,
+      missing: missing.length,
+      duplicated: duplicated.length,
+      matched: numerals.matched,
+    },
+  };
 }
 
 export async function translateSession(options = {}) {
@@ -198,7 +227,6 @@ export async function translateSession(options = {}) {
   try {
     return await promise;
   } finally {
-    // Only clear if a newer run has not already taken the slot.
     if (inFlightPromise === promise) {
       inFlightPromise = null;
     }
@@ -226,9 +254,6 @@ async function runSession({ text, language, sourceKind = '' } = {}) {
 
   store.setTranslationPending({ sourceText: source, sourceKind });
 
-  // Read once and thread it through: resolveTranslationTransport decides
-  // direct-vs-proxy from whether a key exists, and translateTexts needs the
-  // same value to build the Authorization header.
   const key = getPravahKey();
   if (resolveTranslationTransport(key) === TRANSPORT.NONE) {
     const result = failed(ERROR_KIND.NOT_CONFIGURED);
@@ -289,10 +314,6 @@ export async function ensureTranslation({ force = false } = {}) {
 
   const source = selectActiveTranscript(state);
 
-  // A run already under way has stamped sourceText, so isStale would say
-  // "current" while text is still the previous (empty) value. Wait for it, then
-  // re-evaluate against settled state. Single re-entry: after the await the
-  // status is READY or FAILED, never PENDING, so this cannot recurse twice.
   if (
     !force &&
     translation.status === TRANSLATION_STATUS.PENDING &&

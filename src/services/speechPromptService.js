@@ -1,9 +1,9 @@
-import { synthesize } from './anuvadini/speechClient';
-import { DEFAULT_LANGUAGE } from './anuvadini/language';
-import { ERROR_KIND } from './anuvadini/proxyContract';
-import { getAnuvadiniToken } from './appConfigService';
-import audioFeedbackService from './audioFeedbackService';
-import { missingFieldPrompt } from './missingFieldPrompt';
+import { synthesize } from './anuvadini/speechClient.js';
+import { DEFAULT_LANGUAGE } from './anuvadini/language.js';
+import { ERROR_KIND } from './anuvadini/proxyContract.js';
+import { getAnuvadiniToken } from './appConfigService.js';
+import audioFeedbackService from './audioFeedbackService.js';
+import { missingFieldPrompt } from './missingFieldPrompt.js';
 
 let inFlight = null;
 let speaking = false;
@@ -30,6 +30,8 @@ export async function speakMissingFields(fields, options = {}) {
     language = DEFAULT_LANGUAGE,
     token = getAnuvadiniToken(),
     fallbackLanguage = null,
+    transport,
+    url,
   } = options;
 
   const text = missingFieldPrompt(fields, language);
@@ -48,7 +50,14 @@ export async function speakMissingFields(fields, options = {}) {
 
   let result;
   try {
-    result = await synthesize({ text, language, token, signal: controller.signal });
+    result = await synthesize({
+      text,
+      language,
+      token,
+      transport,
+      url,
+      signal: controller.signal,
+    });
 
     if (
       !result.ok &&
@@ -60,6 +69,8 @@ export async function speakMissingFields(fields, options = {}) {
         text: missingFieldPrompt(fields, fallbackLanguage),
         language: fallbackLanguage,
         token,
+        transport,
+        url,
         signal: controller.signal,
       });
     }

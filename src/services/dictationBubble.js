@@ -113,6 +113,9 @@ async function handleCommand(action) {
         if (!(await beginForeground())) {
           return;
         }
+        if (useRecordingStore.getState().status === RECORDING_STATE.SUCCESS) {
+          useRecordingStore.getState().reset();
+        }
         await dictationSessionManager.startSession();
         break;
 

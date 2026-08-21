@@ -56,3 +56,28 @@ export function capabilityList(options = {}) {
     capabilitiesFor(language.code, options),
   );
 }
+
+export const DEVANAGARI_VOICE_FALLBACK = 'hi';
+export function speechLanguageFor(code) {
+  const language = LANGUAGE_BY_CODE[code];
+
+  if (!language) {
+    return {
+      language: DEFAULT_LANGUAGE_CODE,
+      fallbackLanguage: null,
+      resolved: false,
+    };
+  }
+  if (language.voice) {
+    return { language: language.code, fallbackLanguage: null, resolved: true };
+  }
+
+  return {
+    language: language.code,
+    fallbackLanguage:
+      language.script === 'devanagari'
+        ? DEVANAGARI_VOICE_FALLBACK
+        : DEFAULT_LANGUAGE_CODE,
+    resolved: true,
+  };
+}

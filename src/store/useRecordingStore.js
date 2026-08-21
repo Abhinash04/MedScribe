@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { RECORDING_STATE } from '../constants/recordingStates.js';
 import {
   activeText,
+  ANUVADINI_STATUS,
   applyResult,
+  canOffer,
   editAnuvadini,
   emptyAnuvadini,
   markPending,
@@ -69,6 +71,7 @@ const initialState = {
   createdAt: Date.now(),
   anuvadini: emptyAnuvadini(),
   transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
+  sourceChosen: false,
   nativeRaw: '',
   refineProgress: { done: 0, total: 0 },
   captureUnavailable: false,
@@ -198,7 +201,7 @@ const useRecordingStore = create((set, get) => ({
   setAnuvadiniText: text =>
     set(state => ({ anuvadini: editAnuvadini(state.anuvadini, text) })),
 
-  setTranscriptSource: source =>
+  setTranscriptSource: (source, { chosen = false } = {}) =>
     set(state => ({
       transcriptSource: switchSource(
         {
@@ -208,6 +211,7 @@ const useRecordingStore = create((set, get) => ({
         },
         source,
       ),
+      sourceChosen: chosen || state.sourceChosen,
     })),
 
   setPartial: partialText => set({ partialText: partialText ?? '' }),
@@ -236,7 +240,8 @@ const useRecordingStore = create((set, get) => ({
       transcriptSource:
         sessionData.transcriptSource || TRANSCRIPT_SOURCE.NATIVE,
       nativeRaw: sessionData.nativeRaw || '',
-      language: sessionData.language || null,
+      language: sessionData.language || get().language || null,
+      sourceChosen: Boolean(sessionData.transcriptSource),
       recognizerFellBack: false,
       translation: normalizeTranslation(sessionData.translation),
       status: RECORDING_STATE.IDLE,
@@ -256,6 +261,7 @@ const useRecordingStore = create((set, get) => ({
       createdAt: Date.now(),
       anuvadini: emptyAnuvadini(),
       transcriptSource: TRANSCRIPT_SOURCE.NATIVE,
+      sourceChosen: false,
       nativeRaw: '',
       refineProgress: { done: 0, total: 0 },
       captureUnavailable: false,
@@ -267,6 +273,27 @@ const useRecordingStore = create((set, get) => ({
 
 export const selectFullTranscript = state =>
   chunksFrom(state.segments).join(' ').trim() || state.chunks.join(' ').trim();
+
+export const selectLiveTranscript = state => {
+  const nativeText = selectFullTranscript(state);
+  const anuvadini = state.anuvadini;
+  const aiText = anuvadini?.text?.trim() ? anuvadini.text : '';
+  if (state.transcriptSource === TRANSCRIPT_SOURCE.ANUVADINI && aiText) {
+    return { text: aiText, slice: TRANSCRIPT_SOURCE.ANUVADINI, reason: 'selected' };
+  }
+
+  if (canOffer({ nativeText, anuvadini })) {
+    return { text: aiText, slice: TRANSCRIPT_SOURCE.ANUVADINI, reason: 'ai-ready' };
+  }
+
+  if (anuvadini?.status === ANUVADINI_STATUS.READY && aiText) {
+    return { text: aiText, slice: TRANSCRIPT_SOURCE.NATIVE, reason: 'ai-matches-native' };
+  }
+
+  return { text: nativeText, slice: TRANSCRIPT_SOURCE.NATIVE, reason: 'native-only' };
+};
+
+export const selectPreferredTranscript = state => selectLiveTranscript(state).text;
 
 export const selectActiveTranscript = state =>
   activeText({
@@ -300,5 +327,13 @@ export const selectReportSourceKind = state =>
   selectEnglishTranscript(state)
     ? REPORT_SOURCE_KIND.ENGLISH_TRANSLATION
     : REPORT_SOURCE_KIND.ORIGINAL;
+
+// What extraction needs to know about the text it is about to read. Extraction cannot
+// tell a translation from a dictation by looking at it, and some inferences — a
+// third-person pronoun, above all — are only as trustworthy as their provenance.
+export const selectExtractionOptions = state => ({
+  translated:
+    selectReportSourceKind(state) === REPORT_SOURCE_KIND.ENGLISH_TRANSLATION,
+});
 
 export default useRecordingStore;
