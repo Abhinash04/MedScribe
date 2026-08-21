@@ -14,6 +14,9 @@ export default {
     diagnosis: 'निदान',
     prescriptionNotes: 'दवा संबंधी निर्देश',
     additionalRemarks: 'अतिरिक्त टिप्पणी',
+    patientInitials: 'रोगी के नाम के प्रथम अक्षर',
+    reactionStartDate: 'प्रतिक्रिया शुरू होने की तारीख',
+    reactionDescription: 'प्रतिक्रिया का विवरण',
   },
 
   join: { separator: ', ', and: ' और ' },

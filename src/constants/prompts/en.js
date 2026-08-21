@@ -14,6 +14,9 @@ export default {
     diagnosis: 'diagnosis',
     prescriptionNotes: 'prescription notes',
     additionalRemarks: 'additional remarks',
+    patientInitials: 'patient initials',
+    reactionStartDate: 'reaction start date',
+    reactionDescription: 'description of the reaction',
   },
 
   join: { separator: ', ', and: ' and ' },
