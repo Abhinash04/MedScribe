@@ -1,0 +1,20 @@
+{
+  "recordedAt": "2026-08-20",
+  "source": "npm run validate:dictation -- --capture, against the live Pravah service",
+  "note": "Characterization baseline, NOT a target. 0/246 translated dictations currently produce a correct ADR report. See docs/multilingual-findings.md. Lower these numbers as the extraction vocabulary widens; test-dictation-pipeline.mjs fails if any of them grows.",
+  "graded": 246,
+  "clean": 0,
+  "fieldFailures": {
+    "reactionStopDate": 235,
+    "isComplete": 130,
+    "blocking": 130,
+    "keywords": 113,
+    "capturedCount": 108,
+    "reactionStartDate": 86,
+    "initials": 24,
+    "weight": 22,
+    "age": 20,
+    "gender": 10,
+    "forbidden": 1
+  }
+}

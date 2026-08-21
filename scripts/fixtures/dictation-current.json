@@ -1,0 +1,19 @@
+{
+  "recordedAt": "2026-08-21",
+  "source": "npm run validate:dictation -- --capture --delay=300, against the live Pravah service",
+  "note": "The achieved result, and the regression floor. test-dictation-pipeline.mjs compares RATES against this, not counts, because a transient upstream failure legitimately changes the denominator — this capture lost 5 Urdu rows to Pravah 422s, which is why graded is 255 and not 260. `clean` is a translation with zero graded failures; `fileable` is one whose completeness check passes, so a doctor could file it (used for reporting only, no assertion depends on it). Re-record deliberately when the numbers improve — never to make a failing run pass. The frozen 0/246 starting point is in dictation-baseline.json and is not edited.",
+  "graded": 255,
+  "clean": 179,
+  "fileable": 240,
+  "fieldFailures": {
+    "keywords": 58,
+    "isComplete": 15,
+    "blocking": 15,
+    "capturedCount": 12,
+    "gender": 10,
+    "initials": 4,
+    "age": 2,
+    "weight": 1,
+    "reactionStopDate": 1
+  }
+}
