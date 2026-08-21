@@ -12,6 +12,7 @@ import {
   classifyStatus,
   isPravahLanguage,
   readTranslations,
+  readUpstreamError,
 } from './translationContract.js';
 
 export const REQUEST_TIMEOUT_MS = 60000;
@@ -54,6 +55,14 @@ async function fetchTransport({ url, body, headers, signal, timeoutMs }) {
 }
 
 const failed = errorKind => ({ ok: false, texts: [], errorKind });
+
+function redactKey(message, key) {
+  const text = String(message ?? '').slice(0, 300);
+  if (!text || !key) {
+    return text;
+  }
+  return text.split(key).join('[redacted]');
+}
 
 export async function translateTexts({
   texts,
@@ -121,7 +130,10 @@ export async function translateTexts({
 
   const statusError = classifyStatus(response?.status);
   if (statusError) {
-    return failed(statusError);
+    return {
+      ...failed(statusError),
+      upstream: redactKey(readUpstreamError(response?.body), key),
+    };
   }
 
   return readTranslations(response?.body, texts.length);
