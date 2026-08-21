@@ -28,7 +28,7 @@ import {
 } from './extraction/segmentTranscript.js';
 import { isValid } from './extraction/validators.js';
 
-export function extractPatientFields(transcript) {
+export function extractPatientFields(transcript, { translated = false } = {}) {
   const empty = emptyRecord();
 
   if (!transcript || typeof transcript !== 'string') {
@@ -81,7 +81,22 @@ export function extractPatientFields(transcript) {
 
   const gender = inferGender(text, candidates);
   if (gender && isValid('gender', gender.value)) {
-    candidates.push(gender);
+    // In a translated transcript a third-person pronoun is the translator's choice, not
+    // the doctor's word. Several Indian languages do not mark gender on the pronoun at
+    // all — Odia ସେ, Hindi वह, Gujarati તે, Urdu وہ — so the English comes back as "he"
+    // for a patient named Sneha, uniformly and confidently. Asserting Male from that is
+    // asserting the translator's default. Kept, because it is usually right and dropping
+    // it would lose a required field, but marked uncertain so the report shows the
+    // UNCERTAIN badge and the doctor is the one who confirms it.
+    candidates.push(
+      translated && gender.method === 'pronoun_inference'
+        ? {
+            ...gender,
+            confidence: CONFIDENCE.PRONOUN,
+            source: 'pronoun in a translation',
+          }
+        : gender,
+    );
   }
 
   const { candidates: asserted, negatedHistory } = suppressNegated(
@@ -173,8 +188,8 @@ export function applyClassifiedResidue(record, residue) {
 
   return { record: filled, claimed };
 }
-export function extractForReport(transcript) {
-  const extracted = extractPatientFields(transcript);
+export function extractForReport(transcript, options = {}) {
+  const extracted = extractPatientFields(transcript, options);
   const residue = collectResidue(transcript, extracted);
   const { record, claimed } = applyClassifiedResidue(extracted, residue);
 

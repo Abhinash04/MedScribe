@@ -30,6 +30,9 @@ export function negatedRanges(text) {
 const isNegated = (ranges, index) =>
   ranges.some(range => index >= range.start && index < range.end);
 
+const overlapsNegation = (ranges, start, end) =>
+  ranges.some(range => start < range.end && end > range.start);
+
 const SEPARATOR = new RegExp(
   `\\s*${CLAUSE_BREAK}(?:\\s+|$)|\\s*,\\s*|\\s+(?:${CONTRAST_WORDS}|and|or|aur|bhi)\\s+`,
   'i',
@@ -64,8 +67,11 @@ export function splitFindings(text) {
     }
 
     const offset = at + (part.length - cleaned.length);
-    const target = isNegated(ranges, offset) || isNegated(ranges, at) ? negative : positive;
-    target.push(stripCue(cleaned));
+    const denied =
+      isNegated(ranges, offset) ||
+      isNegated(ranges, at) ||
+      overlapsNegation(ranges, at, at + part.length);
+    (denied ? negative : positive).push(stripCue(cleaned));
   }
 
   return {

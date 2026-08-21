@@ -46,6 +46,17 @@ export const CORE_ADR_FIELDS = [
   { key: 'additionalRemarks', label: 'Additional Information', multiline: true, required: false },
 ];
 
+export const ADR_SPOKEN_FIELDS = [
+  { key: 'patientInitials', label: 'Patient Initials' },
+  { key: 'reactionStartDate', label: 'Event / Reaction Start Date' },
+  { key: 'reactionDescription', label: 'Describe Event / Reaction' },
+];
+
+export const SPOKEN_FIELD_KEYS = [
+  ...PATIENT_FIELDS.map(field => field.key),
+  ...ADR_SPOKEN_FIELDS.map(field => field.key),
+];
+
 export const REQUIRED_FIELDS = PATIENT_FIELDS.filter(field => field.required);
 
 export const NOT_AVAILABLE = 'Not Available';

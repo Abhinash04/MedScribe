@@ -1,4 +1,34 @@
 import { ADVERB_GAP, MEDICATION_UNITS } from './clinicalCues.js';
+import {
+  KNOWN_FINDINGS,
+  accompaniedBy,
+  afterDateWith,
+  cameDownWith,
+  coordinatedPresents,
+  findingsWere,
+  existential,
+  followedBy,
+  reactionIncluded,
+  subjectPresents,
+  symptomRun,
+  verbFinalList,
+} from './symptomCues.js';
+import {
+  PATIENT_SUBJECT,
+  REACTION_PRONOUN,
+  DATE_AHEAD,
+  REACTION_SUBJECT,
+  START_VERB_CONTEXTUAL,
+  START_VERB_PLAIN,
+  STOP_VERB_CONTEXTUAL,
+  STOP_STATE_ADJECTIVE,
+  STOP_VERB_PLAIN,
+  coordinated,
+  dateGuarded,
+  dateThenVerb,
+  stateAnchored,
+  subjectAnchored,
+} from './reactionCues.js';
 
 export const CONFIDENCE = {
   EXPLICIT: 0.95,
@@ -38,7 +68,7 @@ export const FIELD_MARKERS = {
     validator: 'caseType',
     markers: [
       m(/\b(?:this\s+is\s+(?:an?\s+)?)?initial\s+(?:case|report|adr\s+report)\b/i, CONFIDENCE.EXPLICIT, 'initial case'),
-      m(/\b(?:first|first-time|new|primary|index|baseline|fresh)\s+(?:report|adr\s+report|case|time)\b/i, CONFIDENCE.STRONG, 'first report'),
+      m(/\b(?:first|first-time|new|primary|index|baseline|fresh|early|preliminary|prima\s+facie)\s+(?:report|adr\s+report|adr\s+cases?|case|cases|time|events?|incidents?)\b/i, CONFIDENCE.STRONG, 'first report'),
       m(/\bfirst\s+time\b/i, CONFIDENCE.STRONG, 'first time'),
       m(/\b(?:newly\s+reported|freshly\s+reported)\s+(?:case|adr|report)\b/i, CONFIDENCE.STRONG, 'fresh report'),
       m(/\b(?:this\s+is\s+a\s+)?follow[- ]up\s+(?:case|report|adr\s+report)\b/i, CONFIDENCE.EXPLICIT, 'follow-up case'),
@@ -74,6 +104,7 @@ export const FIELD_MARKERS = {
       m(/\bpatient(?:'s)?\s+identity\s+(?:is|recorded\s+as)[\s,]+/i, CONFIDENCE.EXPLICIT, 'patient identity'),
       m(/\bidentified\s+as[\s,]+/i, CONFIDENCE.STRONG, 'identified as'),
       m(/\b(?:patient\s+)?ka\s+naam[\s,]+/i, CONFIDENCE.EXPLICIT, 'ka naam'),
+      m(/(?<=^|[.;?!]\s)Patient\s+(?=[A-Z][a-z]+\s+[A-Z][a-z]+)/, CONFIDENCE.STRONG, 'patient named'),
     ],
   },
 
@@ -86,7 +117,16 @@ export const FIELD_MARKERS = {
       m(/\b(?=\d{1,3}[\s-]*(?:years?|yrs?)[\s-]*old\b)/i, CONFIDENCE.STRONG, 'N-year-old'),
       m(/\b(?=\d{1,3}[\s-]*(?:years?|yrs?)\s+of\s+age\b)/i, CONFIDENCE.STRONG, 'N years of age'),
       m(/\bis\s+(?=\d{1,3}[\s-]*(?:years?|yrs?)\b)/i, CONFIDENCE.STRONG, 'is N years'),
+      m(/\bof\s+(?=\d{1,3}[\s-]*(?:years?|yrs?)\b)/i, CONFIDENCE.STRONG, 'is N years'),
+      // An appositive age, dictated without a preposition: "Rahul Sharma, 34 years,
+      // male". The comma before, and the comma or gender word after, are what
+      // separate it from a duration such as "for 3 years".
+      m(/(?<=,\s)(?=\d{1,3}\s*(?:years?|yrs?)\s*(?:[,.]|\s+(?:male|female|man|woman|boy|girl)\b))/i, CONFIDENCE.STRONG, 'appositive age'),
       m(/\b(?:age\s+recorded\s+as|current\s+age\s+is)\s+/i, CONFIDENCE.EXPLICIT, 'current age is'),
+      // A bare age with no unit: "He is 52." Machine translation drops the unit that
+      // the source carried. The number must run to the end of its clause and the
+      // subject must be the patient, or this would swallow every loose number.
+      m(/\b(?:he|she|they|the\s+patient|patient)\s+is\s+(?=(?:\d{1,3})\s*(?:[.,;]|$))/i, CONFIDENCE.STRONG, 'bare age'),
       m(/\b(?=(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[\s-](?:one|two|three|four|five|six|seven|eight|nine)\b)/i, CONFIDENCE.HEDGED, 'spoken age'),
     ],
   },
@@ -120,9 +160,9 @@ export const FIELD_MARKERS = {
     markers: [
       m(/\b(?:weight|wt\.?|body\s+weight|measured\s+weight|recorded\s+weight)\s+(?:is|measures)?\s*/i, CONFIDENCE.EXPLICIT, 'weight is'),
       m(/\bpatient\s+weighs\s+/i, CONFIDENCE.EXPLICIT, 'patient weighs'),
-      m(/\b(?:weighs|weighing)\s+(?:about\s+)?/i, CONFIDENCE.EXPLICIT, 'weighing'),
+      m(/\b(?:weighs|weighed|weighing|weigh)\s+(?:about\s+|around\s+|approximately\s+)?(?=\d)/i, CONFIDENCE.EXPLICIT, 'weighing'),
       m(/\bwith\s+a\s+weight\s+of\s+/i, CONFIDENCE.EXPLICIT, 'with a weight of'),
-      m(/\baround\s+(?=\d{2,3}\s*(?:kg|kilograms|kilos|kg\.?)\b)/i, CONFIDENCE.STRONG, 'around N kg'),
+      m(/\b(?:around|about|approximately|approx\.?|nearly|roughly)\s+(?=\d{1,3}(?:\.\d+)?\s*(?:kgs?|kilograms?|kilogrammes?|kilos?)\b)/i, CONFIDENCE.STRONG, 'around N kg'),
       m(/\bweight\s+is\s+around\s+/i, CONFIDENCE.STRONG, 'weight is around'),
     ],
   },
@@ -155,7 +195,7 @@ export const FIELD_MARKERS = {
   reactionStartDate: {
     priority: 8,
     postProcessor: 'dateString',
-    validator: 'dateString',
+    validator: 'reactionDate',
     markers: [
       m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+start\s+date\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction start date'),
       m(/\b(?:event|reaction|adverse\s+event|adverse\s+reaction|symptoms?)\s+(?:had\s+)?commenced\s+(?:on\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction commenced on'),
@@ -168,24 +208,41 @@ export const FIELD_MARKERS = {
       m(/\breaction\s+date\s+is\s+/i, CONFIDENCE.STRONG, 'reaction date is'),
       m(/\b(?:reaction\s+)?onset\s+(?:of\s+(?:the\s+)?(?:symptoms|reaction|event|adverse\s+reaction)\s+)?(?:date\s+)?(?:was|is)\s+/i, CONFIDENCE.EXPLICIT, 'onset of reaction'),
       m(/\bonset\s+date\s+(?:was|is)\s+/i, CONFIDENCE.EXPLICIT, 'onset date'),
+
+      m(subjectAnchored(REACTION_SUBJECT, `${START_VERB_PLAIN}|${START_VERB_CONTEXTUAL}`), CONFIDENCE.EXPLICIT, 'reaction started on'),
+      m(subjectAnchored(REACTION_PRONOUN, START_VERB_PLAIN), CONFIDENCE.EXPLICIT, 'reaction started on'),
+      m(subjectAnchored(PATIENT_SUBJECT, START_VERB_CONTEXTUAL), CONFIDENCE.STRONG, 'reaction started on'),
+      m(dateGuarded(START_VERB_PLAIN), CONFIDENCE.STRONG, 'started on date'),
+      // Run-on speech puts the verb after the date.
+      m(dateThenVerb(START_VERB_PLAIN), CONFIDENCE.STRONG, 'started on date'),
     ],
   },
 
   reactionStopDate: {
     priority: 8,
     postProcessor: 'dateString',
-    validator: 'dateString',
+    validator: 'reactionDate',
     markers: [
       m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+stop\s+date\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction stop date'),
       m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+(?:finished|stopped)\s+(?:on\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction stopped on'),
       m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+(?:ended|finished)\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction ended on'),
       m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+resolved\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction resolved on'),
       m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+(?:settled|subsided|abated|disappeared|cleared|finished)\s+(?:by|on)\s+/i, CONFIDENCE.STRONG, 'reaction settled by'),
-      m(/\bby\s+(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b)/i, CONFIDENCE.STRONG, 'by date'),
+      m(new RegExp(`\\bby\\s+${DATE_AHEAD}`, 'i'), CONFIDENCE.STRONG, 'by date'),
       m(/\b(?:resolved|ended|stopped|settled|subsided|abated|cleared|finished)\s+(?:on\s+)?(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b)/i, CONFIDENCE.STRONG, 'resolved date'),
       m(/\b(?:subsided|settled|abated|cleared|finished)\s+(?:on|by)\s+/i, CONFIDENCE.STRONG, 'subsided on'),
       m(/\b(?:reaction\s+)?(?:cessation|resolution|outcome)\s+date\s+(?:was|is)\s+/i, CONFIDENCE.STRONG, 'cessation date'),
       m(/\b(?:resolved|ended|stopped)\s+on\s+/i, CONFIDENCE.STRONG, 'resolved on'),
+      m(subjectAnchored(REACTION_SUBJECT, `${STOP_VERB_PLAIN}|${STOP_VERB_CONTEXTUAL}`), CONFIDENCE.EXPLICIT, 'reaction stopped on'),
+      m(subjectAnchored(REACTION_PRONOUN, STOP_VERB_PLAIN), CONFIDENCE.EXPLICIT, 'reaction stopped on'),
+      m(subjectAnchored(PATIENT_SUBJECT, STOP_VERB_CONTEXTUAL), CONFIDENCE.STRONG, 'reaction stopped on'),
+      m(dateGuarded(STOP_VERB_PLAIN), CONFIDENCE.STRONG, 'resolved date'),
+      m(dateThenVerb(STOP_VERB_PLAIN), CONFIDENCE.STRONG, 'resolved date'),
+      // The adjective belongs here too: "started on the 10th and WAS PERFECT on the
+      // 12th" is the same elided-subject shape, and coordinated() already supplies the
+      // copula, so a state reads exactly like a verb in this position.
+      m(coordinated(`${STOP_VERB_PLAIN}|${STOP_VERB_CONTEXTUAL}|${STOP_STATE_ADJECTIVE}`), CONFIDENCE.STRONG, 'resolved date'),
+      m(stateAnchored(`${REACTION_SUBJECT}|${REACTION_PRONOUN}|${PATIENT_SUBJECT}`, STOP_STATE_ADJECTIVE), CONFIDENCE.STRONG, 'reaction stopped on'),
     ],
   },
 
@@ -236,11 +293,22 @@ export const FIELD_MARKERS = {
       ),
       m(/\bc\/o\s+/i, CONFIDENCE.EXPLICIT, 'c/o'),
       m(/\bsymptoms?\s+(?:are|is|include[s]?)\s+/i, CONFIDENCE.EXPLICIT, 'symptoms are'),
-      m(/\b(?:suspected\s+)?reaction\s+(?:is|was|includes?)\s+/i, CONFIDENCE.EXPLICIT, 'reaction is'),
+      m(/\b(?:suspected\s+)?(?:reactions?|responses?)\s+(?:is|are|was|were|includes?)\s+/i, CONFIDENCE.EXPLICIT, 'reaction is'),
+      m(followedBy(), CONFIDENCE.STRONG, 'followed by'),
       m(/\bpresenting\s+(?:complaints?|symptoms?)\s+(?:are|include[s]?)?\s*/i, CONFIDENCE.EXPLICIT, 'presenting complaints'),
-      m(/\badverse\s+(?:reaction|event)\s+(?:includes?|presented\s+as|manifested\s+as|is|was)\s*/i, CONFIDENCE.EXPLICIT, 'adverse reaction includes'),
+      m(/\badverse\s+(?:reactions?|events?)\s+(?:presented\s+)?(?:includes?|presented\s+as|manifested\s+as|are|is|was|were)\s*/i, CONFIDENCE.EXPLICIT, 'adverse reaction includes'),
+      m(reactionIncluded(), CONFIDENCE.EXPLICIT, 'adverse reaction includes'),
+      m(subjectPresents(), CONFIDENCE.STRONG, 'presents with'),
+      m(existential(), CONFIDENCE.MODERATE, 'there was'),
+      m(cameDownWith(), CONFIDENCE.MODERATE, 'came with'),
+      m(afterDateWith(), CONFIDENCE.MODERATE, 'with findings'),
+      m(verbFinalList(), CONFIDENCE.STRONG, 'findings developed after'),
+      m(accompaniedBy(), CONFIDENCE.STRONG, 'accompanied by'),
+      m(findingsWere(), CONFIDENCE.STRONG, 'findings were'),
+      m(coordinatedPresents(KNOWN_FINDINGS), CONFIDENCE.STRONG, 'presents with'),
+      m(symptomRun(KNOWN_FINDINGS), CONFIDENCE.STRONG, 'findings list'),
       m(
-        new RegExp(`\\bsuffering${ADVERB_GAP}\\s+from\\s+`, 'i'),
+        new RegExp(`\\bsuffer(?:s|ed|ing)${ADVERB_GAP}\\s+from\\s+`, 'i'),
         CONFIDENCE.STRONG,
         'suffering from',
       ),
@@ -260,8 +328,12 @@ export const FIELD_MARKERS = {
       m(/\bexperienc(?:es|ing|ed)\s+/i, CONFIDENCE.STRONG, 'experiencing'),
       m(/\bpresenting\s+complaint\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'presenting complaint'),
       m(/\b(?:has|have|had)\s+had\s+/i, CONFIDENCE.MODERATE, 'has had'),
-      m(/\b(?:patient\s+)?(?:has|have)\s+(?!had\b|been\b|no\b)(?:got\s+)?/i, CONFIDENCE.WEAK, 'has'),
-      m(/\b(?:she|he|they|patient)?\s*had\s+(?=(?:fever|vomiting|itching|rash|edema|nausea|cough|pain|swelling|hives|headache|dizziness|urticaria|dyspnea)\b)/i, CONFIDENCE.STRONG, 'had'),
+      m(/(?<!\bnot\s)(?<!\bnever\s)\b(?:patient\s+)?(?:has|have)\s+(?!had\b|been\b|no\b)(?:got\s+)?/i, CONFIDENCE.WEAK, 'has'),
+      // The historical guard sits on the cue, not in classifySegment: "previously had
+      // nausea" puts the marker BEFORE the cue, so it falls outside the captured
+      // segment and the classifier never sees it. Filing a past complaint as the
+      // current adverse reaction attributes it to the suspect drug.
+      m(/(?<!\bnot\s)(?<!\bnever\s)(?<!\bpreviously\s)(?<!\bformerly\s)(?<!\bearlier\s)(?<!\bonce\s)\b(?:(?:she|he|they|patient)\s+)?had\s+(?:a\s+|an\s+|the\s+)?(?:(?:severe|mild|moderate|acute|slight|marked|generalized|generalised|facial|dry|productive|persistent|intermittent|widespread|extensive)\s+){0,2}(?=(?:fever|vomiting|itching|rash|edema|oedema|nausea|cough|swelling|hive|headache|dizziness|urticaria|dyspnea|cramp|chill)(?:es|s)?\b)/i, CONFIDENCE.STRONG, 'had'),
       m(/\b(?:is|are|was|were)\s+having\s+/i, CONFIDENCE.STRONG, 'is having'),
       m(/\bhaving\s+/i, CONFIDENCE.MODERATE, 'having'),
       m(/\bdealing\s+with\s+/i, CONFIDENCE.STRONG, 'dealing with'),
@@ -269,7 +341,8 @@ export const FIELD_MARKERS = {
       m(/\bbothered\s+(?:by|with)\s+/i, CONFIDENCE.STRONG, 'bothered by'),
       m(/\b(?:is|was)\s+down\s+with\s+/i, CONFIDENCE.STRONG, 'down with'),
       m(/\b(?=denies\s+)/i, CONFIDENCE.STRONG, 'denies'),
-      m(/\bdevelop(?:s|ed|ing)\s+/i, CONFIDENCE.STRONG, 'developed'),
+      m(/\bdevelop(?:s|ed|ing)\s+(?!after\b|following\b|post\b|due\s+to\b)/i, CONFIDENCE.STRONG, 'developed'),
+      m(/(?<=^|[.;?!]\s)(?=[A-Za-z][^.;?!]{3,150}?\b(?:developed|appeared|occurred|emerged|erupted|started|began|was\s+seen|were\s+seen|was\s+noted|were\s+noted)\s+(?:after|following|post)\b)/i, CONFIDENCE.STRONG, 'findings developed after'),
       m(/\bnow\s+has\s+/i, CONFIDENCE.STRONG, 'now has'),
       m(/\b(?:has|have|'s)\s*been\s+running\s+a\s+/i, CONFIDENCE.MODERATE, 'running a fever'),
       m(/\b(?:manifested|developed\s+signs\s+of|developed\s+symptoms\s+of)\s+/i, CONFIDENCE.STRONG, 'manifested signs'),
