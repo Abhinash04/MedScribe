@@ -14,6 +14,8 @@ const PROMPT_ERROR_TEXT = {
   cancelled: 'it was interrupted',
   superseded: 'it was interrupted',
   nothing_missing: 'there was nothing to read out',
+  language_unknown:
+    'the dictation language could not be determined, so this was read out in English',
 };
 
 const describePromptError = reason =>

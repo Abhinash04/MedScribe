@@ -47,6 +47,7 @@ import {
 } from '../dev/diagnostics';
 import useRecordingStore, {
   CONSULTATION_STAGE,
+  selectExtractionOptions,
   selectReportTranscript,
   selectSourceTranscript,
 } from '../store/useRecordingStore';
@@ -180,7 +181,12 @@ const ReportScreen = ({ route }) => {
     if (openedId || draft) {
       return;
     }
-    const { record, residue } = capture(() => extractForReport(transcriptFromStore));
+    const { record, residue } = capture(() =>
+      extractForReport(
+        transcriptFromStore,
+        selectExtractionOptions(useRecordingStore.getState()),
+      ),
+    );
     const stored = useRecordingStore.getState().reportDraft;
     setExtracted(record);
     setDraft(

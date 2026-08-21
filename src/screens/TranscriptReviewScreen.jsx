@@ -21,6 +21,7 @@ import MissingFieldsModal from '../components/MissingFieldsModal';
 import TranscriptDiffView from '../components/TranscriptDiffView';
 import { isTranscriptionAvailable } from '../config/features';
 import { displayFor } from '../constants/languages';
+import { speechLanguageFor } from '../services/languageCapabilities';
 import { refineTranscript } from '../services/transcriptRefinement';
 import { ERROR_KIND } from '../services/anuvadini/proxyContract';
 import {
@@ -32,6 +33,7 @@ import {
 import useRecordingStore, {
   CONSULTATION_STAGE,
   REPORT_SOURCE_KIND,
+  selectExtractionOptions,
   selectFullTranscript,
   selectReportSourceKind,
   selectReportTranscript,
@@ -193,7 +195,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const [promptReason, setPromptReason] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
-  const chosenRef = useRef(false);
+  // The doctor's deliberate choice lives in the store, not in a ref. A ref
+  // re-initialises on remount, which let the overlay drawer silently flip an explicit
+  // "Original" back to the AI transcript.
+  const setSourceChosen = useRecordingStore(state => state.setTranscriptSource);
   const [skippedRefinement, setSkippedRefinement] = useState(false);
   const [dismissedAt, setDismissedAt] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -327,24 +332,41 @@ const TranscriptReviewScreen = ({ navigation }) => {
     navigation.navigate('Recording', { resume: true });
   }, [navigation, editableText, commitEditor, setStage]);
 
-  const playPrompt = useCallback(async completeness => {
-    setPromptReason(null);
-    const outcome = await speakMissingFields(blockingFields(completeness));
-    if (outcome.spoken) {
-      return;
-    }
-    if (__DEV__) {
-      console.warn('[speechPrompt] not spoken:', outcome.reason);
-    }
-    setPromptReason(outcome.reason ?? 'unknown');
-  }, []);
+  const playPrompt = useCallback(
+    async completeness => {
+      setPromptReason(null);
+      const resolved = speechLanguageFor(language);
+      const outcome = await speakMissingFields(
+        blockingFields(completeness),
+        resolved,
+      );
+      if (outcome.spoken) {
+        // Speaking English because the session's language was lost is a failure that
+        // used to look like success. Surface it rather than letting the doctor assume
+        // the app understood them.
+        if (!resolved.resolved) {
+          setPromptReason('language_unknown');
+        }
+        return;
+      }
+      if (__DEV__) {
+        console.warn('[speechPrompt] not spoken:', outcome.reason);
+      }
+      setPromptReason(outcome.reason ?? 'unknown');
+    },
+    [language],
+  );
 
   const handleGenerateReport = useCallback(async () => {
     if (!beginSubmit()) return;
     try {
       commitEditor(editableText);
-      const text = selectReportTranscript(useRecordingStore.getState());
-      const { record, residue } = extractForReport(text);
+      const state = useRecordingStore.getState();
+      const text = selectReportTranscript(state);
+      const { record, residue } = extractForReport(
+        text,
+        selectExtractionOptions(state),
+      );
       const draft = reportDraft
         ? mergeExtraction(reportDraft, record, residue)
         : toDraft(record, residue);
@@ -382,15 +404,16 @@ const TranscriptReviewScreen = ({ navigation }) => {
   ]);
 
   const applySource = useCallback(
-    (source, { announce, commit = true }) => {
+    (source, { announce, commit = true, chosen = false } = {}) => {
       if (commit) {
         commitEditor(editableText);
       }
-      setTranscriptSource(source);
+      setTranscriptSource(source, { chosen });
 
       const next = useRecordingStore.getState();
       const { record, residue } = extractForReport(
         selectReportTranscript(next),
+        selectExtractionOptions(next),
       );
       const previous = next.reportDraft;
       const kept = previous
@@ -422,8 +445,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const selectForReport = useCallback(
     source => {
-      chosenRef.current = true;
-      applySource(source, { announce: true });
+      applySource(source, { announce: true, chosen: true });
     },
     [applySource],
   );
@@ -438,7 +460,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
         nativeText: selectFullTranscript(state),
         anuvadini: state.anuvadini,
         source: state.transcriptSource,
-        chosen: chosenRef.current,
+        chosen: state.sourceChosen,
       })
     ) {
       return;
@@ -467,9 +489,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
   }, [copied]);
 
   const handleSkipRefinement = useCallback(() => {
-    chosenRef.current = true;
+    // Skipping the AI pass is itself a choice, and must survive a remount.
+    setSourceChosen(useRecordingStore.getState().transcriptSource, { chosen: true });
     setSkippedRefinement(true);
-  }, []);
+  }, [setSourceChosen]);
 
   const handleRetryRefinement = useCallback(() => {
     refineTranscript().catch(() => {});

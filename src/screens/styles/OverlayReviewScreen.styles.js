@@ -76,6 +76,12 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.successText,
   },
+  note: {
+    marginBottom: spacing.xs,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textSecondary,
+  },
   fullReviewButton: {
     marginTop: spacing.md,
     paddingVertical: spacing.sm,
