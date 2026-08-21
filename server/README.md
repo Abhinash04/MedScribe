@@ -20,11 +20,20 @@ change — see [Deploying](#deploying).
 | :-- | :-- | :-- | :-- |
 | `VOICE_TO_TEXT_API_URL` | yes | — | Anuvadini endpoint |
 | `VOICE_TO_TEXT_API_KEY` | yes | — | Bearer token. **The only place it exists once deployed.** |
+| `TEXT_TO_SPEECH_API_URL` | no | `https://anuvadini-services.aicte-india.org/api/text-to-speech` | Text-to-speech endpoint |
+| `PRAVAH_TRANSLATE_URL` | no | `https://pravahai.aicte-india.org/api/translatebulk` | Translation endpoint |
+| `PRAVAH_API_KEY` | for `/translate` | — | Pravah API key (`apk_…`). A different host from Anuvadini, so a different credential. |
 | `PORT` | no | `8787` | Listen port |
 
-With either variable missing the proxy still starts and answers `/health`, but
-every transcription returns `503 not_configured` — a misconfiguration is
-reported, never silently treated as an upstream failure.
+With a variable missing the proxy still starts and answers `/health`, but the
+affected route returns `503 not_configured` — a misconfiguration is reported,
+never silently treated as an upstream failure.
+
+**This file is the fastest way to swap a credential.** It is read at process
+start, so a new key needs only a proxy restart: no Gradle rebuild, no reinstall,
+no code edit. A dev build with no key baked into `android/local.properties`
+routes translation through this proxy automatically, because
+`TRANSLATION_TRANSPORT` is `AUTO`.
 
 ## Run locally
 
@@ -60,8 +69,25 @@ POST /voice-to-text
 4xx { "success": false, "error": "missing_audio" | ... }
 5xx { "success": false, "error": "unauthorized" | ... }
 
+POST /translate
+{ "items": [ { "text": "बुखार है।", "to": "en" }, ... ] }
+
+200 { "success": true,  "results": [ { "translations": [ { "text": "..." } ] }, ... ] }
+4xx { "success": false, "error": "missing_items" | ... }
+5xx { "success": false, "error": "unauthorized" | ... }
+
 GET /health -> { "success": true, "service": "medscribe-stt-proxy" }
 ```
+
+`/translate` wraps the items in an object while Pravah itself takes a bare
+array. The success response is shaped so the app's `readTranslations` reads it
+with **one branch** and no proxy special-casing — `scripts/test-proxy-translate.mjs`
+asserts the round trip rather than trusting it.
+
+The results array is **positional**: `results[i]` is the translation of
+`items[i]`. A count mismatch from upstream is rejected as `count_mismatch`
+rather than padded, because silently misaligning translations would produce a
+plausible but wrong medical report.
 
 Upstream it sends `{ "audioBuffer", "audioLanguage" }` with
 `Authorization: Bearer <VOICE_TO_TEXT_API_KEY>` and a 60 s timeout.
@@ -80,20 +106,30 @@ none of them may be reworded without updating
 | --: | :-- | :-- |
 | 400 | `invalid_json` | Body was not JSON |
 | 400 | `missing_audio` | `audio_buffer` absent or empty |
-| 400 | `missing_language` | `audio_language` absent or empty |
-| 404 | `not_found` | Path other than `/voice-to-text` or `/health` |
-| 405 | `method_not_allowed` | `/voice-to-text` with a method other than POST |
-| 413 | `too_large` | Body over 8 MB |
-| 422 | `empty_transcription` | Upstream returned success with no text |
-| 429 | `rate_limited` | Upstream rate limit |
+| 400 | `missing_language` | `audio_language` or an item's `to` absent or empty |
+| 400 | `missing_items` | `/translate` body has no non-empty `items` array |
+| 400 | `missing_text` | An item's `text` is absent, blank or not a string |
+| 404 | `not_found` | Path other than a known route or `/health` |
+| 405 | `method_not_allowed` | A known route with a method other than POST |
+| 413 | `too_large` | Body over 8 MB, over 25 items, or over 12 000 characters |
+| 422 | `empty_transcription` · `empty_translation` | Upstream returned success with no text |
+| 422 | `unsupported_language` | Upstream rejected the language code |
+| 429 | `rate_limited` · `quota_exceeded` | Upstream rate limit, or the key's translation quota is spent |
 | 502 | `unauthorized` | Upstream rejected the token |
+| 502 | `bad_request` | Upstream rejected the body the **proxy** built |
+| 502 | `count_mismatch` | Upstream returned a different number of translations than were sent |
 | 502 | `upstream_error` · `network` · `malformed` | Upstream failed, unreachable, or answered unparseably |
-| 503 | `not_configured` | `VOICE_TO_TEXT_API_URL` or `_API_KEY` missing |
+| 503 | `not_configured` | The route's URL or API key is missing |
 | 504 | `timeout` | Upstream exceeded 60 s |
 
 `unauthorized` is **502, not 401** — on purpose. The client's credential is not
 what was rejected; the proxy's was. Returning 401 would tell a device to
 re-authenticate over something it cannot see or fix.
+
+`quota_exceeded` is the deliberate exception: it is passed through as a real
+**429**, because the app maps that status back to its own `QUOTA_EXCEEDED` kind
+and latches translation off for the rest of the session. Folding it into 502
+would leave the proxy path silently never latching.
 
 ## What it will not do
 

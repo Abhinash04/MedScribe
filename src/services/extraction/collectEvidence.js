@@ -82,10 +82,10 @@ export function inferGender(text, claimed = []) {
   const male = countMatches(text, MALE_PRONOUNS, { skipCompanions: true });
 
   if (female.length && !male.length) {
-    return evidence('Female', female[0], CONFIDENCE.PRONOUN, 'pronoun');
+    return evidence('Female', female[0], CONFIDENCE.STRONG, 'pronoun');
   }
   if (male.length && !female.length) {
-    return evidence('Male', male[0], CONFIDENCE.PRONOUN, 'pronoun');
+    return evidence('Male', male[0], CONFIDENCE.STRONG, 'pronoun');
   }
 
   return null;

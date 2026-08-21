@@ -191,13 +191,20 @@ java -version       # 17.x
 adb --version
 ```
 
-### 3. Anuvadini credential
+### 3. Credentials
 
-The second transcription calls the Anuvadini service directly and needs a Bearer token. It is injected at build time from **`android/local.properties`**, which is gitignored:
+Two services need credentials. Both are injected at build time from **`android/local.properties`**, which is gitignored — copy [`android/local.properties.example`](android/local.properties.example) to get the key names:
 
 ```properties
 ANUVADINI_STT_TOKEN=your-token-here
+PRAVAH_API_KEY=your-key-here
 ```
+
+`ANUVADINI_STT_TOKEN` covers speech-to-text and text-to-speech. `PRAVAH_API_KEY` covers **translation** — the Pravah service used to turn a non-English dictation into the English report. It is a different host, so it is a different credential; paste the key bare, as the `Bearer ` prefix is added in code.
+
+**Both default to the empty string.** That is deliberate: an empty value resolves to "not configured", which is honest and lets a fresh clone build with no `local.properties` at all. A placeholder that *looked* like a real key would fail with a 401 at runtime *and* make the UI promise a feature it cannot deliver.
+
+> **Swapping a key without rebuilding.** `local.properties` is compiled into `BuildConfig`, so changing it means `npm run android` again. While iterating on translation, use the dev proxy instead: put `PRAVAH_API_KEY` in `server/.env` and run `npm run proxy`. The value is read at process start, so a restart is enough — no rebuild, no reinstall, no code edit. A dev build with no baked key routes translation through the proxy automatically (`TRANSLATION_TRANSPORT` is `AUTO`).
 
 Ask the backend team for the value. `android/app/build.gradle` reads it into `BuildConfig`, and a small `AppConfig` TurboModule hands it to JavaScript — so it is never a literal in a committed source file.
 
@@ -361,13 +368,18 @@ MedScribe/
 │   │   ├── StopConfirmationModal.jsx#   Confirm before ending a session
 │   │   └── TranscriptView.jsx       #   Live transcript (final + interim)
 │   ├── config/
-│   │   ├── endpoints.js             # Transport selection, Anuvadini URL, proxy URL
-│   │   └── features.js              # Capture enablement, transcription availability
+│   │   ├── endpoints.js             # Transport selection, Anuvadini + Pravah URLs, proxy URLs
+│   │   └── features.js              # Capture, transcription and translation availability
 │   ├── constants/
 │   │   ├── recordingStates.js       # State machine, error maps, timings
 │   │   ├── patientFields.js         # The 11 report fields, order, required flags
 │   │   ├── fieldMarkers.js          # Marker vocabulary — add new phrasing here
-│   │   └── clinicalCues.js          # Negation, chronicity, pronoun, medication cues
+│   │   ├── clinicalCues.js          # Negation, chronicity, pronoun, medication cues
+│   │   ├── languages.js             # THE language table — codes, tags, voices, scripts
+│   │   └── prompts/                 # Spoken missing-field catalogs, one file per language
+│   │       ├── index.js             #   Static registry — a language must be listed here
+│   │       ├── en.js                #   Reference catalog; its wording is asserted verbatim
+│   │       └── hi.js                #   reviewed: false until a native speaker signs off
 │   ├── dev/
 │   │   ├── diagnostics.js           # Six-stage trace — development builds only
 │   │   └── spikeReport.js           # Mic-contention matrix as shareable text
@@ -387,7 +399,11 @@ MedScribe/
 │   │   ├── permissionService.js     # Microphone permission handling
 │   │   ├── speechService.js         # Vendor speech engine isolation layer
 │   │   ├── sharedMicService.js      # Shared-microphone module: live text + WAV, one owner
-│   │   ├── appConfigService.js      # Build-time config (the Anuvadini token)
+│   │   ├── appConfigService.js      # Build-time config (Anuvadini token, Pravah API key)
+│   │   ├── languageCapabilities.js  # What a language can do on THIS device (pure)
+│   │   ├── settingsService.js       # Persisted app settings; the dictation language
+│   │   ├── consultationTranslation.js  # English-translation record, staleness, edits (pure)
+│   │   ├── transcriptTranslation.js # Runs translation; retry, quota latch, supersession
 │   │   ├── dictationSessionManager.js  # Session orchestrator: timer, cues, autosave, live fields
 │   │   ├── audioFeedbackService.js  # Audio cue + system-tone suppression isolation layer
 │   │   ├── audioCaptureService.js   # Capture spike module isolation layer (debug only)
@@ -412,6 +428,10 @@ MedScribe/
 │   │   │   ├── speechClient.js      #   Text-to-speech, mirrors transcriptionClient
 │   │   │   ├── speechContract.js    #   TTS request shapes and the audio reader
 │   │   │   └── language.js          #   Language normalization (en → en-IN)
+│   │   ├── pravah/                  # Translation client (Indic → English)
+│   │   │   ├── translationContract.js #  Bare-array body, forgiving reader, status map
+│   │   │   ├── translationClient.js #   translateTexts: array in, array out, same order
+│   │   │   └── chunkText.js         #   900-char sentence-bounded chunks and batching
 │   │   └── extraction/              # One module per pipeline stage
 │   │       ├── normalizeTranscript.js
 │   │       ├── detectNegation.js
@@ -533,11 +553,28 @@ These are reserved for later phases. Listed explicitly so nobody assumes they ar
 | `npm run test:tts:prompt` | 26 assertions over the spoken missing-field prompt: grammar at every count, the four-field cap and its overflow, and that a field VALUE never reaches the text. |
 | `npm run test:tts:client` | 86 assertions over the speech client: both transports, every response shape and failure path, and that the token appears in no result or error. |
 | `npm run test:tts:service` | 10 assertions over prompt ordering: a stop issued during synthesis prevents playback, and the newer request wins. |
+| `npm run test:languages` | 80 assertions over the language table and the capability record. Guards `normalizeAnuvadiniLanguage` back-compatibility for all thirteen original codes. |
+| `npm run test:settings` | 23 assertions over the persisted dictation-language setting, driven through an injected database stub. |
+| `npm run test:prompts` | 80 assertions over the spoken-prompt catalogs: key parity with `PATIENT_FIELDS`, no untranslated Latin runs in a non-Latin catalog, worst-case prompt within `MAX_SPEECH_CHARS`, and English output byte-identical to before multilingual support. |
+| `npm run test:translation` | 55 assertions over the English-translation record: staleness, the doctor's edit surviving a re-render but not a source change, and the round trip through `active_sessions.translation_json`. |
+| `npm run test:pravah` | 133 assertions over the Pravah translation client and chunker: the request body really is a bare array, every documented status maps to its error kind, the API key never appears in a result, every guard returns before the transport, and no committed file contains an `apk_` key. |
+| `npm run test:proxy:translate` | 89 assertions over the proxy's `/translate` route, including that a 429 passes through unchanged so the app's quota latch fires on both transports, and a round-trip proving the app's `readTranslations` reads the proxy body identically to the direct one. |
+| `npm run test:translated` | 27 assertions over recall of the deterministic extractor on machine-translated English — the dominant risk now that no prompt steering is possible. Prints a per-field table and gates on floors, not on 100%. |
+| `npm run test:all` | Runs every `scripts/test-*.mjs` and exits non-zero if any fails. With ~29 suites this is the index. |
 | `npm run proxy` | Runs the local transcription proxy. Needs `server/.env` — see [server/README.md](server/README.md). |
 | `npm run lint` | ESLint across the project. |
 | `npm test` | Jest. **Currently broken** — see below. |
 
-The twenty-two fixture suites total **1731 assertions** and are the project's real gate — the extraction, report and transcript layers are pure and RN-free, so they run under plain Node with no framework and no device. `npm test` (Jest) is a separate, currently broken path; it is not what guards this codebase.
+### Scripts that are not tests
+
+`npm run probe:tts` and `npm run seed:prompts` make **real network calls** and are named outside the `test:` namespace on purpose — `scripts/run-all.mjs` only collects `test-*.mjs`, so a full sweep can never reach the network.
+
+- `probe:tts` reports which Anuvadini TTS voice ids actually work per language. It reads `ANUVADINI_STT_TOKEN` from the environment, never prints it, and always exits 0. Feed whatever comes back `ok` into the `voice` / `gender` fields of [`src/constants/languages.js`](src/constants/languages.js).
+- `seed:prompts` drafts a prompt catalog for one language through the Pravah API (one batched request, 17 items) and **prints it to stdout for a human to paste**. It deliberately does not write into `src/`: the doctor *hears* these sentences read aloud, so a machine-generated draft gets a native speaker's eyes before it is committed. `reviewed: false` is hard-coded for that reason.
+
+  Placeholders like `{names}` are never sent — braces are exactly what machine translation mangles. Each is swapped for an opaque sentinel, restored afterwards, then **verified to appear exactly once**. If one does not survive, that frame falls back to the English original with a `// TODO(xx):` comment rather than emitting a catalog that would read `{names}` aloud to a doctor.
+
+The twenty-nine fixture suites total **2231 assertions** and are the project's real gate — the extraction, report and transcript layers are pure and RN-free, so they run under plain Node with no framework and no device. `npm test` (Jest) is a separate, currently broken path; it is not what guards this codebase.
 
 Useful direct commands:
 

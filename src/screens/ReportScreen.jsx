@@ -20,7 +20,6 @@ import AppHeader from '../components/AppHeader';
 import MissingFieldsModal from '../components/MissingFieldsModal';
 import ReportField from '../components/ReportField';
 import ScreenContainer from '../components/ScreenContainer';
-import { REQUIRED_FIELDS } from '../constants/patientFields';
 import { HALF_WIDTH, REPORT_SECTIONS } from '../constants/reportSections';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import { extractForReport } from '../services/extractionService';
@@ -31,7 +30,6 @@ import {
 } from '../services/reportCompleteness';
 import {
   applyEdit,
-  countRequiredFilled,
   draftNotes,
   draftValues,
   fromStored,
@@ -49,26 +47,28 @@ import {
 } from '../dev/diagnostics';
 import useRecordingStore, {
   CONSULTATION_STAGE,
-  selectActiveTranscript,
+  selectExtractionOptions,
+  selectReportTranscript,
+  selectSourceTranscript,
 } from '../store/useRecordingStore';
+import {
+  needsTranslation,
+  TRANSLATION_STATUS,
+} from '../services/consultationTranslation';
 import dictationSessionManager from '../services/dictationSessionManager';
 import useReportsStore from '../store/useReportsStore';
 import { colors } from '../theme';
 import { formatDateTime } from '../utils/datetime';
 import styles from './styles/ReportScreen.styles';
 
-const TOTAL_REQUIRED = REQUIRED_FIELDS.length;
+const TOTAL_REQUIRED = 4;
 
 const SECTION_TINTS = {
-  patient: { fill: colors.accentSoft, glyph: colors.primaryAccent },
-  clinical: { fill: colors.violetSoft, glyph: colors.violet },
+  sectionA: { fill: colors.accentSoft, glyph: colors.primaryAccent },
+  sectionB: { fill: colors.violetSoft, glyph: colors.violet },
   additional: { fill: colors.warningSoft, glyph: colors.warningText },
 };
 
-/**
- * One card per group of fields. The short fields listed in HALF_WIDTH pair up
- * two to a row; everything else takes the full width.
- */
 const ReportSection = ({ section, draft, onChange }) => {
   const tint = SECTION_TINTS[section.key] ?? SECTION_TINTS.patient;
   const required = section.fields.filter(field => field.required);
@@ -90,7 +90,6 @@ const ReportSection = ({ section, draft, onChange }) => {
     />
   );
 
-  // Walk the section once, collapsing runs of short fields into paired rows.
   const rows = [];
   for (let index = 0; index < section.fields.length; index += 1) {
     const field = section.fields[index];
@@ -152,7 +151,7 @@ const ReportSection = ({ section, draft, onChange }) => {
 const ReportScreen = ({ route }) => {
   const navigation = useNavigation();
   const openedId = route?.params?.reportId ?? null;
-  const transcriptFromStore = useRecordingStore(selectActiveTranscript);
+  const transcriptFromStore = useRecordingStore(selectReportTranscript);
   const resetRecording = useRecordingStore(state => state.reset);
   const setReportDraft = useRecordingStore(state => state.setReportDraft);
   const setStage = useRecordingStore(state => state.setStage);
@@ -182,7 +181,12 @@ const ReportScreen = ({ route }) => {
     if (openedId || draft) {
       return;
     }
-    const { record, residue } = capture(() => extractForReport(transcriptFromStore));
+    const { record, residue } = capture(() =>
+      extractForReport(
+        transcriptFromStore,
+        selectExtractionOptions(useRecordingStore.getState()),
+      ),
+    );
     const stored = useRecordingStore.getState().reportDraft;
     setExtracted(record);
     setDraft(
@@ -241,13 +245,13 @@ const ReportScreen = ({ route }) => {
     };
   }, [openedId, fetchReport]);
 
-  const captured = useMemo(
-    () => (draft ? countRequiredFilled(draft) : 0),
-    [draft],
-  );
   const completeness = useMemo(
     () => (draft ? validateReportCompleteness(draft) : null),
     [draft],
+  );
+  const captured = useMemo(
+    () => (completeness ? completeness.capturedCount : 0),
+    [completeness],
   );
   const blocking = useMemo(
     () => (completeness ? blockingFields(completeness) : []),
@@ -282,7 +286,22 @@ const ReportScreen = ({ route }) => {
       return reportId;
     }
 
-    const id = await saveNew({ transcript, extracted, edited: draft });
+    const state = useRecordingStore.getState();
+    if (needsTranslation(state.language) && state.translation?.status !== TRANSLATION_STATUS.READY) {
+      throw new Error(
+        'The English translation is not ready yet. Review the translation, then save again.',
+      );
+    }
+
+    const id = await saveNew({
+      transcript,
+      extracted,
+      edited: draft,
+      language: state.language,
+      sourceTranscript: needsTranslation(state.language)
+        ? selectSourceTranscript(state)
+        : '',
+    });
     setReportId(id);
     setSavedDraft(draft);
     const now = Date.now();
@@ -446,9 +465,6 @@ const ReportScreen = ({ route }) => {
     ? Math.round((captured / TOTAL_REQUIRED) * 100)
     : 0;
 
-  // The dock points at whatever comes next: bank the edits, then finalize a
-  // complete draft, then export. Nothing is emphasised while the report is
-  // saved but still missing details — the next step there is editing a field.
   const emphasis = dirty
     ? 'save'
     : isFinal

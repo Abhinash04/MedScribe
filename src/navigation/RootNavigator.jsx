@@ -6,15 +6,16 @@ import ReportScreen from '../screens/ReportScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import PatientsScreen from '../screens/PatientsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import OverlayOnboardingScreen from '../screens/OverlayOnboardingScreen';
 import MicSpikeScreen from '../screens/MicSpikeScreen';
 import SttBaselineScreen from '../screens/SttBaselineScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
-const RootNavigator = () => {
+const RootNavigator = ({ initialRouteName = 'Dashboard' }) => {
   return (
     <Stack.Navigator
-      initialRouteName="Dashboard"
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.primaryBackground },
@@ -23,6 +24,10 @@ const RootNavigator = () => {
       }}
     >
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
+      <Stack.Screen
+        name="OverlayOnboarding"
+        component={OverlayOnboardingScreen}
+      />
       <Stack.Screen name="Reports" component={ReportsScreen} />
       <Stack.Screen name="Patients" component={PatientsScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />

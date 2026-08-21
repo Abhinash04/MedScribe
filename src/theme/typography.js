@@ -59,6 +59,7 @@ export const typography = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: -0.3,
+    lineHeight: 28,
   },
 });
 

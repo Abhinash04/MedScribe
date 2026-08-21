@@ -13,24 +13,38 @@ import {
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import Icon from 'react-native-vector-icons/Feather';
+import LinearGradient from 'react-native-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import RefiningOverlay from '../components/RefiningOverlay';
-import ScreenContainer from '../components/ScreenContainer';
 import MissingFieldsModal from '../components/MissingFieldsModal';
 import TranscriptDiffView from '../components/TranscriptDiffView';
 import { isTranscriptionAvailable } from '../config/features';
+import { displayFor } from '../constants/languages';
+import { speechLanguageFor } from '../services/languageCapabilities';
 import { refineTranscript } from '../services/transcriptRefinement';
 import { ERROR_KIND } from '../services/anuvadini/proxyContract';
 import {
   ANUVADINI_STATUS,
   TRANSCRIPT_SOURCE,
+  canOffer,
   shouldAutoSelectAi,
 } from '../services/consultationTranscripts';
 import useRecordingStore, {
   CONSULTATION_STAGE,
-  selectActiveTranscript,
+  REPORT_SOURCE_KIND,
+  selectExtractionOptions,
   selectFullTranscript,
+  selectReportSourceKind,
+  selectReportTranscript,
 } from '../store/useRecordingStore';
-import styles from './styles/TranscriptReviewScreen.styles';
+import {
+  TRANSLATION_STATUS,
+  needsTranslation,
+} from '../services/consultationTranslation';
+import { ensureTranslation } from '../services/transcriptTranslation';
+import useScaledStyles from '../hooks/useScaledStyles';
+import createStyles from './styles/TranscriptReviewScreen.styles';
 import dictationSessionManager from '../services/dictationSessionManager';
 import { isRetryableFailure } from '../services/captureOutcome';
 import { extractForReport } from '../services/extractionService';
@@ -54,10 +68,89 @@ function formatDuration(totalSeconds = 0) {
 
 const LABEL = {
   [TRANSCRIPT_SOURCE.NATIVE]: 'Original',
-  [TRANSCRIPT_SOURCE.ANUVADINI]: 'AI Transcription',
+  [TRANSCRIPT_SOURCE.ANUVADINI]: 'AI Version',
 };
 
+const TRANSLATION_ERROR_TEXT = {
+  [ERROR_KIND.NOT_CONFIGURED]: 'translation is not configured in this build',
+  [ERROR_KIND.NETWORK]: 'the network could not be reached',
+  [ERROR_KIND.TIMEOUT]: 'the translation service timed out',
+  [ERROR_KIND.CLIENT_ERROR]: 'the translation service rejected the request',
+  [ERROR_KIND.SERVER_ERROR]: 'the translation service is unavailable',
+  [ERROR_KIND.MALFORMED]: 'the translation service returned no usable text',
+  [ERROR_KIND.UNSUPPORTED_LANGUAGE]: 'this language is not supported',
+  [ERROR_KIND.NO_TEXT]: 'there was nothing to translate',
+  [ERROR_KIND.CANCELLED]: 'it was interrupted',
+  [ERROR_KIND.QUOTA_EXCEEDED]:
+    'this API key has used up its translation quota',
+  [ERROR_KIND.UNAUTHORIZED]: 'the translation API key was rejected',
+  [ERROR_KIND.TEXT_TOO_LARGE]:
+    'this dictation is too long to translate in one request',
+  [ERROR_KIND.EMPTY_TRANSLATION]: 'the translation service returned nothing',
+  [ERROR_KIND.COUNT_MISMATCH]:
+    'the translation service returned an unusable response',
+};
+
+const describeTranslationError = reason =>
+  TRANSLATION_ERROR_TEXT[reason] || `an unexpected error: ${reason}`;
+
+function GlassBtn({ children, onPress, accessibilityLabel, styles }) {
+  return (
+    <Pressable
+      style={styles.glassBtn}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
+function StatCard({ gradient, shadowColor, icon, label, value, sub, subColor, badge, badgeColor, styles }) {
+  return (
+    <LinearGradient colors={gradient} start={{x:0, y:0}} end={{x:1, y:1}} style={[styles.statCard, { shadowColor }]}>
+      <View style={styles.statCardBlob1} />
+      <View style={styles.statCardBlob2} />
+      <View style={styles.statCardHeader}>
+        <View style={styles.statCardIconBox}>
+          {icon}
+        </View>
+        <View style={[styles.statCardBadge, { backgroundColor: badgeColor }]}>
+          <Text style={styles.statCardBadgeText}>{badge}</Text>
+        </View>
+      </View>
+      <Text style={styles.statCardLabel}>{label}</Text>
+      <Text style={styles.statCardValue}>{value}</Text>
+      <Text style={[styles.statCardSub, subColor && { color: subColor }]}>{sub}</Text>
+    </LinearGradient>
+  );
+}
+
+function TabBtn({ active, gradient, shadow, onPress, label, sub, icon, styles }) {
+  const inactiveColor = gradient[0];
+  return (
+    <Pressable onPress={onPress} style={styles.tabPressable}>
+      <LinearGradient
+        colors={active ? gradient : ['transparent', 'transparent']}
+        start={{x:0, y:0}} end={{x:1, y:1}}
+        style={[styles.tabBtn, active && styles.tabBtnActive, active && { shadowColor: shadow }]}
+      >
+        <View style={styles.tabBtnIconBox}>
+          {icon}
+        </View>
+        <View style={styles.tabBtnTextCol}>
+          <Text style={[styles.tabBtnLabel, active ? styles.tabBtnLabelActive : { color: inactiveColor }]}>{label}</Text>
+          <Text style={[styles.tabBtnSub, active ? styles.tabBtnSubActive : [styles.tabBtnSubInactive, { color: inactiveColor }]]}>{sub}</Text>
+        </View>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
 const TranscriptReviewScreen = ({ navigation }) => {
+  const styles = useScaledStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const fullTranscript = useRecordingStore(selectFullTranscript);
   const durationSeconds = useRecordingStore(state => state.durationSeconds);
   const setFullTranscript = useRecordingStore(state => state.setFullTranscript);
@@ -75,19 +168,44 @@ const TranscriptReviewScreen = ({ navigation }) => {
   const captureUnavailable = useRecordingStore(
     state => state.captureUnavailable,
   );
-  const [viewedSource, setViewedSource] = useState(selectedSource);
+  const language = useRecordingStore(state => state.language);
+  const recognizerFellBack = useRecordingStore(
+    state => state.recognizerFellBack,
+  );
+  const translation = useRecordingStore(state => state.translation);
+  const setTranslationText = useRecordingStore(
+    state => state.setTranslationText,
+  );
+  const multilingual = needsTranslation(language);
+  const languageName = displayFor(language).englishName;
+  const reportSourceKind = useRecordingStore(selectReportSourceKind);
+  const englishInUse =
+    reportSourceKind === REPORT_SOURCE_KIND.ENGLISH_TRANSLATION;
+  const reportSourceLabel = englishInUse
+    ? 'English translation'
+    : 'Original (untranslated)';
+
+  const [languageNoticeDismissed, setLanguageNoticeDismissed] = useState(false);
+  const [viewedSource, setViewedSource] = useState(() =>
+    canOffer({ nativeText: fullTranscript, anuvadini })
+      ? TRANSCRIPT_SOURCE.ANUVADINI
+      : selectedSource,
+  );
   const [blocked, setBlocked] = useState(null);
   const [promptReason, setPromptReason] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
-  const chosenRef = useRef(false);
+  // The doctor's deliberate choice lives in the store, not in a ref. A ref
+  // re-initialises on remount, which let the overlay drawer silently flip an explicit
+  // "Original" back to the AI transcript.
+  const setSourceChosen = useRecordingStore(state => state.setTranscriptSource);
   const [skippedRefinement, setSkippedRefinement] = useState(false);
   const [dismissedAt, setDismissedAt] = useState(0);
   const [copied, setCopied] = useState(false);
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const floatAnim = useRef(new Animated.Value(0)).current;
   const editorFade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -106,7 +224,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
       }),
     ]).start();
 
-    Animated.loop(
+    const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.3,
@@ -119,25 +237,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
           useNativeDriver: true,
         }),
       ]),
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: -12,
-          duration: 3500,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 3500,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, [fadeAnim, slideAnim, pulseAnim, floatAnim]);
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [fadeAnim, slideAnim, pulseAnim]);
 
   const beginSubmit = useCallback(() => {
     if (submittingRef.current) return false;
@@ -185,6 +288,17 @@ const TranscriptReviewScreen = ({ navigation }) => {
     dictationSessionManager.persistCurrentSession();
   }, [setStage]);
 
+  useEffect(() => {
+    if (!multilingual || anuvadini.status !== ANUVADINI_STATUS.READY) {
+      return;
+    }
+    ensureTranslation().catch(() => {});
+  }, [multilingual, anuvadini.status, anuvadini.updatedAt, selectedSource]);
+
+  const handleRetryTranslation = useCallback(() => {
+    ensureTranslation({ force: true }).catch(() => {});
+  }, []);
+
   const commitEditor = useCallback(
     text => {
       if (text === viewedText) return viewedText;
@@ -209,6 +323,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
   );
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  
   const handleResumeRecording = useCallback(async () => {
     await stopPrompt();
     commitEditor(editableText);
@@ -217,24 +332,41 @@ const TranscriptReviewScreen = ({ navigation }) => {
     navigation.navigate('Recording', { resume: true });
   }, [navigation, editableText, commitEditor, setStage]);
 
-  const playPrompt = useCallback(async completeness => {
-    setPromptReason(null);
-    const outcome = await speakMissingFields(blockingFields(completeness));
-    if (outcome.spoken) {
-      return;
-    }
-    if (__DEV__) {
-      console.warn('[speechPrompt] not spoken:', outcome.reason);
-    }
-    setPromptReason(outcome.reason ?? 'unknown');
-  }, []);
+  const playPrompt = useCallback(
+    async completeness => {
+      setPromptReason(null);
+      const resolved = speechLanguageFor(language);
+      const outcome = await speakMissingFields(
+        blockingFields(completeness),
+        resolved,
+      );
+      if (outcome.spoken) {
+        // Speaking English because the session's language was lost is a failure that
+        // used to look like success. Surface it rather than letting the doctor assume
+        // the app understood them.
+        if (!resolved.resolved) {
+          setPromptReason('language_unknown');
+        }
+        return;
+      }
+      if (__DEV__) {
+        console.warn('[speechPrompt] not spoken:', outcome.reason);
+      }
+      setPromptReason(outcome.reason ?? 'unknown');
+    },
+    [language],
+  );
 
   const handleGenerateReport = useCallback(async () => {
     if (!beginSubmit()) return;
     try {
       commitEditor(editableText);
-      const text = selectActiveTranscript(useRecordingStore.getState());
-      const { record, residue } = extractForReport(text);
+      const state = useRecordingStore.getState();
+      const text = selectReportTranscript(state);
+      const { record, residue } = extractForReport(
+        text,
+        selectExtractionOptions(state),
+      );
       const draft = reportDraft
         ? mergeExtraction(reportDraft, record, residue)
         : toDraft(record, residue);
@@ -272,15 +404,16 @@ const TranscriptReviewScreen = ({ navigation }) => {
   ]);
 
   const applySource = useCallback(
-    (source, { announce, commit = true }) => {
+    (source, { announce, commit = true, chosen = false } = {}) => {
       if (commit) {
         commitEditor(editableText);
       }
-      setTranscriptSource(source);
+      setTranscriptSource(source, { chosen });
 
       const next = useRecordingStore.getState();
       const { record, residue } = extractForReport(
-        selectActiveTranscript(next),
+        selectReportTranscript(next),
+        selectExtractionOptions(next),
       );
       const previous = next.reportDraft;
       const kept = previous
@@ -312,8 +445,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
 
   const selectForReport = useCallback(
     source => {
-      chosenRef.current = true;
-      applySource(source, { announce: true });
+      applySource(source, { announce: true, chosen: true });
     },
     [applySource],
   );
@@ -328,7 +460,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
         nativeText: selectFullTranscript(state),
         anuvadini: state.anuvadini,
         source: state.transcriptSource,
-        chosen: chosenRef.current,
+        chosen: state.sourceChosen,
       })
     ) {
       return;
@@ -357,9 +489,10 @@ const TranscriptReviewScreen = ({ navigation }) => {
   }, [copied]);
 
   const handleSkipRefinement = useCallback(() => {
-    chosenRef.current = true;
+    // Skipping the AI pass is itself a choice, and must survive a remount.
+    setSourceChosen(useRecordingStore.getState().transcriptSource, { chosen: true });
     setSkippedRefinement(true);
-  }, []);
+  }, [setSourceChosen]);
 
   const handleRetryRefinement = useCallback(() => {
     refineTranscript().catch(() => {});
@@ -440,7 +573,6 @@ const TranscriptReviewScreen = ({ navigation }) => {
   };
 
   const canSelectViewed = viewingAi ? aiReady : true;
-  const viewedIsSelected = viewedSource === selectedSource;
 
   const wordCount = editableText
     ? editableText
@@ -450,18 +582,28 @@ const TranscriptReviewScreen = ({ navigation }) => {
     : 0;
 
   return (
-    <ScreenContainer style={styles.container}>
-      <View style={styles.appBar}>
-        <Pressable
-          onPress={goBack}
-          style={styles.backButton}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Icon name="arrow-left" size={20} color="#0F172A" />
-        </Pressable>
-        <Text style={styles.appBarTitle}>Transcript Review</Text>
-        <View style={styles.appBarRightSpacer} />
+    <View style={styles.container}>
+      {/* Decorative background blobs */}
+      <View style={styles.blobContainer}>
+        <View style={styles.blob1} />
+        <View style={styles.blob2} />
+        <View style={styles.blob3} />
+      </View>
+
+      {/* Fixed Top Header Stop */}
+      <View
+        style={[
+          styles.fixedHeaderContainer,
+          { paddingTop: Math.max(insets.top, 12) },
+        ]}
+      >
+        <View style={styles.headerRow}>
+          <GlassBtn onPress={goBack} accessibilityLabel="Go back" styles={styles}>
+            <Icon name="arrow-left" size={17} color="#6D4FFF" />
+          </GlassBtn>
+          <Text style={styles.headerTitle}>Transcript Review</Text>
+          <View style={styles.glassBtnPlaceholder} />
+        </View>
       </View>
 
       <ScrollView
@@ -469,137 +611,92 @@ const TranscriptReviewScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View
-          style={[
-            styles.flexOne,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          <View style={styles.heroSection}>
-            <View style={styles.heroLeft}>
-              <View style={styles.heroLabelRow} />
-              <Text style={styles.heroTitle}>
-                Review & Edit{'\n'}Transcript
-              </Text>
-              <Text style={styles.heroSubtitle}>
-                Compare both transcriptions, then choose which one the report is
-                built from.
-              </Text>
+        <Animated.View style={[{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          {/* Hero band */}
+          <LinearGradient
+            colors={['#6D4FFF', '#8B5CF6', '#EC4899']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.heroBand}
+          >
+            <View style={styles.heroBlob1} />
+            <View style={styles.heroBlob2} />
+            <View style={styles.liveSessionBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>Live Session</Text>
             </View>
+            <Text style={styles.heroTitle}>
+              Review & Edit{'\n'}
+              <Text style={styles.heroTitleLight}>Transcript</Text>
+            </Text>
+            <Text style={styles.heroDesc}>
+              Compare transcriptions, then choose which the report is built from.
+            </Text>
+          </LinearGradient>
 
-            <View style={styles.heroRight}>
-              <Animated.View
-                style={[
-                  styles.illustrationContainer,
-                  { transform: [{ translateY: floatAnim }] },
-                ]}
-              >
-                <View style={[styles.blob, styles.blobBlue]} />
-                <View style={[styles.blob, styles.blobLavender]} />
-                <View style={styles.illusDoc}>
-                  <Icon name="file-text" size={28} color="#2F6BFF" />
-                  <View style={styles.illusSparkle}>
-                    <Icon name="star" size={10} color="#FFF" />
-                  </View>
-                </View>
-                <View style={styles.illusWave}>
-                  <Icon name="activity" size={14} color="#8B5CF6" />
-                </View>
-              </Animated.View>
-            </View>
+          {/* Stat cards */}
+          <View style={styles.statCardsGrid}>
+            <StatCard styles={styles}
+              gradient={['#6D4FFF', '#818CF8']}
+              shadowColor="#6D4FFF"
+              icon={<Icon name="mic" size={16} color="#fff" />}
+              label="Recording"
+              value={formatDuration(durationSeconds)}
+              sub="Total duration"
+              subColor="#000000"
+              badge="● REC"
+              badgeColor="rgba(255,255,255,0.2)"
+            />
+            <StatCard styles={styles}
+              gradient={['#EC4899', '#F97316']}
+              shadowColor="#EC4899"
+              icon={<Icon name="layers" size={16} color="#fff" />}
+              label="Report Uses"
+              value={
+                multilingual
+                  ? reportSourceLabel
+                  : selectedSource === TRANSCRIPT_SOURCE.NATIVE
+                  ? 'Original'
+                  : 'AI Ver.'
+              }
+              sub="Active source"
+              subColor="#000000"
+              badge="ACTIVE"
+              badgeColor="rgba(255,255,255,0.2)"
+            />
           </View>
 
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <View style={[styles.iconCircle, styles.iconCircleBlue]}>
-                <Icon name="clock" size={18} color="#2F6BFF" />
-              </View>
-              <View style={styles.summaryTextCol}>
-                <Text style={styles.summaryTitle}>Recording Time</Text>
-                <Text style={styles.summaryValue}>
-                  {formatDuration(durationSeconds)}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.summaryCard}>
-              <View style={[styles.iconCircle, styles.iconCirclePurple]}>
-                <Icon name="layers" size={18} color="#8B5CF6" />
-              </View>
-              <View style={styles.summaryTextCol}>
-                <Text style={styles.summaryTitle}>Report Uses</Text>
-                <Text style={styles.summaryValue}>{LABEL[selectedSource]}</Text>
-              </View>
-            </View>
+          {/* Tab switcher */}
+          <View style={styles.tabSwitcher}>
+            <TabBtn styles={styles}
+              active={viewedSource === TRANSCRIPT_SOURCE.NATIVE}
+              gradient={['#6D4FFF', '#A855F7']}
+              shadow="#6D4FFF"
+              onPress={() => showSource(TRANSCRIPT_SOURCE.NATIVE)}
+              label="Original"
+              sub={selectedSource === TRANSCRIPT_SOURCE.NATIVE ? '✓ For Report' : 'Dictated'}
+              icon={<Icon name="check-circle" size={16} color={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? '#fff' : (selectedSource === TRANSCRIPT_SOURCE.NATIVE ? '#6D4FFF' : '#C4BFDB')} />}
+            />
+            <TabBtn styles={styles}
+              active={viewedSource === TRANSCRIPT_SOURCE.ANUVADINI}
+              gradient={['#EC4899', '#F97316']}
+              shadow="#EC4899"
+              onPress={() => showSource(TRANSCRIPT_SOURCE.ANUVADINI)}
+              label="AI Transcription"
+              sub={selectedSource === TRANSCRIPT_SOURCE.ANUVADINI ? '✓ For Report' : 'Preview Only'}
+              icon={<Icon name="zap" size={16} color={viewedSource === TRANSCRIPT_SOURCE.ANUVADINI ? '#fff' : '#C4BFDB'} />}
+            />
           </View>
 
-          <View style={styles.segmentContainer}>
-            {[TRANSCRIPT_SOURCE.NATIVE, TRANSCRIPT_SOURCE.ANUVADINI].map(
-              source => {
-                const isSelectedTab = viewedSource === source;
-                const isUsed = selectedSource === source;
-                return (
-                  <Pressable
-                    key={source}
-                    style={[
-                      styles.segmentTab,
-                      isSelectedTab && styles.segmentTabActive,
-                    ]}
-                    onPress={() => showSource(source)}
-                  >
-                    <View style={styles.segmentTabHeader}>
-                      {source === TRANSCRIPT_SOURCE.ANUVADINI &&
-                        !isSelectedTab && (
-                          <Icon
-                            name="star"
-                            size={14}
-                            color="#8B5CF6"
-                            style={styles.starIconMargin}
-                          />
-                        )}
-                      <Text
-                        style={[
-                          styles.segmentTabText,
-                          isSelectedTab && styles.segmentTabTextActive,
-                        ]}
-                      >
-                        {LABEL[source]}
-                      </Text>
-                      {isUsed && (
-                        <Icon
-                          name="check-circle"
-                          size={13}
-                          color={isSelectedTab ? '#FFFFFF' : '#2F6BFF'}
-                          style={styles.usedCheckMargin}
-                        />
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.inUseText,
-                        isSelectedTab && styles.inUseTextActive,
-                        !isUsed && styles.inUseTextIdle,
-                      ]}
-                    >
-                      {isUsed ? 'USED FOR REPORT' : 'PREVIEW ONLY'}
-                    </Text>
-                  </Pressable>
-                );
-              },
-            )}
-          </View>
-
-          {showFailureNotice ? (
+          {recognizerFellBack && !languageNoticeDismissed ? (
             <View style={styles.fallbackNotice}>
               <Text style={styles.fallbackText}>
-                {captureUnavailable
-                  ? 'Microphone capture did not start for this dictation, so ' +
-                    'there was no audio to refine — continuing with the ' +
-                    'original transcription.'
-                  : 'AI refinement could not be completed — continuing with ' +
-                    'the original transcription.'}
+                This device does not appear to have the {languageName} speech
+                pack installed — recognition fell back to English. Install it
+                from Settings › Google › Voice, or rely on AI transcription for
+                this consultation.
               </Text>
               <Pressable
-                onPress={() => setDismissedAt(anuvadini.updatedAt)}
+                onPress={() => setLanguageNoticeDismissed(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Dismiss"
                 hitSlop={8}
@@ -609,154 +706,268 @@ const TranscriptReviewScreen = ({ navigation }) => {
             </View>
           ) : null}
 
+          {/* Fallback Notice */}
+          {showFailureNotice ? (
+            <View style={styles.fallbackNotice}>
+              <Text style={styles.fallbackText}>
+                {captureUnavailable
+                  ? 'Microphone capture did not start for this dictation, so there was no audio to refine — continuing with the original transcription.'
+                  : 'AI refinement could not be completed — continuing with the original transcription.'}
+              </Text>
+              <Pressable onPress={() => setDismissedAt(anuvadini.updatedAt)} hitSlop={8}>
+                <Text style={styles.fallbackDismiss}>✕</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {/* AI Status */}
           {viewingAi && !aiReady && (
             <View style={styles.statusRow}>
               {anuvadini.status === ANUVADINI_STATUS.PENDING ? (
-                <ActivityIndicator size="small" color="#2F6BFF" />
+                <ActivityIndicator size="small" color="#6D4FFF" />
               ) : null}
               <Text style={styles.statusText}>{aiStatusLine()}</Text>
-              {anuvadini.status === ANUVADINI_STATUS.FAILED &&
-              canRetryRefinement ? (
-                <Pressable
-                  onPress={handleRetryRefinement}
-                  accessibilityRole="button"
-                >
+              {anuvadini.status === ANUVADINI_STATUS.FAILED && canRetryRefinement ? (
+                <Pressable onPress={handleRetryRefinement}>
                   <Text style={styles.retry}>Retry</Text>
                 </Pressable>
               ) : null}
             </View>
           )}
-          <View style={styles.editorCard}>
-            <View style={styles.editorHeader}>
-              <View style={styles.editorHeaderLeft}>
-                <Icon name="file-text" size={16} color="#2F6BFF" />
-                <Text style={styles.editorHeaderTitle}>
-                  {viewingAi ? 'AI Transcription' : 'Original Transcription'}
-                </Text>
+
+          {/* Transcript panel */}
+          <View style={styles.transcriptPanel}>
+            <LinearGradient
+              colors={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? ['#6D4FFF', '#A855F7', '#818CF8'] : ['#EC4899', '#F97316', '#FBBF24']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.panelTopStripe}
+            />
+            
+            <View style={styles.panelHeader}>
+              <View style={styles.panelHeaderLeft}>
+                <LinearGradient
+                  colors={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? ['#6D4FFF', '#A855F7'] : ['#EC4899', '#F97316']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={styles.panelHeaderIconBg}
+                >
+                  <Icon name="file-text" size={15} color="#fff" />
+                </LinearGradient>
+                <View>
+                  <Text style={styles.panelHeaderTitle}>
+                    {viewedSource === TRANSCRIPT_SOURCE.NATIVE ? 'Original Transcript' : 'AI Transcript'}
+                  </Text>
+                  <Text style={styles.panelHeaderSub}>
+                    {viewedSource === TRANSCRIPT_SOURCE.NATIVE ? 'Dictated recording' : 'AI-enhanced version'}
+                  </Text>
+                </View>
               </View>
-              {viewedIsSelected ? (
-                <View style={styles.selectedBadge}>
-                  <Icon name="check" size={12} color="#FFFFFF" />
-                  <Text style={styles.selectedBadgeText}>Used for report</Text>
+              
+              {selectedSource === viewedSource ? (
+                <View style={[styles.useBadge, styles.useBadgeActive]}>
+                  <Text style={[styles.useBadgeText, styles.useBadgeTextActive]}>✓ For Report</Text>
                 </View>
-              ) : (
-                <View style={styles.unusedBadge}>
-                  <Text style={styles.unusedBadgeText}>Not used</Text>
-                </View>
-              )}
+              ) : canSelectViewed ? (
+                <Pressable onPress={() => selectForReport(viewedSource)}>
+                  <LinearGradient
+                    colors={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? ['#6D4FFF', '#A855F7'] : ['#EC4899', '#F97316']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={[styles.useBadge, styles.useBadgeButton]}
+                  >
+                    <Text style={[styles.useBadgeText, styles.useBadgeTextButton]}>Use This</Text>
+                  </LinearGradient>
+                </Pressable>
+              ) : null}
             </View>
+
             <Animated.View style={{ opacity: editorFade }}>
-              {viewingAi &&
-              !hasAiText &&
-              anuvadini.status !== ANUVADINI_STATUS.READY ? (
+              {viewingAi && !hasAiText && anuvadini.status !== ANUVADINI_STATUS.READY ? (
                 anuvadini.status === ANUVADINI_STATUS.PENDING ? (
                   <View style={styles.pendingBlock}>
-                    <ActivityIndicator size="small" color="#2F6BFF" />
-                    <Text style={styles.pendingTitle}>
-                      Generating AI transcription…
-                    </Text>
-                    <Text style={styles.pendingDetail}>
-                      This usually takes a few seconds. The original transcript
-                      is ready to use in the meantime.
-                    </Text>
+                    <ActivityIndicator size="small" color="#6D4FFF" />
+                    <Text style={styles.pendingTitle}>Generating AI transcription…</Text>
+                    <Text style={styles.pendingDetail}>This usually takes a few seconds. The original transcript is ready to use in the meantime.</Text>
                   </View>
                 ) : (
                   <Text style={styles.placeholder}>
-                    No AI transcription for this dictation. The original
-                    transcript is unaffected and can still generate the report.
+                    No AI transcription for this dictation. The original transcript is unaffected and can still generate the report.
                   </Text>
                 )
               ) : (
                 <TextInput
-                  style={styles.editorInput}
+                  style={styles.panelEditor}
                   multiline
                   value={editableText}
                   onChangeText={setEditableText}
                   placeholder="Dictated text will appear here..."
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9E9BB5"
                 />
               )}
             </Animated.View>
 
-            <View style={styles.editorToolbar}>
-              <View style={styles.toolbarLeft}>
-                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                  <Icon name="activity" size={16} color="#2F6BFF" />
-                </Animated.View>
-                <Text style={styles.wordCount}>{wordCount} words</Text>
+            <View style={styles.panelFooter}>
+              <View style={styles.wordCountRow}>
+                <Icon name="activity" size={14} color={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? '#6D4FFF' : '#EC4899'} />
+                <Text style={styles.wordCountText}>{wordCount} words</Text>
               </View>
-              <View style={styles.toolbarRight}>
-                <Pressable
-                  style={styles.toolbarIcon}
-                  onPress={handleCopyTranscript}
-                  disabled={!editableText}
-                  accessibilityRole="button"
-                  accessibilityLabel="Copy the transcript"
-                  accessibilityState={{ disabled: !editableText }}
-                  hitSlop={8}
+              <Pressable onPress={handleCopyTranscript} disabled={!editableText}>
+                <LinearGradient
+                  colors={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? ['#EDE9FF', '#DDD5FF'] : ['#FCE7F3', '#FBCFE8']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={styles.copyBtn}
                 >
-                  <Icon
-                    name={copied ? 'check' : 'copy'}
-                    size={18}
-                    color={editableText ? '#2F6BFF' : '#94A3B8'}
-                  />
-                </Pressable>
-              </View>
+                  <Icon name={copied ? 'check' : 'copy'} size={13} color={viewedSource === TRANSCRIPT_SOURCE.NATIVE ? '#6D4FFF' : '#EC4899'} />
+                </LinearGradient>
+              </Pressable>
             </View>
           </View>
+ 
+          {multilingual ? (
+            <View style={styles.transcriptPanel}>
+              <LinearGradient
+                colors={['#0EA5E9', '#14B8A6', '#34D399']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.panelTopStripe}
+              />
 
-          {canSelectViewed && !viewedIsSelected ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.useBtn,
-                pressed && styles.pressed,
-              ]}
-              onPress={() => selectForReport(viewedSource)}
-              accessibilityRole="button"
-            >
-              <Text style={styles.useBtnText}>
-                {viewingAi
-                  ? 'Use AI Transcription'
-                  : 'Use Original Transcription'}
-              </Text>
-            </Pressable>
+              <View style={styles.panelHeader}>
+                <View style={styles.panelHeaderLeft}>
+                  <LinearGradient
+                    colors={['#0EA5E9', '#14B8A6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.panelHeaderIconBg}
+                  >
+                    <Icon name="globe" size={15} color="#fff" />
+                  </LinearGradient>
+                  <View>
+                    <Text style={styles.panelHeaderTitle}>
+                      English Translation
+                    </Text>
+                    <Text style={styles.panelHeaderSub}>
+                      Translated from {languageName}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.useBadge,
+                    englishInUse ? styles.useBadgeActive : styles.useBadgePending,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.useBadgeText,
+                      englishInUse ? styles.useBadgeTextActive : styles.useBadgeTextPending,
+                    ]}
+                  >
+                    {englishInUse ? '✓ For Report' : 'Not used yet'}
+                  </Text>
+                </View>
+              </View>
+
+              {translation.status === TRANSLATION_STATUS.PENDING ? (
+                <View style={styles.pendingBlock}>
+                  <ActivityIndicator size="small" color="#0EA5E9" />
+                  <Text style={styles.pendingTitle}>
+                    Translating to English…
+                  </Text>
+                  <Text style={styles.pendingDetail}>
+                    {translation.progress.total > 1
+                      ? `Part ${translation.progress.done} of ${translation.progress.total}.`
+                      : 'This usually takes a few seconds.'}
+                  </Text>
+                </View>
+              ) : translation.text ? (
+                <>
+                  {translation.stale ? (
+                    <Text style={styles.placeholder}>
+                      This is an earlier translation — the most recent dictation
+                      could not be translated (
+                      {describeTranslationError(translation.error)}), so it is
+                      not included below. Translate again, or edit the English
+                      directly.
+                    </Text>
+                  ) : null}
+                  <TextInput
+                    style={styles.panelEditor}
+                    multiline
+                    value={translation.text}
+                    onChangeText={setTranslationText}
+                    placeholder="The English translation will appear here..."
+                    placeholderTextColor="#9E9BB5"
+                  />
+                  {translation.stale ? (
+                    <Pressable
+                      onPress={handleRetryTranslation}
+                      accessibilityRole="button"
+                      accessibilityLabel="Translate again"
+                    >
+                      <Text style={styles.retry}>Translate again</Text>
+                    </Pressable>
+                  ) : null}
+                </>
+              ) : (
+                <View style={styles.pendingBlock}>
+                  <Text style={styles.placeholder}>
+                    {translation.status === TRANSLATION_STATUS.FAILED
+                      ? `The English translation could not be produced (${describeTranslationError(
+                          translation.error,
+                        )}). The report will be built from the ${languageName} transcript, so most fields will need filling in by hand.`
+                      : 'This dictation has not been translated yet. It is translated to English before the report is generated.'}
+                  </Text>
+                  {translation.error === ERROR_KIND.QUOTA_EXCEEDED ? (
+                    <Text style={styles.pendingDetail}>
+                      Translation is unavailable for the rest of this session.
+                    </Text>
+                  ) : (
+                    <Pressable
+                      onPress={handleRetryTranslation}
+                      accessibilityRole="button"
+                      accessibilityLabel="Translate again"
+                    >
+                      <Text style={styles.retry}>Translate again</Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+            </View>
           ) : null}
 
+          {/* Action buttons */}
+          <View style={styles.actionsContainer}>
+            <Pressable
+              style={({ pressed }) => [styles.addMoreBtn, pressed && styles.pressed, submitting && styles.disabled]}
+              onPress={handleAddMoreSpeech}
+              disabled={submitting}
+            >
+              <LinearGradient colors={['#6D4FFF', '#A855F7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.addMoreIconBg}>
+                <Icon name="plus" size={16} color="#fff" />
+              </LinearGradient>
+              <Text style={styles.addMoreText}>Add More Speech</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [pressed && styles.pressed, submitting && styles.disabled]}
+              onPress={handleGenerateReport}
+              disabled={submitting}
+            >
+              <LinearGradient colors={['#6D4FFF', '#8B5CF6', '#EC4899']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.generateBtn}>
+                <View style={styles.generateBtnShimmer} />
+                <Icon name="file-text" size={18} color="#fff" />
+                <Text style={styles.generateText}>Generate Report</Text>
+                <View style={styles.generateArrowBox}>
+                  <Icon name="arrow-right" size={16} color="#fff" />
+                </View>
+              </LinearGradient>
+            </Pressable>
+          </View>
+          
           <TranscriptDiffView original={nativeRaw} revised={anuvadini.raw} />
+          
         </Animated.View>
       </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.footer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.addMoreBtn,
-            pressed && styles.pressed,
-            submitting && styles.disabled,
-          ]}
-          onPress={handleResumeRecording}
-          disabled={submitting}
-        >
-          <Icon name="plus" size={20} color="#2F6BFF" />
-          <Text style={styles.addMoreBtnText}>Add More Speech</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.generateBtn,
-            pressed && styles.generateBtnPressed,
-            submitting && styles.disabled,
-          ]}
-          onPress={handleGenerateReport}
-          disabled={submitting}
-        >
-          <View style={styles.generateBtnContent}>
-            <Icon name="file-text" size={20} color="#FFF" />
-            <Text style={styles.generateBtnText}>Generate Report</Text>
-          </View>
-          <Icon name="arrow-right" size={20} color="#FFF" />
-        </Pressable>
-      </View>
 
       <RefiningOverlay
         visible={refining}
@@ -774,7 +985,7 @@ const TranscriptReviewScreen = ({ navigation }) => {
         onDismiss={handleDismissBlocked}
         promptError={promptReason}
       />
-    </ScreenContainer>
+    </View>
   );
 };
 

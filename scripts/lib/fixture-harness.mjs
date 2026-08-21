@@ -1,4 +1,3 @@
-
 let passed = 0;
 let failed = 0;
 const failures = [];

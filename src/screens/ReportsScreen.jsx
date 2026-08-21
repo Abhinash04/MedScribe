@@ -9,14 +9,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
+import AnuvadiniMark from '../components/AnuvadiniMark';
 import BottomDock, { useDockClearance } from '../components/BottomDock';
 import ReportListRow from '../components/ReportListRow';
-import ScreenContainer from '../components/ScreenContainer';
 import { REPORT_STATUS } from '../db/reportsRepository';
 import useReportsStore from '../store/useReportsStore';
 import { colors } from '../theme';
-import styles from './styles/ReportsScreen.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import useScaledStyles from '../hooks/useScaledStyles';
+import createStyles from './styles/ReportsScreen.styles';
 
 const FILTERS = [
   { key: 'all', label: 'All', icon: 'layers' },
@@ -25,6 +28,8 @@ const FILTERS = [
 ];
 
 const ReportsScreen = ({ navigation, route }) => {
+  const styles = useScaledStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const reports = useReportsStore(state => state.reports);
   const loading = useReportsStore(state => state.loading);
   const loaded = useReportsStore(state => state.loaded);
@@ -42,8 +47,6 @@ const ReportsScreen = ({ navigation, route }) => {
     }, [loadAll]),
   );
 
-  // Arriving from Patients or a Home quick tile pops back to this screen rather
-  // than mounting it again, so the params have to be applied on change.
   const patientParam = route?.params?.patient;
   const filterParam = route?.params?.filter;
 
@@ -114,23 +117,43 @@ const ReportsScreen = ({ navigation, route }) => {
   );
 
   const header = (
-    <View>
-      <Text style={styles.heading}>Reports</Text>
-      <Text style={styles.subheading}>
-        Every consultation you have saved on this device.
-      </Text>
+    <>
+      <LinearGradient
+        colors={['#6c63ff', '#8b5cf6', '#a78bfa']}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={[styles.heroHeader, { paddingTop: insets.top + 16 }]}
+      >
+        <View style={styles.heroDecorCircle1} />
+        <View style={styles.heroDecorCircle2} />
+        <View style={styles.heroDecorCircle3} />
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroTitleColumn}>
+            <Text style={styles.brandTitle}>Reports</Text>
+            <Text style={styles.brandSub}>
+              Every consultation you have saved on this device.
+            </Text>
+          </View>
+          <View style={styles.brandBadge}>
+            <AnuvadiniMark size={32} />
+          </View>
+        </View>
+        <View style={styles.searchBar}>
+          <Icon name="search" size={18} color="rgba(255,255,255,0.7)" />
+          <TextInput
+            style={styles.searchText}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search by patient or diagnosis"
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            autoFocus={route?.params?.focusSearch === true}
+            accessibilityLabel="Search saved reports"
+          />
+        </View>
+      </LinearGradient>
 
-      <TextInput
-        style={styles.search}
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search by patient or diagnosis"
-        placeholderTextColor={colors.textMuted}
-        autoFocus={route?.params?.focusSearch === true}
-        accessibilityLabel="Search saved reports"
-      />
-
-      <View style={styles.filterRow}>
+      <View style={styles.contentContainer}>
+        <View style={styles.filterRow}>
         {FILTERS.map(option => {
           const active = filter === option.key;
           return (
@@ -174,7 +197,8 @@ const ReportsScreen = ({ navigation, route }) => {
         {visibleReports.length}{' '}
         {visibleReports.length === 1 ? 'report' : 'reports'}
       </Text>
-    </View>
+      </View>
+    </>
   );
 
   const empty =
@@ -196,21 +220,19 @@ const ReportsScreen = ({ navigation, route }) => {
     );
 
   return (
-    <>
-      <ScreenContainer>
-        <FlatList
-          data={visibleReports}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          ListHeaderComponent={header}
-          ListEmptyComponent={empty}
-          contentContainerStyle={{ paddingBottom: clearance }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        />
-      </ScreenContainer>
+    <View style={styles.pageBackground}>
+      <FlatList
+        data={visibleReports}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        contentContainerStyle={{ paddingBottom: clearance }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      />
       <BottomDock active="Reports" />
-    </>
+    </View>
   );
 };
 

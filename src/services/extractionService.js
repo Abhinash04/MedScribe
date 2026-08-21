@@ -1,5 +1,6 @@
 import { CONFIDENCE, FIELD_MARKERS } from '../constants/fieldMarkers.js';
 import { PATIENT_FIELDS } from '../constants/patientFields.js';
+import { ALL_DRAFT_FIELDS } from './reportDraft.js';
 import { classifySegment } from './extraction/classifySegment.js';
 import { inferGender } from './extraction/collectEvidence.js';
 import { splitFindings } from './extraction/detectNegation.js';
@@ -27,7 +28,7 @@ import {
 } from './extraction/segmentTranscript.js';
 import { isValid } from './extraction/validators.js';
 
-export function extractPatientFields(transcript) {
+export function extractPatientFields(transcript, { translated = false } = {}) {
   const empty = emptyRecord();
 
   if (!transcript || typeof transcript !== 'string') {
@@ -50,7 +51,7 @@ export function extractPatientFields(transcript) {
 
   for (const segment of segments) {
     const config = FIELD_MARKERS[segment.field];
-    const value = applyPostProcessor(config.postProcessor, segment.value);
+    const value = applyPostProcessor(config.postProcessor, segment.value, segment);
 
     if (segment.field === 'symptoms') {
       denied.push(...splitFindings(retractionTail(segment.value)).negative);
@@ -80,7 +81,22 @@ export function extractPatientFields(transcript) {
 
   const gender = inferGender(text, candidates);
   if (gender && isValid('gender', gender.value)) {
-    candidates.push(gender);
+    // In a translated transcript a third-person pronoun is the translator's choice, not
+    // the doctor's word. Several Indian languages do not mark gender on the pronoun at
+    // all — Odia ସେ, Hindi वह, Gujarati તે, Urdu وہ — so the English comes back as "he"
+    // for a patient named Sneha, uniformly and confidently. Asserting Male from that is
+    // asserting the translator's default. Kept, because it is usually right and dropping
+    // it would lose a required field, but marked uncertain so the report shows the
+    // UNCERTAIN badge and the doctor is the one who confirms it.
+    candidates.push(
+      translated && gender.method === 'pronoun_inference'
+        ? {
+            ...gender,
+            confidence: CONFIDENCE.PRONOUN,
+            source: 'pronoun in a translation',
+          }
+        : gender,
+    );
   }
 
   const { candidates: asserted, negatedHistory } = suppressNegated(
@@ -172,8 +188,8 @@ export function applyClassifiedResidue(record, residue) {
 
   return { record: filled, claimed };
 }
-export function extractForReport(transcript) {
-  const extracted = extractPatientFields(transcript);
+export function extractForReport(transcript, options = {}) {
+  const extracted = extractPatientFields(transcript, options);
   const residue = collectResidue(transcript, extracted);
   const { record, claimed } = applyClassifiedResidue(extracted, residue);
 
@@ -304,8 +320,13 @@ function collectFallbacks(text, markers, segments) {
 }
 
 function emptyRecord() {
-  return PATIENT_FIELDS.reduce((acc, field) => {
-    acc[field.key] = null;
+  const keys = new Set([
+    ...PATIENT_FIELDS.map(f => f.key),
+    ...(ALL_DRAFT_FIELDS?.map(f => f.key) ?? []),
+    ...Object.keys(FIELD_MARKERS),
+  ]);
+  return [...keys].reduce((acc, key) => {
+    acc[key] = null;
     return acc;
   }, {});
 }

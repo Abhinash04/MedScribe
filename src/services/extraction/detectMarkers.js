@@ -57,13 +57,6 @@ function suppressWeakInsideStrong(markers, text) {
   return kept;
 }
 
-/**
- * Keeps the most specific marker where several match at or near the same spot.
- *
- * "patient name is" and "name is" both match the same phrase; without this the
- * looser one would open a second, wrong segment. Longer match wins; ties go to
- * higher confidence.
- */
 function resolveOverlaps(markers) {
   const sorted = [...markers].sort((a, b) => {
     if (a.start !== b.start) {

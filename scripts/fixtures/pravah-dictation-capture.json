@@ -1,0 +1,1048 @@
+{
+  "hi": {
+    "1": {
+      "source": "प्राथमिक मामला। रोगी का नाम राहुल शर्मा है। आयु 34 वर्ष है। लिंग पुरुष है। वजन 70 किलोग्राम है। संदिग्ध दवा लेने के बाद रोगी को बुखार, सामान्य खुजली और त्वचा पर चकत्ते (रैश) हो गए। प्रतिक्रिया 10 अगस्त 2026 को शुरू हुई और 12 अगस्त 2026 को ठीक हो गई। संदिग्ध दवा रोक दी गई और रोगी का इलाज एंटीहिस्टामिन से किया गया। इलाज के बाद लक्षणों में सुधार हुआ।",
+      "english": "the primary case. The patient's name is Rahul Sharma. The age is 34 years. The gender is male. The weight is 70 kg. The patient developed fever, generalized itching and skin rash after taking the suspected drug. The reaction began on 10 August 2026 and recovered on 12 August 2026. The suspected drug was stopped and the patient treated with antihistamines. The symptoms improved after treatment."
+    },
+    "2": {
+      "source": "संदिग्ध प्रतिक्रिया मतली, उल्टी और चक्कर आना है। प्रतिक्रिया 11 अगस्त 2026 को शुरू हुई और 13 अगस्त 2026 को समाप्त हुई। रोगी का नाम प्रिया वर्मा है। वह 27 साल की महिला है। उसका वजन 58 किलोग्राम है। दवा रोक दी गई और उसे सहायक उपचार दिया गया। अवलोकन के बाद लक्षण शांत हो गए। यह एक प्राथमिक एडीआर मामला है।",
+      "english": "The suspected reaction is nausea, vomiting and dizziness. The response began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27-year-old woman. Her weight is 58 kg. The medication was stopped and she was given supportive treatment. After observation, the symptoms subsided. This is a primary ADR case."
+    },
+    "3": {
+      "source": "ठीक है, यह अमित कुमार हैं। वह 42 वर्ष के पुरुष हैं और उनका वजन लगभग 76 किलोग्राम है। दवा लेने के बाद उन्हें चेहरे के आसपास तेज खुजली, पित्ती (हाइव्स) और सूजन होने लगी। प्रतिक्रिया वास्तव में 8 अगस्त 2026 को शुरू हुई थी और 10 अगस्त 2026 तक लक्षण ठीक हो गए थे। हमने संदिग्ध दवा बंद कर दी, उन्हें एंटीहिस्टामिन उपचार दिया और अवलोकन में रखा। यह एक प्राथमिक मामला है।",
+      "english": "Okay, this is Amit Kumar. He is a 42-year-old male and weighs approximately 76 kg. After taking the medicine, he began to experience severe itching, hives and swelling around his face. The reaction actually began on 8 August 2026 and by 10 August 2026 the symptoms had resolved. We stopped the suspected drug, gave him antihistamine treatment and kept him under observation. This is a prima facie case."
+    },
+    "4": {
+      "source": "रोगी कल से पेट में तेज दर्द, मतली, दस्त और कमजोरी की शिकायत कर रही है। उनका नाम नेहा सिंह है। वह 31 वर्ष की महिला हैं, जिनका वजन 62 किलोग्राम है। प्रतिकूल प्रतिक्रिया 15 अगस्त 2026 को शुरू हुई और 16 अगस्त 2026 को रुक गई। उन्हें सहायक देखभाल और मौखिक तरल पदार्थ दिए गए, और उनके लक्षणों में सुधार हुआ। यह एक प्राथमिक मामला है।",
+      "english": "The patient has been complaining of severe abdominal pain, nausea, diarrhea and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old female, weighing 62 kg. The adverse reaction started on 15 August 2026 and stopped on 16 August 2026. He was given supportive care and oral fluids, and his symptoms improved. This is a prima facie case."
+    },
+    "5": {
+      "source": "रोगी का नाम अर्जुन पटेल। आयु 38 वर्ष। पुरुष रोगी। वजन 74 किलो। संदिग्ध दवा के बाद बुखार, खांसी, सामान्य चकत्ते और खुजली विकसित हुई। प्रतिक्रिया 9 अगस्त 2026 को शुरू हुई और 11 अगस्त 2026 को बंद हो गई। संदिग्ध दवा बंद कर दी गई। एंटीहिस्टामिन और सहायक उपचार दिया गया। रोगी में सुधार हुआ। प्राथमिक मामला।",
+      "english": "The patient's name is Arjun Patel. Age 38 years. the male patient. Weight 74 kg. Fever, cough, generalized rash and itching developed after the suspected drug. The reaction began on 9 August 2026 and ceased on 11 August 2026. The suspected drug was discontinued. Antihistamines and supportive treatment were given. The patient improved. the primary case."
+    },
+    "6": {
+      "source": "रोगी का नाम स्नेहा गुप्ता है। वह 29 साल की हैं और उनका वजन 55 किलोग्राम है। उन्हें चेहरे पर सूजन, अर्टिकेरिया (पित्ती) और सांस लेने में कठिनाई हुई। प्रतिक्रिया 12 अगस्त 2026 को शुरू हुई और 13 अगस्त 2026 को ठीक हो गई। संदिग्ध दवा बंद कर दी गई और उन्हें आपातकालीन सहायक उपचार और एंटीहिस्टामिन मिले। यह एक फॉलो-अप मामला है।",
+      "english": "The patient's name is Sneha Gupta. She is 29 years old and weighs 55 kg. He developed facial swelling, urticaria (hives) and difficulty breathing. The reaction began on 12 August 2026 and recovered on 13 August 2026. The suspected drug was discontinued and he received emergency supportive treatment and antihistamines. This is a follow-up case."
+    },
+    "7": {
+      "source": "रोगी का नाम रोहित मेहता है। वह 46 वर्ष के हैं और उनका वजन 82 किलोग्राम है। संदिग्ध दवा के बाद उन्हें तेज चक्कर आने, उल्टी और कमजोरी की शिकायत हुई। लक्षण 7 अगस्त 2026 को शुरू हुए और 9 अगस्त 2026 को ठीक हो गए। दवा बंद कर दी गई और सुधार होने तक उनकी निगरानी की गई। यह एक प्राथमिक एडीआर रिपोर्ट है।",
+      "english": "The patient's name is Rohit Mehta. He is 46 years old and weighs 82 kg. He complained of severe dizziness, vomiting and weakness after the suspected drug. Symptoms began on 7 August 2026 and resolved on 9 August 2026. The medication was stopped and he was monitored until improvement. This is a primary ADR report."
+    },
+    "8": {
+      "source": "संदिग्ध दवा वापस ले ली गई और रोगी को निगरानी में रखा गया। एंटीहिस्टामिन उपचार दिया गया और प्रतिक्रिया में सुधार हुआ। रोगी का नाम कविता राव है। वह 36 वर्ष की महिला हैं और उनका वजन 61.5 किलोग्राम है। उन्हें बुखार, उल्टी, सामान्य खुजली और चेहरे पर सूजन थी। प्रतिक्रिया 5 अगस्त 2026 को शुरू हुई और 7 अगस्त 2026 को समाप्त हुई। यह एक प्राथमिक मामला है।",
+      "english": "The suspected drug was withdrawn and the patient kept under observation. Antihistamine treatment was given and the response improved. The patient's name is Kavita Rao. She is a 36-year-old female and weighs 61.5 kg. He had fever, vomiting, general itching and swelling on his face. The response began on 5 August 2026 and ended on 7 August 2026. This is a prima facie case."
+    },
+    "9": {
+      "source": "रोगी का नाम संजय यादव है। वह 55 वर्ष के पुरुष हैं और उनका वजन 79 किलोग्राम है। उन्हें सिरदर्द, चक्कर आना, कमजोरी और त्वचा पर चकत्ते हो गए। प्रतिकूल प्रतिक्रिया 6 अगस्त 2026 को शुरू हुई और 8 अगस्त 2026 को समाप्त हुई। संदिग्ध दवा रोक दी गई और लक्षणात्मक उपचार प्रदान किया गया। रोगी की निगरानी की गई और सुधार हुआ।",
+      "english": "The patient's name is Sanjay Yadav. He is a 55-year old male and weighs 79 kg. He developed a headache, dizziness, weakness and skin rashes. The adverse reaction began on 6 August 2026 and ended on 8 August 2026. The suspected drug was stopped and symptomatic treatment provided. The patient was monitored and improved."
+    },
+    "10": {
+      "source": "यह पूजा नायर हैं, वह 25 वर्ष की महिला हैं, लगभग 52 किलोग्राम। वह संदिग्ध दवा लेने के बाद तेज खुजली, पित्ती, चेहरे की सूजन और सांस लेने में हल्की कठिनाई के साथ आई थीं। प्रतिक्रिया 14 अगस्त 2026 को शुरू हुई और 16 अगस्त 2026 को लक्षण ठीक हो गए। हमने संदिग्ध दवा बंद कर दी, एंटीहिस्टामिन और सहायक देखभाल दी, और सुधार होने तक उनका अवलोकन किया। फॉलो-अप मामला।",
+      "english": "This is Pooja Nair, she's a 25-year-old woman, about 52 kg. She came down with severe itching, hives, facial swelling and mild breathing difficulty after taking the suspected drug. The reaction began on 14 August 2026 and symptoms resolved on 16 August 2026. We stopped the suspect medication, gave antihistamines and supportive care, and observed them until improvement occurred. Follow-up case."
+    },
+    "11": {
+      "source": "रोगी का नाम मोहित जैन है। आयु 45 वर्ष है, क्षमा करें, सुधार, आयु 35 वर्ष है। लिंग पुरुष है और वजन 68 किलोग्राम है। उन्हें मतली, उल्टी और चक्कर आने की समस्या हुई। प्रतिक्रिया 10 अगस्त 2026 को शुरू हुई और 11 अगस्त 2026 को समाप्त हुई। संदिग्ध दवा रोक दी गई और उनका लक्षणात्मक इलाज किया गया। यह एक प्राथमिक मामला है।",
+      "english": "The patient's name is Mohit Jain. Age is 45, sorry, correction, age is 35. The sex is male and weighs 68 kg. He suffered from nausea, vomiting and dizziness. The response began on 10 August 2026 and ended on 11 August 2026. The suspected drug was stopped and he underwent symptomatic treatment. This is a prima facie case."
+    },
+    "12": {
+      "source": "रोगी की पहचान अंजलि दास के रूप में हुई। लिंग महिला। आयु 40 वर्ष। वजन 63 किलोग्राम। प्रस्तुत प्रतिकूल प्रतिक्रिया में बुखार, बलगम वाली खांसी, सामान्य चकत्ते और चेहरे की सूजन शामिल है। प्रतिक्रिया 4 अगस्त 2026 को शुरू हुई और 6 अगस्त 2026 को ठीक हो गई। संदिग्ध दवा वापस ले ली गई। एंटीहिस्टामिन उपचार और सहायक प्रबंधन प्रदान किया गया, जिससे बाद में नैदानिक सुधार हुआ। प्राथमिक एडीआर मामला।",
+      "english": "The patient was identified as Anjali Das. female gender. Age 40 years. Weight 63 kg. Adverse reactions presented include fever, mucus-containing cough, generalized rash, and facial swelling. The reaction began on 4 August 2026 and recovered on 6 August 2026. The suspected drug was withdrawn. Antihistamine treatment and supportive management were provided, leading to subsequent clinical improvement. The primary ADR case."
+    },
+    "13": {
+      "source": "ठीक है, यह दीपक मिश्रा हैं। वह 33 वर्ष के पुरुष हैं और उनका वजन 71 किलोग्राम है। उन्हें बुखार, खुजली, पित्ती और होंठों पर कुछ सूजन आ रही है। यह 13 अगस्त 2026 को शुरू हुआ और 15 अगस्त 2026 तक शांत हो गया। हमने संदिग्ध दवा बंद कर दी, उन्हें एंटीहिस्टामिन दिया और कुछ घंटों तक देखा। उनमें सुधार हुआ। यह एक प्राथमिक मामला है।",
+      "english": "Okay, this is Deepak Mishra. He is a 33-year-old male and weighs 71 kg. He is having fever, itching, hives and some swelling on the lips. It began on 13 August 2026 and subsided by 15 August 2026. We stopped the suspected drug, gave them antihistamines and watched for a few hours. They have improved. This is a prima facie case."
+    },
+    "14": {
+      "source": "रोगी का नाम रिया कपूर है। वह 24 साल की महिला हैं। उनका वजन 57 किलोग्राम है। संदिग्ध दवा के बाद उन्हें बुखार, सिरदर्द, गले में खराश और सूखी खांसी है। उन्हें छाती में कोई दर्द नहीं है और सांस लेने में कोई कठिनाई नहीं है। प्रतिक्रिया 16 अगस्त 2026 को शुरू हुई और 17 अगस्त 2026 को ठीक हो गई। संदिग्ध दवा बंद कर दी गई और सहायक उपचार दिया गया। प्राथमिक मामला।",
+      "english": "The patient's name is Rhea Kapoor. She is a 24-year-old woman. He weighs 57 kg. He has fever, headache, sore throat and dry cough after the suspected drug. He has no chest pain and no breathing difficulties. The reaction began on 16 August 2026 and recovered on 17 August 2026. The suspected drug was discontinued and adjuvant treatment was administered. the primary case."
+    },
+    "15": {
+      "source": "रोगी का नाम विक्रम जोशी है। वह 48 वर्षीय पुरुष हैं जिनका वजन 84 किलोग्राम है। संदिग्ध दवा लेने के बाद उन्हें तेज खुजली, सूखी त्वचा पर चकत्ते, चेहरे की सूजन, चक्कर आना और सांस फूलने की समस्या हुई। प्रतिक्रिया 10 अगस्त 2026 को शुरू हुई और 13 अगस्त 2026 को लक्षण ठीक हो गए। हमने तुरंत संदिग्ध दवा बंद कर दी, एंटीहिस्टामिन और सहायक देखभाल से उनका इलाज किया, और उन्हें अवलोकन में रखा। उनकी स्थिति में सुधार हुआ। यह एक प्राथमिक एडीआर रिपोर्ट है।",
+      "english": "The patient's name is Vikram Joshi. He is a 48-year-old male weighing 84 kg. He developed severe itching, dry skin rashes, facial swelling, dizziness and breathlessness after taking the suspected drug. The reaction began on 10 August 2026 and symptoms resolved on 13 August 2026. We immediately stopped the suspect's medication, treated him with antihistamines and supportive care, and kept him under observation. His condition has improved. This is a primary ADR report."
+    },
+    "16": {
+      "source": "रोगी का नाम मीरा शाह आयु 32 वर्ष महिला वजन 60 किलोग्राम उन्हें बुखार खांसी सामान्य खुजली त्वचा पर चकत्ते और कमजोरी हुई प्रतिक्रिया 9 अगस्त 2026 को शुरू हुई प्रतिक्रिया 11 अगस्त 2026 को बंद हुई संदिग्ध दवा बंद कर दी गई एंटीहिस्टामिन दिया गया रोगी की निगरानी की गई और लक्षणों में सुधार हुआ प्राथमिक मामला",
+      "english": "Patient Name Meera Shah Age 32 years Female Weight 60 kg She had Fever Cough Common Itchy Skin Rashes and Weakness Reaction Started on 9th August 2026 Response Stopped on 11th August 2026 Suspected drug discontinued Antihistamine administered Patient monitored and symptoms improved Primary case"
+    },
+    "17": {
+      "source": "फॉलो-अप मामला। प्रतिक्रिया 14 अगस्त 2026 को ठीक हो गई। रोगी को एंटीहिस्टामिन और सहायक उपचार दिया गया। प्रतिक्रिया 12 अगस्त 2026 को शुरू हुई थी। रोगी का नाम अमन गुप्ता है। वह 30 वर्ष के पुरुष हैं। उनका वजन 73 किलोग्राम है। संदिग्ध दवा के बाद उन्हें छींकने, बहती नाक, हल्का बुखार और सामान्य खुजली की समस्या हुई। दवा बंद करने के बाद लक्षणों में सुधार हुआ।",
+      "english": "Follow-up case. The reaction recovered on 14 August 2026. The patient was given antihistamines and supportive treatment. The response began on 12 August 2026. The patient's name is Aman Gupta. He is a 30 year old male. He weighs 73 kg. He developed sneezing, runny nose, mild fever and general itching after the suspected drug. The symptoms improved after stopping the drug."
+    },
+    "18": {
+      "source": "रोगी निशा वर्मा हैं। वह 37 वर्षीय महिला हैं और उनका वजन 59 किलोग्राम है। उन्हें प्रुरिटस (खुजली), अर्टिकेरिया, चेहरे का शोफ (सूजन), मतली और हल्का डिस्पेनिया (सांस की तकलीफ) हुआ। प्रतिकूल घटना 8 अगस्त 2026 को शुरू हुई और 10 अगस्त 2026 को लक्षण कम हो गए। संदिग्ध दवा बंद कर दी गई और उन्हें सहायक देखभाल के साथ एंटीहिस्टामिन थेरेपी मिली। स्थिति में सुधार होने तक उनकी निगरानी की गई। यह एक प्राथमिक मामला है।",
+      "english": "The patient is Nisha Verma. She is a 37-year-old woman and weighs 59 kg. He developed pruritus (itching), urticaria, facial swelling, nausea and mild dyspnea (shortness of breath). The adverse event began on 8 August 2026 and symptoms subsided on 10 August 2026. The suspected drug was discontinued and he received antihistamine therapy with supportive care. They were monitored until the situation improved. This is a prima facie case."
+    },
+    "19": {
+      "source": "रोगी का नाम राजेश कुमार है। आयु 52 वर्ष है। लिंग पुरुष। वजन 77 किलोग्राम है। वह एक ज्ञात मधुमेह रोगी हैं और उनका उच्च रक्तचाप का इतिहास है, लेकिन आज संदिग्ध दवा के बाद उन्हें तेज खुजली, उल्टी और चेहरे पर सूजन आ गई। वर्तमान प्रतिक्रिया 15 अगस्त 2026 को शुरू हुई और 17 अगस्त 2026 को ठीक हो गई। संदिग्ध दवा रोक दी गई और उनका इलाज एंटीहिस्टामिन से किया गया। अवलोकन के बाद उनमें सुधार हुआ। प्राथमिक एडीआर मामला।",
+      "english": "The patient's name is Rajesh Kumar. The age is 52 years. the male sex. The weight is 77 kg. He is a known diabetic and has a history of high blood pressure, but today after suspected medication he developed severe itching, vomiting and swelling on his face. The current response began on 15 August 2026 and recovered on 17 August 2026. The suspected drug was stopped and he was treated with antihistamines. They improved after observation. The primary ADR case."
+    },
+    "20": {
+      "source": "रोगी का नाम सिमरन कौर है। वह 28 साल की महिला हैं, जिनका वजन 56 किलोग्राम है। वह दो दिनों से बुखार, सूखी खांसी, सामान्य खुजली और त्वचा पर चकत्ते की शिकायत कर रही हैं। प्रतिक्रिया 12 अगस्त 2026 को शुरू हुई और 14 अगस्त 2026 को ठीक हो गई। उनकी संदिग्ध दवा बंद कर दी गई और उनका इलाज एंटीहिस्टामिन और सहायक देखभाल से किया गया। पुष्टि के लिए, रोगी का नाम सिमरन कौर है, आयु 28 वर्ष, महिला, वजन 56 किलोग्राम, प्रतिक्रिया 12 अगस्त 2026 को शुरू हुई और 14 अगस्त 2026 को ठीक हो गई। यह एक प्राथमिक मामला है।",
+      "english": "The patient's name is Simran Kaur. She is a 28-year-old female, weighing 56 kg. She has been complaining of fever, dry cough, general itching and skin rash for two days. The reaction began on 12 August 2026 and resolved on 14 August 2026. His suspected medication was stopped and he was treated with antihistamines and supportive care. For confirmation, the patient's name is Simran Kaur, age 28 years, female, weight 56 kg, reaction started on 12 August 2026 and recovered on 14 August 2026. This is a prima facie case."
+    }
+  },
+  "or": {
+    "1": {
+      "source": "ପ୍ରାରମ୍ଭିକ ମାମଲା। ରୋଗୀଙ୍କ ନାମ ରାହୁଲ ଶର୍ମା। ବୟସ ୩୪ ବର୍ଷ। ଲିଙ୍ଗ ପୁରୁଷ। ଓଜନ ୭୦ କିଲୋଗ୍ରାମ। ସନ୍ଦିଗ୍ଧ ଔଷଧ ଖାଇବା ପରେ ରୋଗୀଙ୍କର ଜ୍ୱର, ସାଧାରଣ କୁଣ୍ଡାଇ ହେବା ଏବଂ ଚର୍ମରେ ରାସ ଦେଖାଦେଲା। ପ୍ରତିକ୍ରିୟା ୧୦ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୨ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଭଲ ହୋଇଗଲା। ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଗଲା ଏବଂ ରୋଗୀଙ୍କୁ ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଚିକିତ୍ସା ଦିଆଗଲା। ଚିକିତ୍ସା ପରେ ଲକ୍ଷଣରେ ସୁଧାର ଆସିଲା।",
+      "english": "the initial case. The patient's name is Rahul Sharma. Age 34. the male sex. It weighs 70 kg. The patient developed a fever, generalized rash and skin rashes after taking the suspected drug. The reaction began on 10 August 2026 and became better on 12 August 2026. The suspected drug was discontinued and the patient received antihistamine treatment. After treatment, the symptoms improved."
+    },
+    "2": {
+      "source": "ସନ୍ଦିଗ୍ଧ ପ୍ରତିକ୍ରିୟା ହେଉଛି ଝାଡ଼ା, ବାନ୍ତି ଏବଂ ମୁଣ୍ଡ ବୁଲାଇବା। ପ୍ରତିକ୍ରିୟା ୧୧ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୩ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଶେଷ ହୋଇଥିଲା। ରୋଗୀଙ୍କ ନାମ ପ୍ରିୟା ବର୍ମା। ସେ ୨୭ ବର୍ଷୀୟା ମହିଳା। ତାଙ୍କ ଓଜନ ୫୮ କିଲୋଗ୍ରାମ। ଔଷଧ ବନ୍ଦ କରାଗଲା ଏବଂ ତାଙ୍କୁ ସହାୟକ ଚିକିତ୍ସା ଦିଆଗଲା। ନିରୀକ୍ଷଣ ପରେ ଲକ୍ଷଣ ଶାନ୍ତ ହେଲା। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ADR ମାମଲା।",
+      "english": "Suspected reactions are diarrhea, vomiting and dizziness. The response began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27 year old female. His weight is 58 kg. The medication was stopped and he received supportive treatment. After observation, the symptoms subsided. This is an initial ADR case."
+    },
+    "3": {
+      "source": "ଠିକ୍ ଅଛି, ଏହା ଅମିତ କୁମାର। ସେ ୪୨ ବର୍ଷର ପୁରୁଷ ଏବଂ ଓଜନ ପ୍ରାୟ ୭୬ କିଲୋଗ୍ରାମ। ଔଷଧ ଖାଇବା ପରେ ତାଙ୍କର ପ୍ରବଳ କୁଣ୍ଡାଇ ହେବା, କୁଣ୍ଡିଆ ଏବଂ ମୁହଁ ଚାରିପାଖରେ ଫୁଲିବା ଆରମ୍ଭ ହେଲା। ପ୍ରତିକ୍ରିୟା ପ୍ରକୃତରେ ୮ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇଥିଲା ଏବଂ ୧୦ ଅଗଷ୍ଟ ୨୦୨୬ ସୁଦ୍ଧା ଲକ୍ଷଣ ଭଲ ହୋଇଯାଇଥିଲା। ଆମେ ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କଲୁ, ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଚିକିତ୍ସା ଦେଲୁ ଏବଂ ନିରୀକ୍ଷଣରେ ରଖିଲୁ। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ମାମଲା।",
+      "english": "Okay, this is Amit Kumar. He is a 42-year-old male and weighs around 76 kg. After taking the medicine, he began to have severe dandruff, swelling around his elbows and face. The reaction actually began on 8 August 2026 and by 10 August 2026 the symptoms had improved. We stopped the suspect, administered antihistamine treatment and kept him under observation. This is an early case."
+    },
+    "4": {
+      "source": "ରୋଗୀ ଗତକାଲିଠାରୁ ପ୍ରବଳ ପେଟ ବିନ୍ଧା, ବାନ୍ତି, ପତଳା ଝାଡ଼ା ଏବଂ ଦୁର୍ବଳତା ଅଭିଯୋଗ କରୁଛନ୍ତି। ତାଙ୍କ ନାମ ନେହା ସିଂ। ସେ ୩୧ ବର୍ଷୀୟା ମହିଳା, ଓଜନ ୬୨ କିଲୋଗ୍ରାମ। ପ୍ରତିକୂଳ ପ୍ରତିକ୍ରିୟା ୧୫ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୬ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ବନ୍ଦ ହୋଇଥିଲା। ତାଙ୍କୁ ସହାୟକ ଯତ୍ନ ଏବଂ ଓରାଲ ଫ୍ଲୁଇଡ୍ ଦିଆଯାଇଥିଲା, ଏବଂ ତାଙ୍କ ଲକ୍ଷଣରେ ସୁଧାର ଆସିଥିଲା। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ମାମଲା।",
+      "english": "The patient has been complaining of severe abdominal pain, vomiting, loose motions and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old female, weighing 62 kg. Adverse reactions started on 15 August 2026 and stopped on 16 August 2026. He was given supportive care and oral fluids, and his symptoms improved. This is an early case."
+    },
+    "5": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ଅର୍ଜୁନ ପଟେଲ। ବୟସ ୩୮ ବର୍ଷ। ପୁରୁଷ ରୋଗୀ। ଓଜନ ୭୪ କିଲୋ। ସନ୍ଦିଗ୍ଧ ଔଷଧ ପରେ ଜ୍ୱର, କାଶ, ସାଧାରଣ ରାସ ଏବଂ କୁଣ୍ଡାଇ ହେଲା। ପ୍ରତିକ୍ରିୟା ୯ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୧ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ବନ୍ଦ ହେଲା। ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଗଲା। ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଏବଂ ସହାୟକ ଚିକିତ୍ସା ଦିଆଗଲା। ରୋଗୀଙ୍କ ସୁଧାର ହେଲା। ପ୍ରାରମ୍ଭିକ ମାମଲା।",
+      "english": "The patient's name is Arjun Patel. Age 38. the male patient. The weight is 74 kg. The suspected drug was followed by fever, cough, generalized rash and hives. The response began on 9 August 2026 and closed on 11 August 2026. The suspected drug was discontinued. Antihistamines and supportive therapy were administered. The patients have improved. the initial case."
+    },
+    "6": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ସ୍ନେହା ଗୁପ୍ତା। ସେ ୨୯ ବର୍ଷର ଏବଂ ଓଜନ ୫୫ କିଲୋଗ୍ରାମ। ତାଙ୍କର ମୁହଁ ଫୁଲିବା, ଅର୍ଟିକାରିଆ ଏବଂ ନିଶ୍ୱାସ ନେବାରେ କଷ୍ଟ ହୋଇଥିଲା। ପ୍ରତିକ୍ରିୟା ୧୨ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୩ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଶେଷ ହୋଇଥିଲା। ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଯାଇଥିଲା ଏବଂ ସେ ଜରୁରୀ ସହାୟକ ଚିକିତ୍ସା ଏବଂ ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଗ୍ରହଣ କରିଥିଲେ। ଏହା ଏକ ଫଲୋ-ଅପ୍ ମାମଲା।",
+      "english": "The patient's name is Sneha Gupta. He is 29 years old and weighs 55 kg. He had a swollen face, urticaria and difficulty breathing. The response began on 12 August 2026 and ended on 13 August 2026. The suspected medication was stopped and he received urgent supportive treatment and antihistamines. This is a follow-up case."
+    },
+    "7": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ରୋହିତ ମେହେତା। ସେ ୪୬ ବର୍ଷର ଏବଂ ଓଜନ ୮୨ କିଲୋଗ୍ରାମ। ସନ୍ଦିଗ୍ଧ ଔଷଧ ପରେ ତାଙ୍କର ପ୍ରବଳ ମୁଣ୍ଡ ବୁଲାଇବା, ବାନ୍ତି ଏବଂ ଦୁର୍ବଳତା ଦେଖାଦେଇଥିଲା। ଲକ୍ଷଣଗୁଡ଼ିକ ୭ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୯ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଭଲ ହୋଇଥିଲା। ଔଷଧ ବନ୍ଦ କରାଯାଇଥିଲା ଏବଂ ସୁଧାର ନହେବା ପର୍ଯ୍ୟନ୍ତ ତାଙ୍କୁ ନିରୀକ୍ଷଣ କରାଯାଇଥିଲା। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ADR ରିପୋର୍ଟ।",
+      "english": "The patient's name is Rohit Mehta. He is 46 years old and weighs 82 kg. He had severe dizziness, nausea and weakness after the suspected medication. Symptoms began on 7 August 2026 and improved by 9 August 2026. The medication was stopped and he was monitored until improvement. This is an initial ADR report."
+    },
+    "8": {
+      "source": "ସନ୍ଦିଗ୍ଧ ଔଷଧ ପ୍ରତ୍ୟାହାର କରାଯାଇଥିଲା ଏବଂ ରୋଗୀଙ୍କୁ ନିରୀକ୍ଷଣରେ ରଖାଯାଇଥିଲା। ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଚିକିତ୍ସା ଦିଆଯାଇଥିଲା ଏବଂ ପ୍ରତିକ୍ରିୟାରେ ସୁଧାର ଆସିଥିଲା। ରୋଗୀଙ୍କ ନାମ କବିତା ରାଓ। ସେ ୩୬ ବର୍ଷୀୟା ମହିଳା, ଓଜନ ୬୧.୫ କିଲୋଗ୍ରାମ। ତାଙ୍କର ଜ୍ୱର, ବାନ୍ତି, ସାଧାରଣ କୁଣ୍ଡାଇ ହେବା ଏବଂ ମୁହଁ ଫୁଲିବା ଥିଲା। ପ୍ରତିକ୍ରିୟା ୫ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୭ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଶେଷ ହୋଇଥିଲା। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ମାମଲା।",
+      "english": "The suspected drug was withdrawn and the patient kept under observation. Antihistamine treatment was administered and the response improved. The patient's name is Kavita Rao. She is a 36-year-old female, weighing 61.5 kg. He had fever, vomiting, general malaise and a swollen face. The response began on 5 August 2026 and ended on 7 August 2026. This is an early case."
+    },
+    "9": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ସଞ୍ଜୟ ଯାଦବ। ସେ ୫୫ ବର୍ଷର ପୁରୁଷ ଏବଂ ଓଜନ ୭୯ କିଲୋଗ୍ରାମ। ତାଙ୍କର ମୁଣ୍ଡବିନ୍ଧା, ମୁଣ୍ଡ ବୁଲାଇବା, ଦୁର୍ବଳତା ଏବଂ ଚର୍ମରେ ରାସ ହୋଇଥିଲା। ପ୍ରତିକୂଳ ପ୍ରତିକ୍ରିୟା ୬ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୮ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ସମାପ୍ତ ହୋଇଥିଲା। ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଯାଇ ଲକ୍ଷଣ ଅନୁଯାୟୀ ଚିକିତ୍ସା ପ୍ରଦାନ କରାଯାଇଥିଲା। ରୋଗୀଙ୍କୁ ନିରୀକ୍ଷଣ କରାଯାଇଥିଲା ଏବଂ ସୁଧାର ଆସିଥିଲା।",
+      "english": "The patient's name is Sanjay Yadav. He is a 55-year-old male and weighs 79 kg. He had a headache, dizziness, weakness and rashes on his skin. The adverse reaction began on 6 August 2026 and ended on 8 August 2026. The suspected drug was discontinued and symptomatic treatment was administered. The patient was monitored and improved."
+    },
+    "10": {
+      "source": "ଏହା ପୂଜା ନାୟାର, ସେ ୨୫ ବର୍ଷର ମହିଳା, ପ୍ରାୟ ୫୨ କିଲୋଗ୍ରାମ। ସନ୍ଦିଗ୍ଧ ଔଷଧ ଖାଇବା ପରେ ସେ ପ୍ରବଳ କୁଣ୍ଡାଇ ହେବା, କୁଣ୍ଡିଆ, ମୁହଁ ଫୁଲିବା ଏବଂ ସାମାନ୍ୟ ନିଶ୍ୱାସ କଷ୍ଟ ନେଇ ଆସିଥିଲେ। ପ୍ରତିକ୍ରିୟା ୧୪ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇଥିଲା ଏବଂ ୧୬ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଲକ୍ଷଣ ଭଲ ହୋଇଥିଲା। ଆମେ ଔଷଧ ବନ୍ଦ କଲୁ, ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଦେଲୁ ଏବଂ ସୁଧାର ନହେବା ପର୍ଯ୍ୟନ୍ତ ନିରୀକ୍ଷଣ କଲୁ। ଫଲୋ-ଅପ୍ ମାମଲା।",
+      "english": "This is Pooja Nair, she's a 25-year-old woman, about 52 kilograms. After taking the suspect's medication, he came down with severe hives, rashes, swelling of his face and mild breathlessness. The reaction began on 14 August 2026 and symptoms improved on 16 August 2026. We stopped the medication, took antihistamines and watched until it improved. Follow-up case."
+    },
+    "11": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ମୋହିତ ଜୈନ। ବୟସ ୪୫ ବର୍ଷ, କ୍ଷମା କରିବେ, ସଂଶୋଧନ, ବୟସ ୩୫ ବର୍ଷ। ଲିଙ୍ଗ ପୁରୁଷ ଏବଂ ଓଜନ ୬୮ କିଲୋଗ୍ରାମ। ତାଙ୍କର ବାନ୍ତି, ବାନ୍ତି ଲାଗିବା ଏବଂ ମୁଣ୍ଡ ବୁଲାଇବା ହୋଇଥିଲା। ପ୍ରତିକ୍ରିୟା ୧୦ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୧ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଶେଷ ହୋଇଥିଲା। ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଯାଇ ତାଙ୍କର ଚିକିତ୍ସା କରାଯାଇଥିଲା। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ମାମଲା।",
+      "english": "The patient's name is Mohit Jain. Age 45, sorry, corrections, age 35. The sex is male and weighs 68 kg. He suffered from nausea, vomiting and dizziness. The response began on 10 August 2026 and ended on 11 August 2026. He was treated with discontinuation of the suspected drug. This is an early case."
+    },
+    "12": {
+      "source": "ରୋଗୀଙ୍କ ପରିଚୟ ଅଞ୍ଜଳି ଦାସ। ଲିଙ୍ଗ ମହିଳା। ବୟସ ୪୦ ବର୍ଷ। ଓଜନ ୬୩ କିଲୋଗ୍ରାମ। ପ୍ରତିକୂଳ ପ୍ରତିକ୍ରିୟାରେ ଜ୍ୱର, କାଶ, ସାଧାରଣ ରାସ ଏବଂ ମୁହଁ ଫୁଲିବା ଅନ୍ତର୍ଭୁକ୍ତ। ପ୍ରତିକ୍ରିୟା ୪ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୬ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଶେଷ ହୋଇଥିଲା। ସନ୍ଦିଗ୍ଧ ଔଷଧ ପ୍ରତ୍ୟାହୃତ ହୋଇଥିଲା। ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଚିକିତ୍ସା ଦିଆଯାଇଥିଲା, ପରବର୍ତ୍ତୀ ସମୟରେ କ୍ଲିନିକାଲ୍ ସୁଧାର ହୋଇଥିଲା। ପ୍ରାରମ୍ଭିକ ADR ମାମଲା।",
+      "english": "The patient has been identified as Anjali Das. The female gender. Age 40. The weight is 63 kg. Adverse reactions include fever, cough, generalized rash and swelling of the face. The response began on 4 August 2026 and ended on 6 August 2026. The suspected drug was withdrawn. Antihistamine treatment was administered, followed by clinical improvement. Early ADR cases."
+    },
+    "13": {
+      "source": "ଠିକ୍ ଅଛି, ଏହା ଦୀପକ ମିଶ୍ର। ସେ ୩୩ ବର୍ଷର ପୁରୁଷ, ଓଜନ ୭୧ କିଲୋଗ୍ରାମ। ତାଙ୍କର ଜ୍ୱର, କୁଣ୍ଡାଇ ହେବା, କୁଣ୍ଡିଆ ଏବଂ ଓଠ ଫୁଲିବା ହେଉଛି। ଏହା ୧୩ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୫ ଅଗଷ୍ଟ ୨୦୨୬ ସୁଦ୍ଧା ଶାନ୍ତ ହୋଇଥିଲା। ଆମେ ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କଲୁ, ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଦେଲୁ ଏବଂ କିଛି ଘଣ୍ଟା ନିରୀକ୍ଷଣ କଲୁ। ସେ ଭଲ ହେଲେ। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ମାମଲା।",
+      "english": "Okay, this is Deepak Mishra. He is a 33-year-old male, weighing 71 kg. He has a fever, rashes, hives and swollen lips. It began on 13 August 2026 and subsided by 15 August 2026. We stopped the suspected drug, gave antihistamines and monitored for a few hours. He was good. This is an early case."
+    },
+    "14": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ରିୟା କାପୁର। ସେ ୨୪ ବର୍ଷର ମହିଳା। ତାଙ୍କ ଓଜନ ୫୭ କିଲୋଗ୍ରାମ। ସନ୍ଦିଗ୍ଧ ଔଷଧ ପରେ ତାଙ୍କର ଜ୍ୱର, ମୁଣ୍ଡବିନ୍ଧା, ଗଳା ବିନ୍ଧା ଏବଂ ଶୁଖିଲା କାଶ ଅଛି। ତାଙ୍କର ଛାତି ବିନ୍ଧା ନାହିଁ ଏବଂ ନିଶ୍ୱାସ ନେବାରେ କୌଣସି କଷ୍ଟ ନାହିଁ। ପ୍ରତିକ୍ରିୟା ୧୬ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୭ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଭଲ ହୋଇଥିଲା। ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଯାଇ ସହାୟକ ଚିକିତ୍ସା ଦିଆଯାଇଥିଲା। ପ୍ରାରମ୍ଭିକ ମାମଲା।",
+      "english": "The patient's name is Rhea Kapoor. She is a 24-year-old woman. His weight is 57 kg. He has fever, headache, sore throat and dry cough after suspected medication. He has no chest pains and no breathing difficulties. The response began on 16 August 2026 and improved by 17 August 2026. Suspected drugs were stopped and supportive treatment was given. the initial case."
+    },
+    "15": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ବିକ୍ରମ ଯୋଶୀ। ସେ ୪୮ ବର୍ଷୀୟ ପୁରୁଷ, ଓଜନ ୮୪ କିଲୋଗ୍ରାମ। ସନ୍ଦିଗ୍ଧ ଔଷଧ ଖାଇବା ପରେ ପ୍ରବଳ କୁଣ୍ଡାଇ, ଶୁଖିଲା ଚର୍ମ ରାସ, ମୁହଁ ଫୁଲିବା, ମୁଣ୍ଡ ବୁଲାଇବା ଏବଂ ସାମାନ୍ୟ ନିଶ୍ୱାସ କଷ୍ଟ ଦେଖାଦେଇଥିଲା। ପ୍ରତିକ୍ରିୟା ୧୦ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୩ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଭଲ ହୋଇଥିଲା। ଆମେ ତୁରନ୍ତ ଔଷଧ ବନ୍ଦ କଲୁ, ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଦେଲୁ ଏବଂ ନିରୀକ୍ଷଣରେ ରଖିଲୁ। ତାଙ୍କ ଅବସ୍ଥାରେ ସୁଧାର ଆସିଲା। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ADR ରିପୋର୍ଟ।",
+      "english": "The patient's name is Vikram Joshi. He is a 48-year-old male, weighing 84 kg. The suspected drug was followed by severe rash, dry skin rashes, facial swelling, dizziness and mild shortness of breath. The response began on 10 August 2026 and improved by 13 August 2026. We immediately stopped the medication, took antihistamines and were kept under observation. His condition has improved. This is an initial ADR report."
+    },
+    "16": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ମୀରା ଶାହା ବୟସ ୩୨ ବର୍ଷ ମହିଳା ଓଜନ ୬୦ କିଲୋଗ୍ରାମ ତାଙ୍କର ଜ୍ୱର କାଶ ସାଧାରଣ କୁଣ୍ଡାଇ ଚର୍ମ ରାସ ଏବଂ ଦୁର୍ବଳତା ହେଲା ପ୍ରତିକ୍ରିୟା ୯ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହେଲା ପ୍ରତିକ୍ରିୟା ୧୧ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ବନ୍ଦ ହେଲା ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଗଲା ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଦିଆଗଲା ରୋଗୀଙ୍କ ନିରୀକ୍ଷଣ କରାଗଲା ଏବଂ ଲକ୍ଷଣ ଭଲ ହେଲା ପ୍ରାରମ୍ଭିକ ମାମଲା",
+      "english": "Patient's name Meera Shah Age 32 years Female Weight 60 kg Her Fever Coughing Generalised Wrinkles Skin Rashes and Weakness Reactions Started on 9 August 2026 Response Stopped on 11 August 2026 Suspected drug was stopped Antihistamines were administered Patients monitored and symptoms improved Initial case"
+    },
+    "17": {
+      "source": "ଫଲୋ-ଅପ୍ ମାମଲା। ପ୍ରତିକ୍ରିୟା ୧୪ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଭଲ ହୋଇଥିଲା। ରୋଗୀଙ୍କୁ ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଏବଂ ସହାୟକ ଚିକିତ୍ସା ଦିଆଯାଇଥିଲା। ପ୍ରତିକ୍ରିୟା ୧୨ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇଥିଲା। ରୋଗୀଙ୍କ ନାମ ଅମନ ଗୁପ୍ତା। ସେ ୩୦ ବର୍ଷର ପୁରୁଷ। ତାଙ୍କ ଓଜନ ୭୩ କିଲୋଗ୍ରାମ। ସନ୍ଦିଗ୍ଧ ଔଷଧ ପରେ ତାଙ୍କର ଛିଙ୍କିବା, ନାକରୁ ପାଣି ବୋହିବା, ସାମାନ୍ୟ ଜ୍ୱର ଏବଂ କୁଣ୍ଡାଇ ହୋଇଥିଲା। ଔଷଧ ବନ୍ଦ ହେବା ପରେ ଲକ୍ଷଣ ଭଲ ହୋଇଥିଲା।",
+      "english": "Follow-up case. The response was good on 14 August 2026. The patients were given antihistamines and supportive therapy. The response began on 12 August 2026. The patient's name is Aman Gupta. He is a 30-year-old man. His weight is 73 kg. He developed sneezing, runny nose, mild fever and cough after the suspected drug. The symptoms improved after stopping the medication."
+    },
+    "18": {
+      "source": "ରୋଗୀ ନିଶା ବର୍ମା। ସେ ୩୭ ବର୍ଷୀୟା ମହିଳା, ଓଜନ ୫୯ କିଲୋଗ୍ରାମ। ତାଙ୍କର ପ୍ରୁରିଟସ୍, ଅର୍ଟିକାରିଆ, ମୁହଁ ଫୁଲିବା, ବାନ୍ତି ଏବଂ ଡିସ୍ପନିଆ ହୋଇଥିଲା। ପ୍ରତିକୂଳ ଘଟଣା ୮ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୦ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ହ୍ରାସ ପାଇଥିଲା। ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଯାଇଥିଲା ଏବଂ ସେ ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଥେରାପି ଗ୍ରହଣ କରିଥିଲେ। ଅବସ୍ଥାରେ ସୁଧାର ନହେବା ପର୍ଯ୍ୟନ୍ତ ତାଙ୍କୁ ନିରୀକ୍ଷଣ କରାଯାଇଥିଲା। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ମାମଲା।",
+      "english": "The patient becomes intoxicated. She is a 37-year-old female, weighing 59 kg. He had pruritus, urticaria, facial swelling, vomiting and dyspnea. Adverse events began on 8 August 2026 and abated on 10 August 2026. The suspected medication was stopped and he received antihistamine therapy. He was kept under observation until his condition improved. This is an early case."
+    },
+    "19": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ରାଜେଶ କୁମାର। ବୟସ ୫୨ ବର୍ଷ। ଲିଙ୍ଗ ପୁରୁଷ। ଓଜନ ୭୭ କିଲୋଗ୍ରାମ। ସେ ଜଣେ ଜଣାଶୁଣା ଡାଏବେଟିସ୍ ରୋଗୀ ଏବଂ ତାଙ୍କର ଉଚ୍ଚ ରକ୍ତଚାପର ଇତିହାସ ଅଛି, କିନ୍ତୁ ଆଜି ସନ୍ଦିଗ୍ଧ ଔଷଧ ପରେ ତାଙ୍କର ପ୍ରବଳ କୁଣ୍ଡାଇ, ବାନ୍ତି ଏବଂ ମୁହଁ ଫୁଲିବା ଦେଖାଦେଲା। ବର୍ତ୍ତମାନର ପ୍ରତିକ୍ରିୟା ୧୫ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୭ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଭଲ ହୋଇଥିଲା। ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଯାଇ ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଦିଆଗଲା। ନିରୀକ୍ଷଣ ପରେ ସେ ଭଲ ହେଲେ। ପ୍ରାରମ୍ଭିକ ADR ମାମଲା।",
+      "english": "The patient's name is Rajesh Kumar. Age 52. the male sex. The weight is 77 kg. He is a known diabetic and has a history of high blood pressure, but today he developed severe dandruff, nausea and swelling in his face after suspected medication. The current response began on 15 August 2026 and improved by 17 August 2026. The suspected drug was stopped and antihistamines were administered. He recovered after treatment. Early ADR cases."
+    },
+    "20": {
+      "source": "ରୋଗୀଙ୍କ ନାମ ସିମରନ୍ କୌର। ସେ ୨୮ ବର୍ଷର ମହିଳା, ଓଜନ ୫୬ କିଲୋଗ୍ରାମ। ସେ ଦୁଇ ଦିନ ଧରି ଜ୍ୱର, ଶୁଖିଲା କାଶ, କୁଣ୍ଡାଇ ହେବା ଏବଂ ରାସ ଅଭିଯୋଗ କରୁଛନ୍ତି। ପ୍ରତିକ୍ରିୟା ୧୨ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୪ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଭଲ ହୋଇଥିଲା। ତାଙ୍କ ସନ୍ଦିଗ୍ଧ ଔଷଧ ବନ୍ଦ କରାଯାଇ ଆଣ୍ଟିହିଷ୍ଟାମାଇନ୍ ଦିଆଯାଇଥିଲା। ନିଶ୍ଚିତକରଣ ପାଇଁ, ରୋଗୀଙ୍କ ନାମ ସିମରନ୍ କୌର, ବୟସ ୨୮ ବର୍ଷ, ମହିଳା, ଓଜନ ୫୬ କିଲୋ, ପ୍ରତିକ୍ରିୟା ୧୨ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଆରମ୍ଭ ହୋଇ ୧୪ ଅଗଷ୍ଟ ୨୦୨୬ ରେ ଭଲ ହୋଇଥିଲା। ଏହା ଏକ ପ୍ରାରମ୍ଭିକ ମାମଲା।",
+      "english": "The patient's name is Simran Kaur. She is a 28-year-old female, weighing 56 kg. He has been complaining of fever, dry cough, hoarseness and rash for two days. The response began on 12 August 2026 and improved by 14 August 2026. His suspected medication was stopped and antihistamines were administered. For confirmation, the patient's name is Simran Kaur, age 28 years, female, weight 56 kg, reaction started on 12 August 2026 and got better on 14 August 2026. This is an early case."
+    }
+  },
+  "bn": {
+    "1": {
+      "source": "প্রাথমিক মামলা। রোগীর নাম রাহুল শর্মা। বয়স ৩৪ বছর। লিঙ্গ পুরুষ। ওজন ৭০ কেজি। সন্দেহভাজন ওষুধ খাওয়ার পর রোগীর জ্বর, শরীরে চুলকানি এবং ত্বকে র‍্যাশ দেখা দেয়। প্রতিক্রিয়াটি ১০ আগস্ট ২০২৬ তারিখে শুরু হয় এবং ১২ আগস্ট ২০২৬ তারিখে সেরে যায়। সন্দেহভাজন ওষুধ বন্ধ করে দেওয়া হয় এবং রোগীকে অ্যান্টিহিস্টামিন দিয়ে চিকিৎসা করা হয়। চিকিৎসার পর লক্ষণগুলির উন্নতি হয়।",
+      "english": "the first case. The patient has been identified as Rahul Sharma. Age 34. The male gender. It weighs 70 kg. The patient develops a fever, itching and skin rash after taking the suspected drug. The reaction began on 10 August 2026 and resolved on 12 August 2026. The suspected drug is stopped and the patient is treated with antihistamines. The symptoms improve after treatment."
+    },
+    "2": {
+      "source": "সন্দেহভাজন প্রতিক্রিয়া হলো বমি বমি ভাব, বমি এবং মাথা ঘোরা। প্রতিক্রিয়াটি ১১ আগস্ট ২০২৬ এ শুরু হয়েছিল এবং ১৩ আগস্ট ২০২৬ এ শেষ হয়েছিল। রোগীর নাম প্রিয়া বর্মা। তিনি ২৭ বছর বয়সী মহিলা। তাঁর ওজন ৫৮ কেজি। ওষুধ বন্ধ করা হয়েছিল এবং তাঁকে সহায়ক চিকিৎসা দেওয়া হয়েছিল। পর্যবেক্ষণের পর লক্ষণগুলি নিয়ন্ত্রণে আসে। এটি একটি প্রাথমিক এডিয়ার মামলা।",
+      "english": "Suspected reactions are nausea, vomiting and dizziness. The response began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27 year old female. He weighs 58 kg. The medication was stopped and he received supportive treatment. After observation, the symptoms are under control. This is a prima facie case."
+    },
+    "3": {
+      "source": "ঠিক আছে, ইনি অমিত কুমার। ওঁর বয়স ৪২ বছর, পুরুষ, এবং ওজন প্রায় ৭৬ কেজি। ওষুধ খাওয়ার পর ওঁর তীব্র চুলকানি, ফুসকুড়ি এবং মুখের চারপাশে ফোলাভাব শুরু হয়। প্রতিক্রিয়াটি আসলে ৮ আগস্ট ২০২৬ এ শুরু হয়েছিল এবং ১০ আগস্ট ২০২৬ এর মধ্যে লক্ষণগুলি সেরে গিয়েছিল। আমরা সন্দেহভাজন ওষুধ বন্ধ করেছি, অ্যান্টিহিস্টামিন চিকিৎসা দিয়েছি এবং পর্যবেক্ষণে রেখেছি। এটি একটি প্রাথমিক মামলা।",
+      "english": "Okay, this is Amit Kumar. He is 42 years old, male, and weighs approximately 76 kg. After taking the medicine, he started having severe itching, rashes and swelling around his mouth. The reaction actually began on 8 August 2026 and symptoms had resolved by 10 August 2026. We stopped the suspected drug, administered antihistamine treatment and kept it under observation. This is a primary case."
+    },
+    "4": {
+      "source": "রোগী গতকাল থেকে তীব্র পেটে ব্যথা, বমি বমি ভাব, পাতলা পায়খানা এবং দুর্বলতার কথা বলছেন। তাঁর নাম নেহা সিং। তিনি ৩১ বছর বয়সী মহিলা, ওজন ৬২ কেজি। প্রতিকূল প্রতিক্রিয়াটি ১৫ আগস্ট ২০২৬ এ শুরু হয় এবং ১৬ আগস্ট ২০২৬ এ বন্ধ হয়। তাঁকে সহায়ক যত্ন এবং তরল খাবার দেওয়া হয়েছিল, এবং ওঁর লক্ষণগুলির উন্নতি হয়েছিল। এটি একটি প্রাথমিক মামলা।",
+      "english": "The patient has been complaining of severe abdominal pain, nausea, loose stools and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old female, weighing 62 kg. The adverse reaction began on 15 August 2026 and ceased on 16 August 2026. He was given supportive care and liquid food, and his symptoms improved. This is a primary case."
+    },
+    "5": {
+      "source": "রোগীর নাম অর্জুন প্যাটেল। বয়স ৩৮ বছর। পুরুষ রোগী। ওজন ৭৪ কেজি। সন্দেহভাজন ওষুধের পর জ্বর, কাশি, র‍্যাশ এবং চুলকানি দেখা দেয়। প্রতিক্রিয়া ৯ আগস্ট ২০২৬ শুরু হয় এবং ১১ আগস্ট ২০২৬ বন্ধ হয়। ওষুধ বন্ধ। অ্যান্টিহিস্টামিন ও সহায়ক চিকিৎসা দেওয়া হয়। রোগী সুস্থ হন। প্রাথমিক মামলা।",
+      "english": "The patient has been identified as Arjun Patel. Age 38. the male patient. Weight 74 kg. The suspected drug is followed by fever, cough, rash and itching. The reaction began on 9 August 2026 and ceased on 11 August 2026. Stop the medication. Antihistamines and supportive treatment are given. The patient is recovering. the first case."
+    },
+    "6": {
+      "source": "রোগীর নাম স্নেহা গুপ্তা। ওঁর বয়স ২৯ বছর এবং ওজন ৫৫ কেজি। ওঁর মুখ ফোলা, ফুসকুড়ি এবং শ্বাসকষ্ট দেখা দেয়। প্রতিক্রিয়াটি ১২ আগস্ট ২০২৬ এ শুরু হয় এবং ১৩ আগস্ট ২০২৬ এ সেরে যায়। ওষুধ বন্ধ করা হয় এবং তিনি জরুরি চিকিৎসা ও অ্যান্টিহিস্টামিন পান। এটি একটি ফলো-আপ মামলা।",
+      "english": "The patient's name is Sneha Gupta. He is 29 years old and weighs 55 kg. He developed a swollen face, rashes and shortness of breath. The reaction began on 12 August 2026 and resolved by 13 August 2026. The medication was stopped and he received emergency treatment and antihistamines. This is a follow-up case."
+    },
+    "7": {
+      "source": "রোগীর নাম রোহিত মেহতা। ওঁর বয়স ৪৬ বছর এবং ওজন ৮২ কেজি। সন্দেহভাজন ওষুধের পর ওঁর প্রচণ্ড মাথা ঘোরা, বমি এবং দুর্বলতা দেখা দেয়। লক্ষণগুলি ৭ আগস্ট ২০২৬ এ শুরু হয় এবং ৯ আগস্ট ২০২৬ এ সেরে যায়। ওষুধ বন্ধ করা হয়েছিল এবং ওঁর উন্নতি না হওয়া পর্যন্ত পর্যবেক্ষণ করা হয়েছিল। এটি একটি প্রাথমিক এডিআর রিপোর্ট।",
+      "english": "The patient's name is Rohit Mehta. He is 46 years old and weighs 82 kg. He developed severe dizziness, vomiting and weakness after the suspected medication. Symptoms begin on 7 August 2026 and resolve by 9 August 2026. The medication was stopped and he was monitored until improvement. This is a preliminary ADR report."
+    },
+    "8": {
+      "source": "সন্দেহভাজন ওষুধ প্রত্যাহার করা হয় এবং রোগীকে পর্যবেক্ষণে রাখা হয়। অ্যান্টিহিস্টামিন চিকিৎসা দেওয়া হলে প্রতিক্রিয়ার উন্নতি হয়। রোগীর নাম কবিতা রাও। তিনি ৩৬ বছর বয়সী মহিলা, ওজন ৬১.৫ কেজি। ওঁর জ্বর, বমি, চুলকানি এবং মুখে ফোলাভাব ছিল। প্রতিক্রিয়াটি ৫ আগস্ট ২০২৬ এ শুরু হয় এবং ৭ আগস্ট ২০২৬ এ শেষ হয়। এটি একটি প্রাথমিক মামলা।",
+      "english": "The suspected drug is withdrawn and the patient is kept under observation. The response improves when antihistamine treatment is given. The patient's name is Kavita Rao. She is a 36-year-old female, weighing 61.5 kg. He had fever, vomiting, itching and swelling in his face. The reaction began on 5 August 2026 and ended on 7 August 2026. This is a primary case."
+    },
+    "9": {
+      "source": "রোগীর নাম সঞ্জয় যাদব। ওঁর বয়স ৫৫ বছর, পুরুষ, ওজন ৭৯ কেজি। ওঁর মাথা ব্যথা, মাথা ঘোরা, দুর্বলতা এবং ত্বকে ফুসকুড়ি দেখা দেয়। প্রতিকূল প্রতিক্রিয়াটি ৬ আগস্ট ২০২৬ এ শুরু হয় এবং ৮ আগস্ট ২০২৬ এ সেরে যায়। ওষুধ বন্ধ করা হয় এবং লক্ষণভিত্তিক চিকিৎসা দেওয়া হয়। রোগীকে পর্যবেক্ষণ করা হয় এবং ওঁর উন্নতি হয়।",
+      "english": "The patient's name is Sanjay Yadav. He is 55 years old, male, weight 79 kg. He developed a headache, dizziness, weakness and skin rashes. The adverse reaction began on 6 August 2026 and resolved by 8 August 2026. Medications are stopped and symptomatic treatment is given. The patient is monitored and improves."
+    },
+    "10": {
+      "source": "ইনি পূজা নায়ার, ওঁর বয়স ২৫ বছর এবং মহিলা, প্রায় ৫২ কেজি। সন্দেহভাজন ওষুধ খাওয়ার পর তিনি তীব্র চুলকানি, মুখ ফোলা এবং হালকা শ্বাসকষ্ট নিয়ে আসেন। প্রতিক্রিয়াটি ১৪ আগস্ট ২০২৬ এ শুরু হয় এবং ১৬ আগস্ট ২০২৬ এ লক্ষণগুলি সেরে যায়। আমরা ওষুধ বন্ধ করি, অ্যান্টিহিস্টামিন দিই এবং ওঁর উন্নতি না হওয়া পর্যন্ত পর্যবেক্ষণ করি। ফলো-আপ মামলা।",
+      "english": "This is Pooja Nair, she's 25 years old and female, about 52 kg. He presented with severe itching, swelling of the face and mild shortness of breath after taking the suspected medication. The reaction began on 14 August 2026 and symptoms resolved on 16 August 2026. We stop the medication, give antihistamines and monitor him until he improves. Follow-up case."
+    },
+    "11": {
+      "source": "রোগীর নাম মোহিত জৈন। বয়স ৪৫ বছর, দুঃখিত, সংশোধন, বয়স ৩৫ বছর। লিঙ্গ পুরুষ এবং ওজন ৬৮ কেজি। ওঁর বমি বমি ভাব, বমি এবং মাথা ঘোরা দেখা দেয়। প্রতিক্রিয়াটি ১০ আগস্ট ২০২৬ এ শুরু হয় এবং ১১ আগস্ট ২০২৬ এ শেষ হয়। ওষুধ বন্ধ করে লক্ষণভিত্তিক চিকিৎসা দেওয়া হয়। এটি একটি প্রাথমিক মামলা।",
+      "english": "The patient's name is Mohit Jain. Age 45, sorry, corrections, age 35. The sex is male and weighs 68 kg. He developed nausea, vomiting and dizziness. The reaction began on 10 August 2026 and ended on 11 August 2026. Symptomatic treatment is given by stopping the drug. This is a primary case."
+    },
+    "12": {
+      "source": "রোগীর পরিচয় অঞ্জলি দাস। লিঙ্গ মহিলা। বয়স ৪০ বছর। ওজন ৬৩ কেজি। বর্তমান প্রতিকূল প্রতিক্রিয়ার মধ্যে জ্বর, কাশি, র‍্যাশ এবং মুখ ফোলা অন্তর্ভুক্ত। প্রতিক্রিয়াটি ৪ আগস্ট ২০২৬ এ শুরু হয় এবং ৬ আগস্ট ২০২৬ এ সেরে যায়। ওষুধ প্রত্যাহার করা হয়েছিল। অ্যান্টিহিস্টামিন চিকিৎসা এবং সহায়ক ব্যবস্থাপনা প্রদান করা হয়েছিল। প্রাথমিক এডিয়ার মামলা।",
+      "english": "The patient has been identified as Anjali Das. The female gender. Age 40. Weight 63 kg. Current adverse reactions include fever, cough, rash and swelling of the face. The reaction began on 4 August 2026 and resolved on 6 August 2026. The medication was withdrawn. Antihistamine treatment and supportive management were provided. The case of the initial edict."
+    },
+    "13": {
+      "source": "ঠিক আছে, ইনি দীপক মিশ্র। ওঁর বয়স ৩৩ বছর, পুরুষ, ওজন ৭১ কেজি। ওঁর জ্বর, চুলকানি এবং ঠোঁট ফোলার সমস্যা হচ্ছে। এটি ১৩ আগস্ট ২০২৬ এ শুরু হয় এবং ১৫ আগস্ট ২০২৬ এর মধ্যে ঠিক হয়ে যায়। আমরা ওষুধ বন্ধ করি, অ্যান্টিহিস্টামিন দিই এবং কয়েক ঘণ্টা পর্যবেক্ষণে রাখি। ওঁর উন্নতি হয়। এটি একটি প্রাথমিক মামলা।",
+      "english": "Okay, this is Deepak Mishra. He is 33 years old, male, weight 71 kg. He is suffering from fever, itching and a swollen lip. It started on 13 August 2026 and was fixed by 15 August 2026. We stop the medication, give antihistamines and monitor for a few hours. He is improving. This is a primary case."
+    },
+    "14": {
+      "source": "রোগীর নাম রিয়া কাপুর। ওঁর বয়স ২৪ বছর এবং মহিলা। ওজন ৫৭ কেজি। সন্দেহভাজন ওষুধের পর ওঁর জ্বর, মাথা ব্যথা, গলা ব্যথা এবং শুকনো কাশি আছে। ওঁর বুকে ব্যথা নেই এবং শ্বাসকষ্ট নেই। প্রতিক্রিয়াটি ১৬ আগস্ট ২০২৬ এ শুরু হয় এবং ১৭ আগস্ট ২০২৬ এ সেরে যায়। ওষুধ বন্ধ করে চিকিৎসা দেওয়া হয়। প্রাথমিক মামলা।",
+      "english": "The patient's name is Rhea Kapoor. He is 24 years old and female. Weight 57 kg. He has a fever, headache, sore throat and dry cough after the suspected medication. He has no chest pain and no shortness of breath. The reaction began on 16 August 2026 and resolved on 17 August 2026. Treatment is given by stopping the drug. the first case."
+    },
+    "15": {
+      "source": "রোগীর নাম বিক্রম জোশী। ওঁর বয়স ৪৮ বছর, পুরুষ, ওজন ৮৪ কেজি। সন্দেহভাজন ওষুধ খাওয়ার পর তীব্র চুলকানি, চর্মরোগ, মুখ ফোলা, মাথা ঘোরা এবং হালকা শ্বাসকষ্ট নিয়ে আসেন। প্রতিক্রিয়াটি ১০ আগস্ট ২০২৬ এ শুরু হয় এবং ১৩ আগস্ট ২০২৬ এ লক্ষণগুলি সেরে যায়। আমরা অবিলম্বে ওষুধ বন্ধ করি, অ্যান্টিহিস্টামিন ও সহায়ক যত্ন দিয়ে পর্যবেক্ষণে রাখি। অবস্থার উন্নতি হয়। এটি একটি প্রাথমিক এডিয়ার রিপোর্ট।",
+      "english": "The patient's name is Vikram Joshi. He is 48 years old, male, weight 84 kg. The suspect presented with severe itching, dermatitis, swelling of the face, dizziness and mild shortness of breath after taking the medication. The reaction began on 10 August 2026 and symptoms resolved by 13 August 2026. We immediately stop the medication, monitor it with antihistamines and supportive care. The situation is improving. This is a preliminary report."
+    },
+    "16": {
+      "source": "রোগীর নাম মীরা শাহ বয়স ৩২ বছর মহিলা ওজন ৬০ কেজি ওঁর জ্বর কাশি চুলকানি র‍্যাশ এবং দুর্বলতা দেখা দেয় প্রতিক্রিয়া ৯ আগস্ট ২০২৬ শুরু হয় প্রতিক্রিয়া ১১ আগস্ট ২০২৬ বন্ধ হয় ওষুধ বন্ধ অ্যান্টিহিস্টামিন দেওয়া হয় রোগী পর্যবেক্ষণে রাখা হয় এবং লক্ষণ উন্নত হয় প্রাথমিক মামলা",
+      "english": "The patient's name is Meera Shah age 32 years female weight 60 kgs Her fever cough itching rash and weakness Reactions started on 9 August 2026 Response stopped on 11 August 2026 Medication discontinued Antihistamines were given Patient kept under observation and symptoms improved Initial case"
+    },
+    "17": {
+      "source": "ফলো-আপ মামলা। প্রতিক্রিয়াটি ১৪ আগস্ট ২০২৬ এ সেরে যায়। রোগীকে অ্যান্টিহিস্টামিন ও সহায়ক চিকিৎসা দেওয়া হয়। প্রতিক্রিয়াটি ১২ আগস্ট ২০২৬ এ শুরু হয়েছিল। রোগীর নাম আমান গুপ্তা। ওঁর বয়স ৩০ বছর, পুরুষ। ওজন ৭৩ কেজি। ওষুধ খাওয়ার পর ওঁর হাঁচি, নাক দিয়ে জল পড়া, হালকা জ্বর এবং চুলকানি হয়। ওষুধ বন্ধ করার পর লক্ষণগুলির উন্নতি হয়।",
+      "english": "Follow-up case. The reaction healed on 14 August 2026. The patient is given antihistamines and supportive therapy. The response began on 12 August 2026. The patient's name is Aman Gupta. He is 30 years old, male. Weight 73 kg. He developed sneezing, runny nose, mild fever and itching after taking the medicine. The symptoms improve after stopping the medication."
+    },
+    "18": {
+      "source": "রোগী নিশা বর্মা। তিনি ৩৭ বছর বয়সী মহিলা, ওজন ৫৯ কেজি। ওঁর প্রুরিটাস, আর্টিকেরিয়া, মুখ ফোলা, বমি বমি ভাব এবং হালকা ডিসপনিয়া দেখা দেয়। প্রতিক্রিয়াটি ৮ আগস্ট ২০২৬ এ শুরু হয় এবং ১০ আগস্ট ২০২৬ এ কমে যায়। ওষুধ বন্ধ করা হয় এবং অ্যান্টিহিস্টামিন চিকিৎসা দেওয়া হয়। অবস্থার উন্নতি না হওয়া পর্যন্ত ওঁর নজরদারি করা হয়। এটি একটি প্রাথমিক মামলা।",
+      "english": "The patient is Nisha Verma. She is a 37-year-old female, weighing 59 kg. He developed pruritus, urticaria, swelling of the face, nausea and mild dyspnea. The reaction began on 8 August 2026 and subsided by 10 August 2026. Medications are stopped and antihistamine treatment is given. He is monitored until his condition improves. This is a primary case."
+    },
+    "19": {
+      "source": "রোগীর নাম রাজেশ কুমার। বয়স ৫২ বছর। লিঙ্গ পুরুষ। ওজন ৭৭ কেজি। তিনি একজন ডায়াবেটিক রোগী এবং ওঁর উচ্চ রক্তচাপের ইতিহাস আছে, তবে আজ সন্দেহভাজন ওষুধের পর ওঁর তীব্র চুলকানি, বমি এবং মুখ ফোলা দেখা দেয়। বর্তমান প্রতিক্রিয়াটি ১৫ আগস্ট ২০২৬ এ শুরু হয় এবং ১৭ আগস্ট ২০২৬ এ সেরে যায়। ওষুধ বন্ধ করে অ্যান্টিহিস্টামিন দেওয়া হয়। পর্যবেক্ষণের পর ওঁর উন্নতি হয়। প্রাথমিক এডিয়ার মামলা।",
+      "english": "The patient has been identified as Rajesh Kumar. Age 52. The male gender. Weight 77 kg. He is a diabetic and has a history of high blood pressure, but today he develops severe itching, vomiting and swollen face after suspected medication. The current response began on 15 August 2026 and recovered by 17 August 2026. Antihistamines are given after stopping the medication. He improved after observation. The case of the initial edict."
+    },
+    "20": {
+      "source": "রোগীর নাম সিমরন কৌর। ওঁর বয়স ২৮ বছর, মহিলা, ওজন ৫৬ কেজি। তিনি দুই দিন ধরে জ্বর, শুকনো কাশি, চুলকানি এবং র‍্যাশের কথা বলছেন। প্রতিক্রিয়াটি ১২ আগস্ট ২০২৬ এ শুরু হয় এবং ১৪ আগস্ট ২০২৬ এ সেরে যায়। ওঁর ওষুধ বন্ধ করে অ্যান্টিহিস্টামিন চিকিৎসা দেওয়া হয়। নিশ্চিতকরণের জন্য, রোগীর নাম সিমরন কৌর, বয়স ২৮ বছর, মহিলা, ওজন ৫৬ কেজি, প্রতিক্রিয়া ১২ আগস্ট ২০২৬ এ শুরু হয় এবং ১৪ আগস্ট ২০২৬ এ সেরে যায়। এটি একটি প্রাথমিক মামলা।",
+      "english": "The patient's name is Simran Kaur. She is 28 years old, female, weighing 56 kg. He has been complaining of fever, dry cough, itching and rash for two days. The reaction began on 12 August 2026 and resolved by 14 August 2026. He was given antihistamine treatment after stopping his medication. For confirmation, the patient's name is Simran Kaur, age 28 years, female, weight 56 kg, reaction started on 12 August 2026 and recovered on 14 August 2026. This is a primary case."
+    }
+  },
+  "as": {
+    "1": {
+      "source": "প্ৰাথমিক ঘটনা। ৰোগীৰ নাম ৰাহুল শৰ্মা। বয়স ৩৪ বছৰ। লিংগ পুৰুষ। ওজন ৭০ কিলোগ্ৰাম। সন্দেহযুক্ত ঔষধ খোৱাৰ পিছত ৰোগীৰ জ্বৰ, সমগ্ৰ শৰীৰত খজুৱতি আৰু ছালত ফোহা (ৰেশ্ব) দেখা দিলে। প্ৰতিক্ৰিয়া ১০ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১২ আগষ্ট ২০২৬ ত উপশম হ’ল। সন্দেহযুক্ত ঔষধ বন্ধ কৰা হ’ল আৰু ৰোগীক এন্টিহিষ্টামিনৰ চিকিৎসা দিয়া হ’ল। চিকিৎসাৰ পিছত লক্ষণসমূহৰ উন্নতি হ’ল।",
+      "english": "The first incident. The patient's name is Rahul Sharma. 34 years old. The male gender. The weight is 70 kg. After taking the suspected drug, patients developed a fever, itching all over their bodies and blisters (rashes) on their skin. The response began on 10 August 2026 and subsided by 12 August 2026. The suspected drug was discontinued and the patient received antihistamine treatment. The symptoms improved after treatment."
+    },
+    "2": {
+      "source": "সন্দেহযুক্ত প্ৰতিক্ৰিয়া হ’ল বমি ভাব, বমি আৰু মূৰ ঘূৰোৱা। প্ৰতিক্ৰিয়া ১১ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১৩ আগষ্ট ২০২৬ ত শেষ হ’ল। ৰোগীৰ নাম প্ৰিয়া বৰ্মা। তেওঁ ২৭ বছৰীয়া মহিলা। তেওঁৰ ওজন ৫৮ কিলোগ্ৰাম। ঔষধ বন্ধ কৰা হ’ল আৰু তেওঁক সহায়ক চিকিৎসা দিয়া হ’ল। নিৰীক্ষণৰ পিছত লক্ষণবোৰ শান্ত হ’ল। এইটো এটা প্ৰাথমিক ADR ঘটনা।",
+      "english": "Suspected reactions are nausea, vomiting and dizziness. The response began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27 year old female. His weight is 58 kg. The medication was stopped and he was given supportive treatment. After observation, the symptoms subsided. This is a primary ADR event."
+    },
+    "3": {
+      "source": "ঠিক আছে, এওঁ অমিত কুমাৰ। এওঁ ৪২ বছৰীয়া পুৰুষ আৰু ওজন প্ৰায় ৭৬ কিলোগ্ৰাম। ঔষধ খোৱাৰ পিছত তেওঁৰ মুখৰ চাৰিওফালে প্ৰচণ্ড খজুৱতি, ফোহা আৰু ফুলি উঠা আৰম্ভ হ’ল। প্ৰতিক্ৰিয়াটো প্ৰকৃততে ৮ আগষ্ট ২০২৬ ত আৰম্ভ হৈছিল আৰু ১০ আগষ্ট ২০২৬ ৰ ভিতৰত লক্ষণবোৰ উপশম হৈছিল। আমি ঔষধ বন্ধ কৰিলোঁ, এন্টিহিষ্টামিন চিকিৎসা দিলোঁ আৰু নিৰীক্ষণত ৰাখিলোঁ। এইটো এটা প্ৰাথমিক ঘটনা।",
+      "english": "Okay, this is Amit Kumar. This is a 42-year-old male and weighs approximately 76 kg. After taking the medicine, he began to have severe itching, blistering and swelling around his mouth. The reaction actually began on 8 August 2026 and symptoms were relieved by 10 August 2026. We stopped the medication, gave antihistamine treatment and kept it under observation. This is a primary event."
+    },
+    "4": {
+      "source": "ৰোগীয়ে কালিৰ পৰা পেটৰ বিষ, বমি ভাব, পাতল শৌচ আৰু দুৰ্বলতাৰ অভিযোগ কৰিছে। তেওঁৰ নাম নেহা সিং। তেওঁ ৩১ বছৰীয়া মহিলা, ওজন ৬২ কিলোগ্ৰাম। প্ৰতিকূল প্ৰতিক্ৰিয়া ১৫ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১৬ আগষ্ট ২০২৬ ত বন্ধ হ’ল। তেওঁক সহায়ক যত্ন আৰু জুলীয়া খাদ্য দিয়া হ’ল, আৰু লক্ষণসমূহৰ উন্নতি হ’ল। এইটো এটা প্ৰাথমিক ঘটনা।",
+      "english": "The patient has complained of abdominal pain, nausea, loose stools and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old female, weighing 62 kg. Adverse reactions started on 15 August 2026 and stopped on 16 August 2026. She was given supportive care and lactation, and symptoms improved. This is a primary event."
+    },
+    "5": {
+      "source": "ৰোগীৰ নাম অৰ্জুন পেটেল। বয়স ৩৮ বছৰ। পুৰুষ ৰোগী। ওজন ৭৪ কেজি। সন্দেহযুক্ত ঔষধৰ পিছত জ্বৰ, কাহ, ৰেশ্ব আৰু খজুৱতি হ’ল। প্ৰতিক্ৰিয়া ৯ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১১ আগষ্ট ২০২৬ ত বন্ধ হ’ল। ঔষধ বন্ধ। এন্টিহিষ্টামিন আৰু চিকিৎসা দিয়া হ’ল। ৰোগীৰ উন্নতি হ’ল। প্ৰাথমিক ঘটনা।",
+      "english": "The patient's name is Arjun Patel. Aged 38 years. the male patient. The weight is 74 kg. The suspected drug was followed by fever, cough, rash and itching. The response began on 9 August 2026 and stopped on 11 August 2026. Stop the medication. Antihistamines and treatment were given. The patient has improved. The first incident."
+    },
+    "6": {
+      "source": "ৰোগীৰ নাম স্নেহা গুপ্তা। তেওঁৰ বয়স ২৯ বছৰ আৰু ওজন ৫৫ কিলোগ্ৰাম। তেওঁৰ মুখ ফুলি উঠা, আৰ্টিকাৰিয়া আৰু উশাহ লোৱাত কষ্ট হৈছিল। প্ৰতিক্ৰিয়া ১২ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১৩ আগষ্ট ২০২৬ ত উপশম হ’ল। ঔষধ বন্ধ কৰা হ’ল আৰু জৰুৰী চিকিৎসা দিয়া হ’ল। এইটো এটা ফলো-আপ ঘটনা।",
+      "english": "The patient's name is Sneha Gupta. He is 29 years old and weighs 55 kg. He had a swollen face, urticaria and difficulty breathing. The response began on 12 August 2026 and subsided by 13 August 2026. The medication was stopped and emergency treatment was administered. This is a follow-up event."
+    },
+    "7": {
+      "source": "ৰোগীৰ নাম ৰোহিত মেহতা। এওঁ ৪৬ বছৰীয়া পুৰুষ, ওজন ৮২ কিলোগ্ৰাম। ঔষধ খোৱাৰ পিছত প্ৰচণ্ড মূৰ ঘূৰোৱা, বমি আৰু দুৰ্বলতা হ’ল। লক্ষণসমূহ ৭ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ৯ আগষ্ট ২০২৬ ত উপশম হ’ল। ঔষধ বন্ধ কৰা হ’ল আৰু উন্নতি নোহোৱালৈকে নিৰীক্ষণ কৰা হ’ল। এইটো প্ৰাথমিক ADR ৰিপোৰ্ট।",
+      "english": "The patient's name is Rohit Mehta. This is a 46-year-old male, weighing 82 kg. Severe dizziness, vomiting and weakness occurred after taking the medication. Symptoms began on 7 August 2026 and subsided by 9 August 2026. The medication was stopped and monitored until improvement. This is the primary ADR report."
+    },
+    "8": {
+      "source": "সন্দেহযুক্ত ঔষধ বন্ধ কৰা হ’ল আৰু ৰোগীক নিৰীক্ষণত ৰখা হ’ল। এন্টিহিষ্টামিন চিকিৎসা দিয়া হ’ল আৰু প্ৰতিক্ৰিয়াৰ উন্নতি হ’ল। ৰোগীৰ নাম কবিতা ৰাও। তেওঁ ৩৬ বছৰীয়া মহিলা, ওজন ৬১.৫ কিলোগ্ৰাম। তেওঁৰ জ্বৰ, বমি, খজুৱতি আৰু মুখ ফুলি উঠা আছিল। প্ৰতিক্ৰিয়া ৫ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ৭ আগষ্ট ২০২৬ ত শেষ হ’ল। এইটো প্ৰাথমিক ঘটনা।",
+      "english": "The suspected drug was stopped and the patient kept under observation. Antihistamine treatment was given and the reaction improved. The patient's name is Kavita Rao. She is a 36-year-old female, weighing 61.5 kilograms. He had fever, vomiting, itching and swollen face. The response began on 5 August 2026 and ended on 7 August 2026. This is the first incident."
+    },
+    "9": {
+      "source": "ৰোগীৰ নাম সঞ্জয় যাদৱ। এওঁ ৫৫ বছৰীয়া পুৰুষ, ওজন ৭৯ কিলোগ্ৰাম। তেওঁৰ মূৰৰ বিষ, মূৰ ঘূৰোৱা, দুৰ্বলতা আৰু ছালৰ ৰেশ্ব হ’ল। প্ৰতিক্ৰিয়া ৬ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ৮ আগষ্ট ২০২৬ ত উপশম হ’ল। ঔষধ বন্ধ কৰা হ’ল আৰু চিকিৎসা দিয়া হ’ল। ৰোগীৰ উন্নতি হ’ল।",
+      "english": "The patient's name is Sanjay Yadav. This is a 55-year-old male, weighing 79 kg. He developed a headache, dizziness, weakness and skin rash. The response began on 6 August 2026 and subsided by 8 August 2026. The medication was stopped and treatment was given. The patient has improved."
+    },
+    "10": {
+      "source": "এওঁ পূজা নায়াৰ, ২৫ বছৰীয়া মহিলা, প্ৰায় ৫২ কিলোগ্ৰাম। ঔষধ খোৱাৰ পিছত প্ৰচণ্ড খজুৱতি, মুখ ফুলি উঠা আৰু উশাহ লোৱাত কষ্ট লৈ আহিছিল। প্ৰতিক্ৰিয়া ১৪ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১৬ আগষ্ট ২০২৬ ত উপশম হ’ল। আমি ঔষধ বন্ধ কৰিলোঁ, চিকিৎসা দিলোঁ আৰু নিৰীক্ষণ কৰিলোঁ। ফলো-আপ ঘটনা।",
+      "english": "This is Pooja Nair, a 25-year-old woman, about 52 kilograms. After taking the medicine, he came down with severe itching, swelling of face and difficulty in breathing. The response began on 14 August 2026 and subsided on 16 August 2026. We stopped the medication, gave treatment and monitored. Follow-up event."
+    },
+    "11": {
+      "source": "ৰোগীৰ নাম মোহিত জৈন। বয়স ৪৫ বছৰ, ক্ষমা কৰিব, সংশোধন, বয়স ৩৫ বছৰ। লিংগ পুৰুষ আৰু ওজন ৬৮ কিলোগ্ৰাম। তেওঁৰ বমি ভাব, বমি আৰু মূৰ ঘূৰোৱা হ’ল। প্ৰতিক্ৰিয়া ১০ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১১ আগষ্ট ২০২৬ ত শেষ হ’ল। ঔষধ বন্ধ কৰা হ’ল আৰু চিকিৎসা দিয়া হ’ল। এইটো এটা প্ৰাথমিক ঘটনা।",
+      "english": "The patient's name is Mohit Jain. Age 45, sorry, corrections, age 35. The sex is male and weighs 68 kg. He had nausea, vomiting and dizziness. The response began on 10 August 2026 and ended on 11 August 2026. The medication was stopped and treatment was given. This is a primary event."
+    },
+    "12": {
+      "source": "ৰোগী অঞ্জনী দাস। লিংগ মহিলা। বয়স ৪০ বছৰ। ওজন ৬৩ কিলোগ্ৰাম। প্ৰতিকূল প্ৰতিক্ৰিয়াত জ্বৰ, কাহ, ৰেশ্ব আৰু মুখ ফুলি উঠা অন্তৰ্ভুক্ত। প্ৰতিক্ৰিয়া ৪ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ৬ আগষ্ট ২০২৬ ত উপশম হ’ল। ঔষধ বন্ধ কৰা হ’ল। চিকিৎসা দিয়া হ’ল আৰু উন্নতি হ’ল। প্ৰাথমিক ADR ঘটনা।",
+      "english": "The patient is Anjani Das. The female sex. Age 40. The weight is 63 kg. Adverse reactions include fever, cough, rash and swelling of the face. The response began on 4 August 2026 and subsided on 6 August 2026. The medication has been discontinued. Treatment was given and improvements were made. Primary ADR event."
+    },
+    "13": {
+      "source": "ঠিক আছে, এওঁ দীপক মিশ্ৰ। ৩৩ বছৰীয়া পুৰুষ, ওজন ৭১ কিলোগ্ৰাম। তেওঁৰ জ্বৰ, খজুৱতি আৰু ওঁঠ ফুলি উঠা হৈছে। এইটো ১৩ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১৫ আগষ্ট ২০২৬ ৰ ভিতৰত উপশম হ’ল। আমি ঔষধ বন্ধ কৰিলোঁ, এন্টিহিষ্টামিন দিলোঁ আৰু চালেঁ। তেওঁৰ উন্নতি হ’ল। প্ৰাথমিক ঘটনা।",
+      "english": "Okay, this is Deepak Mishra. Male of 33 years, weight 71 kg. He has fever, itching and swollen lips. It began on 13 August 2026 and subsided by 15 August 2026. We stopped the medicine, gave antihistamines and watched. He has improved. The first incident."
+    },
+    "14": {
+      "source": "ৰোগীৰ নাম ৰিয়া কাপুৰ। তেওঁ ২৪ বছৰীয়া মহিলা। ওজন ৫৭ কিলোগ্ৰাম। ঔষধৰ পিছত জ্বৰ, মূৰৰ বিষ, ডিঙিৰ বিষ আৰু শুকান কাহ আছে। বুকুর বিষ বা উশাহৰ কষ্ট নাই। প্ৰতিক্ৰিয়া ১৬ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১৭ আগষ্ট ২০২৬ ত উপশম হ’ল। ঔষধ বন্ধ কৰা হ’ল। প্ৰাথমিক ঘটনা।",
+      "english": "The patient's name is Rhea Kapoor. She is a 24-year-old woman. The weight is 57 kg. There is fever, headache, sore throat and dry cough after the medication. There is no chest pain or shortness of breath. The response began on 16 August 2026 and subsided on 17 August 2026. The medication has been discontinued. The first incident."
+    },
+    "15": {
+      "source": "ৰোগীৰ নাম বিক্ৰম যোশী। এওঁ ৪৮ বছৰীয়া পুৰুষ, ওজন ৮৪ কিলোগ্ৰাম। ঔষধ খোৱাৰ পিছত প্ৰচণ্ড খজুৱতি, ৰেশ্ব, মুখ ফুলি উঠা আৰু উশাহৰ কষ্ট লৈ আহিছিল। প্ৰতিক্ৰিয়া ১০ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১৩ আগষ্ট ২০২৬ ত উপশম হ’ল। আমি লগে লগে ঔষধ বন্ধ কৰিলোঁ, চিকিৎসা দিলোঁ আৰু নিৰীক্ষণত ৰাখিলোঁ। অৱস্থাৰ উন্নতি হ’ল। প্ৰাথমিক ADR ৰিপোৰ্ট।",
+      "english": "The patient's name is Vikram Joshi. This is a 48-year-old male, weighing 84 kg. The medication was followed by severe itching, rash, swelling of the face and shortness of breath. The response began on 10 August 2026 and subsided by 13 August 2026. We immediately stopped the medication, gave treatment and kept him under observation. The situation has improved. Preliminary ADR report."
+    },
+    "16": {
+      "source": "ৰোগীৰ নাম মীৰা শাহ বয়স ৩২ বছৰ মহিলা ওজন ৬০ কিলোগ্ৰাম জ্বৰ কাহ খজুৱতি ৰেশ্ব আৰু দুৰ্বলতা হ’ল প্ৰতিক্ৰিয়া ৯ আগষ্ট ২০২৬ আৰম্ভ হ’ল প্ৰতিক্ৰিয়া ১১ আগষ্ট ২০২৬ বন্ধ হ’ল ঔষধ বন্ধ চিকিৎসা দিয়া হ’ল নিৰীক্ষণ কৰা হ’ল আৰু লক্ষণ উপশম হ’ল প্ৰাথমিক ঘটনা",
+      "english": "Patient Name Meera Shah Age 32 years Female Weight 60 kg Fever Cough Itching Rashes and Weaknesses Response Started on 9 August 2026 Response Stopped 11 August 2026 Medication stopped Treatment Administered Observed and Symptoms relieved Primary Case"
+    },
+    "17": {
+      "source": "ফলো-আপ ঘটনা। প্ৰতিক্ৰিয়া ১৪ আগষ্ট ২০২৬ ত উপশম হ’ল। ৰোগীক চিকিৎসা দিয়া হ’ল। প্ৰতিক্ৰিয়া ১২ আগষ্ট ২০২৬ ত আৰম্ভ হৈছিল। ৰোগীৰ নাম আমন গুপ্তা। ৩০ বছৰীয়া পুৰুষ। ওজন ৭৩ কিলোগ্ৰাম। ঔষধৰ পিছত হাঁচি, নাকৰ পানী পৰা, জ্বৰ আৰু খজুৱতি হ’ল। ঔষধ বন্ধ কৰাৰ পিছত উন্নতি হ’ল।",
+      "english": "Follow-up event. The reaction subsided on 14 August 2026. The patient was treated. The response began on 12 August 2026. The patient's name is Aman Gupta. 30 year old man. The weight is 73 kg. Sneezing, runny nose, fever and itching occurred after the medication. There was improvement after stopping the medication."
+    },
+    "18": {
+      "source": "ৰোগী নিশা বৰ্মা। ৩৭ বছৰীয়া মহিলা, ওজন ৫৯ কিলোগ্ৰাম। তেওঁৰ প্ৰুৰিটাছ, আৰ্টিকাৰিয়া, মুখ ফুলি উঠা, বমি ভাব আৰু ডিছপ্নিয়া হ’ল। প্ৰতিক্ৰিয়া ৮ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১০ আগষ্ট ২০২৬ ত কমি গ’ল। ঔষধ বন্ধ কৰা হ’ল আৰু চিকিৎসা দিয়া হ’ল। অৱস্থাৰ উন্নতি নোহোৱালৈকে নিৰীক্ষণ কৰা হ’ল। প্ৰাথমিক ঘটনা।",
+      "english": "The patient is nocturnal. Female 37 years old, weight 59 kg. He developed pruritus, urticaria, facial swelling, nausea and dyspnea. The reaction began on 8 August 2026 and subsided by 10 August 2026. The medication was stopped and treatment was given. The situation was monitored until it improved. The first incident."
+    },
+    "19": {
+      "source": "ৰোগীৰ নাম ৰাজেশ কুমাৰ। বয়স ৫২ বছৰ। লিংগ পুৰুষ। ওজন ৭৭ কিলোগ্ৰাম। তেওঁ মধুমেহ আৰু উচ্চ ৰক্তচাপৰ ৰোগী, কিন্তু আজি ঔষধ খোৱাৰ পিছত প্ৰচণ্ড খজুৱতি, বমি আৰু মুখ ফুলি উঠা হ’ল। বৰ্তমানৰ প্ৰতিক্ৰিয়া ১৫ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১৭ আগষ্ট ২০২৬ ত উপশম হ’ল। ঔষধ বন্ধ কৰা হ’ল। নিৰীক্ষণৰ পিছত উন্নতি হ’ল। প্ৰাথমিক ADR ঘটনা।",
+      "english": "The patient's name is Rajesh Kumar. He is 52 years old. The male gender. The weight is 77 kg. He is diabetic and hypertensive, but developed severe itching, vomiting and swelling of the mouth after taking the medicine today. The current response began on 15 August 2026 and subsided on 17 August 2026. The medication has been discontinued. There was improvement after the inspection. Primary ADR event."
+    },
+    "20": {
+      "source": "ৰোগীৰ নাম চিমৰন কৌৰ। ২৮ বছৰীয়া মহিলা, ওজন ৫৬ কিলোগ্ৰাম। তেওঁ দুদিন ধৰি জ্বৰ, কাহ, খজুৱতি আৰু ৰেশ্বৰ অভিযোগ কৰিছে। প্ৰতিক্ৰিয়া ১২ আগষ্ট ২০২৬ ত আৰম্ভ হৈ ১৪ আগষ্ট ২০২৬ ত উপশম হ’ল। ঔষধ বন্ধ কৰি চিকিৎসা দিয়া হ’ল। নিশ্চিতকৰণৰ বাবে, ৰোগীৰ নাম চিমৰন কৌৰ, বয়স ২৮ বছৰ, মহিলা, ওজন ৫৬ কেজি, প্ৰতিক্ৰিয়া ১২ আগষ্ট ২০২৬ আৰম্ভ হৈ ১৪ আগষ্ট ২০২৬ ত উপশম হ’ল। প্ৰাথমিক ঘটনা।",
+      "english": "The patient's name is Simran Kaur. Female 28 years old, weight 56 kg. He has complained of fever, cough, itching and rashes for two days. The response began on 12 August 2026 and subsided by 14 August 2026. Medication was stopped and treatment was given. For confirmation, the patient's name is Simran Kaur, age 28 years, female, weight 56 kg, reaction started on 12 August 2026 and relieved on 14 August 2026. The first incident."
+    }
+  },
+  "gu": {
+    "1": {
+      "source": "પ્રાથમિક કેસ. દર્દીનું નામ રાહુલ શર્મા છે. ઉંમર 34 વર્ષ. લિંગ પુરુષ. વજન 70 કિલોગ્રામ. શંકાસ્પદ દવા લીધા પછી દર્દીને તાવ, આખા શરીરે ખંજવાળ અને ત્વચા પર રૅશ થયા. પ્રતિક્રિયા 10 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 12 ઓગસ્ટ 2026ના રોજ મટી ગઈ. શંકાસ્પદ દવા બંધ કરવામાં આવી અને દર્દીને એન્ટિહાઇસ્ટેમાઇન આપીને સારવાર કરવામાં આવી. સારવાર પછી લક્ષણોમાં સુધારો થયો.",
+      "english": "Primary case. Patient name is Rahul Sharma. Age 34 years. Gender Male. Weight 70 kg. After taking the suspected drug, the patient developed fever, itching all over his body and skin rash. The reaction began on 10 August 2026 and resolved by 12 August 2026. The suspected drug was discontinued and the patient was treated with antihistamines. The symptoms improved after treatment."
+    },
+    "2": {
+      "source": "શંકાસ્પદ પ્રતિક્રિયા ઉબકા, ઉલટી અને ચક્કર આવવા છે. પ્રતિક્રિયા 11 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 13 ઓગસ્ટ 2026ના રોજ પૂરી થઈ. દર્દીનું નામ પ્રિયા વર્મા છે. તે 27 વર્ષની મહિલા છે. તેનું વજન 58 કિલોગ્રામ છે. દવા બંધ કરવામાં આવી અને તેને સહાયક સારવાર આપવામાં આવી. નિરીક્ષણ પછી લક્ષણો શાંત થયા. આ એક પ્રાથમિક ADR કેસ છે.",
+      "english": "The suspected reaction is nausea, vomiting and dizziness. The reaction began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27-year-old woman. It weighs 58 kg. The medication was stopped and he received supportive treatment. The symptoms subsided after observation. This is a primary ADR case."
+    },
+    "3": {
+      "source": "બરાબર, આ અમિત કુમાર છે. તે 42 વર્ષના પુરુષ છે અને તેમનું વજન આશરે 76 કિલોગ્રામ છે. દવા લીધા પછી તેમને મોં પર તીવ્ર ખંજવાળ, ફોલ્લીઓ અને સોજો આવવા લાગ્યો. પ્રતિક્રિયા ખરેખર 8 ઓગસ્ટ 2026ના રોજ શરૂ થઈ હતી અને 10 ઓગસ્ટ 2026 સુધીમાં લક્ષણો મટી ગયા હતા. અમે શંકાસ્પદ દવા બંધ કરી, એન્ટિહાઇસ્ટેમાઇન સારવાર આપી અને નિરીક્ષણમાં રાખ્યા. આ એક પ્રાથમિક કેસ છે.",
+      "english": "Right, this is Amit Kumar. He is a 42-year-old male and weighs approximately 76 kg. After taking the medicine, he began to experience severe itching, rashes and swelling in his mouth. The reaction actually began on 8 August 2026 and the symptoms were cured by 10 August 2026. We stopped the suspected drug, administered antihistamine treatment and kept under observation. This is a prima facie case."
+    },
+    "4": {
+      "source": "દર્દી ગઈકાલથી પેટમાં તીવ્ર દુખાવો, ઉબકા, ઝાડા અને નબળાઈની ફરિયાદ કરે છે. તેમનું નામ નેહા સિંહ છે. તે 31 વર્ષની મહિલા છે, વજન 62 કિલોગ્રામ. પ્રતિકૂળ પ્રતિક્રિયા 15 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 16 ઓગસ્ટ 2026ના રોજ બંધ થઈ. તેમને સહાયક સંભાળ અને પ્રવાહી આપવામાં આવ્યા, અને તેમના લક્ષણોમાં સુધારો થયો. આ એક પ્રાથમિક કેસ છે.",
+      "english": "The patient complains of severe abdominal pain, nausea, diarrhea and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old woman, weighing 62 kg. The adverse reaction began on 15 August 2026 and stopped on 16 August 2026. She was given supportive care and fluids, and her symptoms improved. This is a prima facie case."
+    },
+    "5": {
+      "source": "દર્દીનું નામ અર્જુન પટેલ. ઉંમર 38 વર્ષ. પુરુષ દર્દી. વજન 74 કિલો. શંકાસ્પદ દવા પછી તાવ, ઉધરસ, રૅશ અને ખંજવાળ આવી. પ્રતિક્રિયા 9 ઓગસ્ટ 2026 શરૂ થઈ અને 11 ઓગસ્ટ 2026 બંધ થઈ. દવા બંધ. એન્ટિહાઇસ્ટેમાઇન અને સારવાર આપી. દર્દી સુધર્યો. પ્રાથમિક કેસ.",
+      "english": "Patient's name is Arjun Patel. Age 38 years. Male patient. Weight 74 kg. The suspected drug was followed by fever, cough, rash and itching. The reaction began on 9 August 2026 and stopped on 11 August 2026. The drug was discontinued. Antihistamines and treatment were administered. The patient has improved. the primary case."
+    },
+    "6": {
+      "source": "દર્દીનું નામ સ્નેહા ગુપ્તા છે. તે 29 વર્ષની છે અને તેનું વજન 55 કિલોગ્રામ છે. તેને મોં પર સોજો, પિત્ત (અર્ટિકેરિયા) અને શ્વાસ લેવામાં તકલીફ થઈ. પ્રતિક્રિયા 12 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 13 ઓગસ્ટ 2026ના રોજ મટી ગઈ. શંકાસ્પદ દવા બંધ કરવામાં આવી અને તેને તાત્કાલિક સારવાર અને એન્ટિહાઇસ્ટેમાઇન મળ્યા. આ એક ફોલો-અપ કેસ છે.",
+      "english": "The patient's name is Sneha Gupta. She is 29 years old and weighs 55 kg. He developed swelling of the mouth, bile (urticaria) and difficulty breathing. The reaction began on 12 August 2026 and was cured on 13 August 2026. The suspected drug was discontinued and he received immediate treatment and antihistamines. This is a follow-up case."
+    },
+    "7": {
+      "source": "દર્દીનું નામ રોહિત મહેતા છે. તે 46 વર્ષના છે અને તેમનું વજન 82 કિલોગ્રામ છે. શંકાસ્પદ દવા પછી તેમને તીવ્ર ચક્કર, ઉલટી અને નબળાઈ થઈ. લક્ષણો 7 ઓગસ્ટ 2026ના રોજ શરૂ થયા અને 9 ઓગસ્ટ 2026ના રોજ મટી ગયા. દવા બંધ કરવામાં આવી અને સુધારો ન થાય ત્યાં સુધી તેમનું નિરીક્ષણ કરવામાં આવ્યું. આ પ્રાથમિક ADR રિપોર્ટ છે.",
+      "english": "The patient's name is Rohit Mehta. He is 46 years old and weighs 82 kg. He developed severe dizziness, vomiting and weakness after the suspected drug. Symptoms began on 7 August 2026 and resolved by 9 August 2026. The medication was stopped and he was monitored until improvement. This is the primary ADR report."
+    },
+    "8": {
+      "source": "શંકાસ્પદ દવા બંધ કરવામાં આવી અને દર્દીને નિરીક્ષણમાં રાખવામાં આવ્યા. એન્ટિહાઇસ્ટેમાઇન સારવાર આપવામાં આવી અને પ્રતિક્રિયામાં સુધારો થયો. દર્દીનું નામ કવિતા રાવ છે. તે 36 વર્ષની મહિલા છે, વજન 61.5 કિલોગ્રામ. તેને તાવ, ઉલટી, ખંજવાળ અને મોં પર સોજો હતો. પ્રતિક્રિયા 5 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 7 ઓગસ્ટ 2026ના રોજ પૂરી થઈ. આ પ્રાથમિક કેસ છે.",
+      "english": "The suspected drug was stopped and the patient kept under observation. Antihistamine treatment was administered and the reaction improved. The patient's name is Kavita Rao. She is a 36-year-old woman, weighing 61.5 kg. She had fever, vomiting, itching and swelling on her mouth. The reaction began on 5 August 2026 and ended on 7 August 2026. This is the primary case."
+    },
+    "9": {
+      "source": "દર્દીનું નામ સંજય યાદવ છે. તે 55 વર્ષના પુરુષ છે, વજન 79 કિલોગ્રામ. તેમને માથાનો દુખાવો, ચક્કર, નબળાઈ અને ત્વચા પર ફોલ્લીઓ થઈ. પ્રતિકૂળ પ્રતિક્રિયા 6 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 8 ઓગસ્ટ 2026ના રોજ પૂરી થઈ. શંકાસ્પદ દવા બંધ કરવામાં આવી અને લક્ષણો અનુસાર સારવાર આપવામાં આવી. દર્દીનું નિરીક્ષણ કરવામાં આવ્યું અને સુધારો થયો.",
+      "english": "The patient's name is Sanjay Yadav. He is a 55-year-old male, weighing 79 kg. He developed headache, dizziness, weakness and skin rash. The adverse reaction started on 6 August 2026 and ended on 8 August 2026. The suspected drug was discontinued and treatment was given according to the symptoms. The patient was monitored and improved."
+    },
+    "10": {
+      "source": "આ પૂજા નાયર છે, તે 25 વર્ષની મહિલા છે, આશરે 52 કિલોગ્રામ. શંકાસ્પદ દવા લીધા પછી તીવ્ર ખંજવાળ, ફોલ્લીઓ, સોજો અને શ્વાસ લેવામાં તકલીફ સાથે આવ્યા હતા. પ્રતિક્રિયા 14 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 16 ઓગસ્ટ 2026ના રોજ લક્ષણો મટી ગયા. અમે દવા બંધ કરી, એન્ટિહાઇસ્ટેમાઇન આપ્યા અને સુધારો થાય ત્યાં સુધી નિરીક્ષણ કર્યું. ફોલો-અપ કેસ.",
+      "english": "This is Pooja Nair, a 25-year-old woman, about 52 kilograms. The suspect came down with severe itching, rashes, swelling and difficulty breathing after taking the drug. The reaction began on 14 August 2026 and symptoms resolved by 16 August 2026. We stopped the medication, gave antihistamines and monitored until improvement. Follow-up case."
+    },
+    "11": {
+      "source": "દર્દીનું નામ મોહિત જૈન છે. ઉંમર 45 વર્ષ, માફ કરશો, સુધારો, ઉંમર 35 વર્ષ. લિંગ પુરુષ અને વજન 68 કિલોગ્રામ. તેમને ઉબકા, ઉલટી અને ચક્કર આવ્યા. પ્રતિક્રિયા 10 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 11 ઓગસ્ટ 2026ના રોજ પૂરી થઈ. દવા બંધ કરવામાં આવી અને સારવાર આપવામાં આવી. આ એક પ્રાથમિક કેસ છે.",
+      "english": "The patient's name is Mohit Jain. Age 45, sorry, corrections, age 35. Gender male and weight 68 kg. He had nausea, vomiting, and dizziness. The reaction began on 10 August 2026 and ended on 11 August 2026. Medication was discontinued and treatment administered. This is a prima facie case."
+    },
+    "12": {
+      "source": "દર્દી અંજલિ દાસ તરીકે ઓળખાયા. લિંગ મહિલા. ઉંમર 40 વર્ષ. વજન 63 કિલોગ્રામ. રજૂ થયેલ પ્રતિકૂળ પ્રતિક્રિયામાં તાવ, ઉધરસ, રૅશ અને સોજો શામેલ છે. પ્રતિક્રિયા 4 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 6 ઓગસ્ટ 2026ના રોજ મટી ગઈ. શંકાસ્પદ દવા બંધ કરવામાં આવી. સારવાર આપવામાં આવી અને તબીબી સુધારો થયો. પ્રાથમિક ADR કેસ.",
+      "english": "The patient was identified as Anjali Das. female gender. Age 40 years. Weight 63 kg. Adverse reactions presented include fever, cough, rash and swelling. The reaction began on 4 August 2026 and resolved on 6 August 2026. The suspected drug was discontinued. Treatment was administered and clinical improvement occurred. The primary ADR case."
+    },
+    "13": {
+      "source": "બરાબર, આ દીપક મિશ્રા છે. તે 33 વર્ષના પુરુષ છે, વજન 71 કિલોગ્રામ. તેમને તાવ, ખંજવાળ, ફોલ્લીઓ અને હોઠ પર સોજો આવી રહ્યો છે. આ 13 ઓગસ્ટ 2026ના રોજ શરૂ થયું અને 15 ઓગસ્ટ 2026 સુધીમાં શાંત થઈ ગયું. અમે દવા બંધ કરી, એન્ટિહાઇસ્ટેમાઇન આપી અને થોડા કલાક જોયા. તે સુધરી ગયા. આ પ્રાથમિક કેસ છે.",
+      "english": "Right, this is Deepak Mishra. He is a 33-year-old male, weighing 71 kg. He has been suffering from fever, itching, rashes and swelling on his lips. This began on 13 August 2026 and subsided by 15 August 2026. We stopped the medication, gave antihistamines and watched for a few hours. He has improved. This is the primary case."
+    },
+    "14": {
+      "source": "દર્દીનું નામ રિયા કપૂર છે. તે 24 વર્ષની મહિલા છે. વજન 57 કિલોગ્રામ. દવા લીધા પછી તેને તાવ, માથાનો દુખાવો, ગળામાં દુખાવો અને સુકી ઉધરસ છે. તેને છાતીમાં દુખાવો કે શ્વાસ લેવામાં તકલીફ નથી. પ્રતિક્રિયા 16 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 17 ઓગસ્ટ 2026ના રોજ મટી ગઈ. દવા બંધ કરવામાં આવી અને સારવાર આપવામાં આવી. પ્રાથમિક કેસ.",
+      "english": "The patient's name is Rhea Kapoor. She is a 24-year-old woman. He has fever, headache, sore throat and dry cough after taking the medicine. He has no chest pain or difficulty breathing. The reaction began on 16 August 2026 and resolved on 17 August 2026. Medication was discontinued and treatment administered. the primary case."
+    },
+    "15": {
+      "source": "દર્દીનું નામ વિક્રમ જોશી છે. તે 48 વર્ષના પુરુષ છે, વજન 84 કિલોગ્રામ. શંકાસ્પદ દવા લીધા પછી તીવ્ર ખંજવાળ, ત્વચા પર રૅશ, સોજો, ચક્કર અને શ્વાસ રૂંધાવવાની ફરિયાદ સાથે આવ્યા. પ્રતિક્રિયા 10 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 13 ઓગસ્ટ 2026ના રોજ લક્ષણો મટી ગયા. અમે તરત દવા બંધ કરી, સારવાર આપી અને નિરીક્ષણમાં રાખ્યા. સ્થિતિ સુધરી. પ્રાથમિક ADR રિપોર્ટ.",
+      "english": "The patient's name is Vikram Joshi. He is a 48-year-old male, weighing 84 kg. After taking the suspected drug he came down with complaints of severe itching, skin rash, swelling, dizziness and breathlessness. The reaction began on 10 August 2026 and symptoms resolved by 13 August 2026. We immediately stopped the medication, administered treatment and kept under observation. The situation has improved. The initial ADR report."
+    },
+    "16": {
+      "source": "દર્દીનું નામ મીરા શાહ ઉંમર 32 વર્ષ મહિલા વજન 60 કિલોગ્રામ તેને તાવ ઉધરસ ખંજવાળ રૅશ અને નબળાઈ થઈ પ્રતિક્રિયા 9 ઓગસ્ટ 2026 શરૂ થઈ પ્રતિક્રિયા 11 ઓગસ્ટ 2026 બંધ થઈ દવા બંધ એન્ટિહાઇસ્ટેમાઇન આપી નિરીક્ષણ કર્યું લક્ષણો સુધર્યા પ્રાથમિક કેસ",
+      "english": "Patient's name Meera Shah age 32 years Female weight 60 kg She had fever, cough, itching, rash and weakness Reaction started on 9 August 2026 Response stopped 11 August 2026 Medication discontinued Antihistamine administered Observed symptoms improved Primary case"
+    },
+    "17": {
+      "source": "ફોલો-અપ કેસ. પ્રતિક્રિયા 14 ઓગસ્ટ 2026ના રોજ મટી ગઈ. દર્દીને એન્ટિહાઇસ્ટેમાઇન અને સારવાર આપવામાં આવી. પ્રતિક્રિયા 12 ઓગસ્ટ 2026ના રોજ શરૂ થઈ હતી. દર્દીનું નામ અમન ગુપ્તા છે. તે 30 વર્ષના પુરુષ છે. વજન 73 કિલોગ્રામ. તેમને છીંક, નાકમાંથી પાણી આવવું, તાવ અને ખંજવાળ થઈ. દવા બંધ કર્યા પછી લક્ષણો સુધર્યા.",
+      "english": "A follow-up case. The reaction was cured on 14 August 2026. The patient received antihistamines and treatment. The reaction began on 12 August 2026. The patient's name is Aman Gupta. He is a 30-year-old man. Weighing 73 kg. He developed sneezing, runny nose, fever and itching. The symptoms improved after stopping the medication."
+    },
+    "18": {
+      "source": "દર્દી નિશા વર્મા છે. તે 37 વર્ષની મહિલા છે, વજન 59 કિલોગ્રામ. તેને ખંજવાળ, ફોલ્લીઓ, સોજો, ઉબકા અને શ્વાસની તકલીફ થઈ. પ્રતિકૂળ ઘટના 8 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 10 ઓગસ્ટ 2026ના રોજ ઘટી ગઈ. દવા બંધ કરવામાં આવી અને સારવાર આપવામાં આવી. સુધારો ન થાય ત્યાં સુધી નિરીક્ષણ કરવામાં આવ્યું. આ પ્રાથમિક કેસ છે.",
+      "english": "The patient is Nisha Verma. She is a 37-year-old female, weighing 59 kg. She developed itching, rash, swelling, nausea and shortness of breath. The adverse event began on 8 August 2026 and subsided on 10 August 2026. Medication was discontinued and treatment was administered. The inspection was carried out until the improvement. This is the primary case."
+    },
+    "19": {
+      "source": "દર્દીનું નામ રાજેશ કુમાર છે. ઉંમર 52 વર્ષ. લિંગ પુરુષ. વજન 77 કિલોગ્રામ. તે ડાયાબિટીસ અને હાઇ બ્લડ પ્રેશર ધરાવે છે, પરંતુ આજે દવા લીધા પછી તેમને તીવ્ર ખંજવાળ, ઉલટી અને સોજો આવ્યો. વર્તમાન પ્રતિક્રિયા 15 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 17 ઓગસ્ટ 2026ના રોજ મટી ગઈ. દવા બંધ કરી સારવાર આપવામાં આવી. નિરીક્ષણ પછી સુધારો થયો. પ્રાથમિક ADR કેસ.",
+      "english": "The patient's name is Rajesh Kumar. Aged 52. Gender male. Weight 77 kg. He has diabetes and high blood pressure, but today after taking the medicine he had severe itching, vomiting and swelling. The current reaction began on 15 August 2026 and was cured on 17 August 2026. Treatment was stopped with medication. There was improvement after the inspection. The primary ADR case."
+    },
+    "20": {
+      "source": "દર્દીનું નામ સિમરન કૌર છે. તે 28 વર્ષની મહિલા છે, વજન 56 કિલોગ્રામ. તે બે દિવસથી તાવ, સુકી ઉધરસ, ખંજવાળ અને રૅશની ફરિયાદ કરે છે. પ્રતિક્રિયા 12 ઓગસ્ટ 2026ના રોજ શરૂ થઈ અને 14 ઓગસ્ટ 2026ના રોજ મટી ગઈ. તેની દવા બંધ કરી સારવાર આપવામાં આવી. ખાતરી માટે, દર્દીનું નામ સિમરન કૌર, ઉંમર 28 વર્ષ, મહિલા, વજન 56 કિલો, પ્રતિક્રિયા 12 ઓગસ્ટ 2026 શરૂ થઈ અને 14 ઓગસ્ટ 2026 મટી ગઈ. આ પ્રાથમિક કેસ છે.",
+      "english": "The patient's name is Simran Kaur. She is a 28-year-old woman, weighing 56 kg. She has been complaining of fever, dry cough, itching and rash for two days. The reaction began on 12 August 2026 and resolved by 14 August 2026. She was treated with medication cessation. For confirmation, the patient's name is Simran Kaur, age 28 years, female, weight 56 kg, reaction started on 12 August 2026 and cured on 14 August 2026. This is a primary case."
+    }
+  },
+  "kn": {
+    "1": {
+      "source": "ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ. ರೋಗಿಯ ಹೆಸರು ರಾಹುಲ್ ಶರ್ಮಾ. ವಯಸ್ಸು 34 ವರ್ಷಗಳು. ಲಿಂಗ ಪುರುಷ. ತೂಕ 70 ಕಿಲೋಗ್ರಾಂಗಳು. ಶಂಕಿತ ಔಷಧಿಯನ್ನು ಸೇವಿಸಿದ ನಂತರ ರೋಗಿಗೆ ಜ್ವರ, ಸಾಮಾನ್ಯ ತುರಿಕೆ ಮತ್ತು ಚರ್ಮದ ದದ್ದುಗಳು ಕಾಣಿಸಿಕೊಂಡವು. ಪ್ರತಿಕ್ರಿಯೆಯು 10 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 12 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ಶಂಕಿತ ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು ಮತ್ತು ರೋಗಿಗೆ ಆಂಟಿಹಿಸ್ಟಮೈನ್ ಚಿಕಿತ್ಸೆ ನೀಡಲಾಯಿತು. ಚಿಕಿತ್ಸೆಯ ನಂತರ ರೋಗಲಕ್ಷಣಗಳು ಸುಧಾರಿಸಿದವು.",
+      "english": "The primary case. Patient name is Rahul Sharma. He was aged 34. Gender Male. Weight 70 kgs. The patient presented with fever, generalized itching and skin rashes after ingesting the suspected drug. The reaction began on 10 August 2026 and subsided on 12 August 2026. The suspected drug was stopped and the patient received antihistamine treatment. The symptoms improved after treatment."
+    },
+    "2": {
+      "source": "ಶಂಕಿತ ಪ್ರತಿಕ್ರಿಯೆಯೆಂದರೆ ವಾಕರಿಕೆ, ವಾಂತಿ ಮತ್ತು ತಲೆತಿರುಗುವಿಕೆ. ಪ್ರತಿಕ್ರಿಯೆಯು 11 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 13 ಆಗಸ್ಟ್ 2026 ರಂದು ಕೊನೆಗೊಂಡಿತು. ರೋಗಿಯ ಹೆಸರು ಪ್ರಿಯಾ ವರ್ಮಾ. ಆಕೆಗೆ 27 ವರ್ಷ ಮತ್ತು ಮಹಿಳೆ. ಆಕೆಯ ತೂಕ 58 ಕಿಲೋಗ್ರಾಂಗಳು. ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು ಮತ್ತು ಆಕೆಗೆ ಬೆಂಬಲ ಚಿಕಿತ್ಸೆ ನೀಡಲಾಯಿತು. ವೀಕ್ಷಣೆಯ ನಂತರ ರೋಗಲಕ್ಷಣಗಳು ಕಡಿಮೆಯಾದವು. ಇದು ಪ್ರಾಥಮಿಕ ADR ಪ್ರಕರಣ.",
+      "english": "The suspected reaction is nausea, vomiting and dizziness. The response began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is 27 years old and female. Her weight was 58 kilograms. The medication was stopped and she received supportive treatment. Symptoms decreased after observation. This is the primary ADR case."
+    },
+    "3": {
+      "source": "ಸರಿ, ಇವರು ಅಮಿತ್ ಕುಮಾರ್. ಇವರಿಗೆ 42 ವರ್ಷ, ಪುರುಷ, ಮತ್ತು ತೂಕ ಸುಮಾರು 76 ಕಿಲೋಗ್ರಾಂಗಳು. ಔಷಧಿ ತೆಗೆದುಕೊಂಡ ನಂತರ ಮುಖದ ಸುತ್ತ ತೀವ್ರ ತುರಿಕೆ, ದದ್ದುಗಳು ಮತ್ತು ಊತ ಪ್ರಾರಂಭವಾಯಿತು. ಪ್ರತಿಕ್ರಿಯೆಯು ವಾಸ್ತವವಾಗಿ 8 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಯಿತು ಮತ್ತು 10 ಆಗಸ್ಟ್ 2026 ರ ವೇಳೆಗೆ ರೋಗಲಕ್ಷಣಗಳು ಶಮನಗೊಂಡವು. ನಾವು ಶಂಕಿತ ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಿದೆವು, ಆಂಟಿಹಿಸ್ಟಮೈನ್ ಚಿಕಿತ್ಸೆಯನ್ನು ನೀಡಿದೆವು ಮತ್ತು ವೀಕ್ಷಣೆಯಲ್ಲಿ ಇರಿಸಿದೆವು. ಇದು ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ.",
+      "english": "Well, this is Amit Kumar. He is 42 years old, male, and weighs approximately 76 kilograms. Severe itching, rashes and swelling around the face started after taking the medicine. The reaction actually began on 8 August 2026 and symptoms subsided by 10 August 2026. We stopped the suspect drug, administered antihistamine therapy and placed him under observation. This is a primary case."
+    },
+    "4": {
+      "source": "ರೋಗಿಯು ನಿನ್ನೆಯಿಂದ ತೀವ್ರ ಹೊಟ್ಟೆ ನೋವು, ವಾಕರಿಕೆ, ಅತಿಸಾರ ಮತ್ತು ದೌರ್ಬಲ್ಯದ ಬಗ್ಗೆ ದೂರುತ್ತಿದ್ದಾರೆ. ಆಕೆಯ ಹೆಸರು ನೇಹಾ ಸಿಂಗ್. ಆಕೆಗೆ 31 ವರ್ಷ ಮತ್ತು ಮಹಿಳೆ, ತೂಕ 62 ಕಿಲೋಗ್ರಾಂಗಳು. ಪ್ರತಿಕೂಲ ಪ್ರತಿಕ್ರಿಯೆಯು 15 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 16 ಆಗಸ್ಟ್ 2026 ರಂದು ನಿಂತಿತು. ಆಕೆಗೆ ಬೆಂಬಲ ಆರೈಕೆ ಮತ್ತು ಮೌಖಿಕ ದ್ರವಗಳನ್ನು ನೀಡಲಾಯಿತು, ಮತ್ತು ರೋಗಲಕ್ಷಣಗಳು ಸುಧಾರಿಸಿದವು. ಇದು ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ.",
+      "english": "The patient has been complaining of severe abdominal pain, nausea, diarrhea and weakness since yesterday. Her name is Neha Singh. She is 31 years old and female, weighing 62 kilograms. The adverse reaction started on 15 August 2026 and stopped on 16 August 2026. She was given supportive care and oral fluids, and symptoms improved. This is a primary case."
+    },
+    "5": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ಅರ್ಜುನ್ ಪಟೇಲ್. ವಯಸ್ಸು 38 ವರ್ಷಗಳು. ಪುರುಷ ರೋಗಿ. ತೂಕ 74 ಕಿಲೋ. ಶಂಕಿತ ಔಷಧಿಯ ನಂತರ ಜ್ವರ, ಕೆಮ್ಮು, ದದ್ದು ಮತ್ತು ತುರಿಕೆ ಕಾಣಿಸಿಕೊಂಡಿತು. ಪ್ರತಿಕ್ರಿಯೆ 9 ಆಗಸ್ಟ್ 2026 ಕ್ಕೆ ಪ್ರಾರಂಭವಾಗಿ 11 ಆಗಸ್ಟ್ 2026 ಕ್ಕೆ ನಿಂತಿತು. ಶಂಕಿತ ಔಷಧಿ ನಿಲ್ಲಿಸಲಾಯಿತು. ಆಂಟಿಹಿಸ್ಟಮೈನ್ ಮತ್ತು ಬೆಂಬಲ ಚಿಕಿತ್ಸೆ ನೀಡಲಾಯಿತು. ರೋಗಿ ಸುಧಾರಿಸಿದರು. ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ.",
+      "english": "The patient's name is Arjun Patel. He was aged 38. the male patient. It weighs 74 kg. The suspected drug was followed by fever, cough, rash and itching. The response began on 9 August 2026 and stopped on 11 August 2026. The suspected drug was stopped. Antihistamines and supportive therapy were administered. The patient has improved. The primary case."
+    },
+    "6": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ಸ್ನೇಹಾ ಗುಪ್ತಾ. ಆಕೆಗೆ 29 ವರ್ಷ ಮತ್ತು ತೂಕ 55 ಕಿಲೋಗ್ರಾಂಗಳು. ಆಕೆಗೆ ಮುಖದ ಊತ, ಅರ್ಟಿಕೇರಿಯಾ ಮತ್ತು ಉಸಿರಾಟದ ತೊಂದರೆ ಕಾಣಿಸಿಕೊಂಡಿತು. ಪ್ರತಿಕ್ರಿಯೆಯು 12 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 13 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ಶಂಕಿತ ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು ಮತ್ತು ಆಕೆಗೆ ತುರ್ತು ಬೆಂಬಲ ಚಿಕಿತ್ಸೆ ಮತ್ತು ಆಂಟಿಹಿಸ್ಟಮೈನ್‌ಗಳನ್ನು ನೀಡಲಾಯಿತು. ಇದು ಫಾಲೋ-ಅಪ್ ಪ್ರಕರಣ.",
+      "english": "The patient's name is Sneha Gupta. She is 29 years old and weighs 55 kilograms. She developed facial swelling, urticaria and shortness of breath. The reaction began on 12 August 2026 and subsided on 13 August 2026. The suspected drug was stopped and she received emergency supportive therapy and antihistamines. This is a follow-up case."
+    },
+    "7": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ರೋಹಿತ್ ಮೆಹ್ತಾ. ಇವರಿಗೆ 46 ವರ್ಷ ಮತ್ತು ತೂಕ 82 ಕಿಲೋಗ್ರಾಂಗಳು. ಶಂಕಿತ ಔಷಧಿಯ ನಂತರ ಇವರಿಗೆ ತೀವ್ರ ತಲೆತಿರುಗುವಿಕೆ, ವಾಂತಿ ಮತ್ತು ದೌರ್ಬಲ್ಯ ಕಾಣಿಸಿಕೊಂಡಿತು. ರೋಗಲಕ್ಷಣಗಳು 7 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 9 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡವು. ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು ಮತ್ತು ಇವರು ಸುಧಾರಿಸುವವರೆಗೆ ವೀಕ್ಷಿಸಲಾಯಿತು. ಇದು ಪ್ರಾಥಮಿಕ ADR ವರದಿ.",
+      "english": "The patient's name is Rohit Mehta. He is 46 years old and weighs 82 kilograms. He developed severe dizziness, vomiting and weakness after the suspected drug. Symptoms began on 7 August 2026 and subsided on 9 August 2026. The medication was stopped and he was observed to improve. This is the preliminary ADR report."
+    },
+    "8": {
+      "source": "ಶಂಕಿತ ಔಷಧಿಯನ್ನು ಹಿಂತೆಗೆದುಕೊಳ್ಳಲಾಯಿತು ಮತ್ತು ರೋಗಿಯನ್ನು ವೀಕ್ಷಣೆಯಲ್ಲಿ ಇರಿಸಲಾಯಿತು. ಆಂಟಿಹಿಸ್ಟಮೈನ್ ಚಿಕಿತ್ಸೆಯನ್ನು ನೀಡಲಾಯಿತು ಮತ್ತು ಪ್ರತಿಕ್ರಿಯೆಯು ಸುಧಾರಿಸಿತು. ರೋಗಿಯ ಹೆಸರು ಕವಿತಾ ರಾವ್. ಆಕೆಗೆ 36 ವರ್ಷ, ಮಹಿಳೆ, ಮತ್ತು ತೂಕ 61.5 ಕಿಲೋಗ್ರಾಂಗಳು. ಆಕೆಗೆ ಜ್ವರ, ವಾಂತಿ, ಸಾಮಾನ್ಯ ತುರಿಕೆ ಮತ್ತು ಮುಖದ ಊತವಿತ್ತು. ಪ್ರತಿಕ್ರಿಯೆಯು 5 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 7 ಆಗಸ್ಟ್ 2026 ರಂದು ಕೊನೆಗೊಂಡಿತು. ಇದು ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ.",
+      "english": "The suspected drug was withdrawn and the patient placed under observation. Antihistamine treatment was administered and the response improved. The patient's name is Kavita Rao. She is 36 years old, female, and weighs 61.5 kilograms. She had a fever, vomiting, generalized itching and swelling of the face. The response began on 5 August 2026 and ended on 7 August 2026. This is a primary case."
+    },
+    "9": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ಸಂಜಯ್ ಯಾದವ್. ಇವರಿಗೆ 55 ವರ್ಷ, ಪುರುಷ, ಮತ್ತು ತೂಕ 79 ಕಿಲೋಗ್ರಾಂಗಳು. ಇವರಿಗೆ ತಲೆನೋವು, ತಲೆತಿರುಗುವಿಕೆ, ದೌರ್ಬಲ್ಯ ಮತ್ತು ಚರ್ಮದ ದದ್ದುಗಳು ಕಾಣಿಸಿಕೊಂಡವು. ಪ್ರತಿಕೂಲ ಪ್ರತಿಕ್ರಿಯೆಯು 6 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 8 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ಶಂಕಿತ ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು ಮತ್ತು ರೋಗಲಕ್ಷಣದ ಚಿಕಿತ್ಸೆಯನ್ನು ನೀಡಲಾಯಿತು. ರೋಗಿಯನ್ನು ವೀಕ್ಷಿಸಲಾಯಿತು ಮತ್ತು ಸುಧಾರಿಸಿದರು.",
+      "english": "The patient's name is Sanjay Yadav. He is 55 years old, male, and weighs 79 kilograms. They had headaches, dizziness, weakness and skin rashes. The adverse reaction began on 6 August 2026 and subsided on 8 August 2026. The suspected drug was stopped and symptomatic treatment was administered. The patient was observed and improved."
+    },
+    "10": {
+      "source": "ಇವರು ಪೂಜಾ ನಾಯರ್, ಆಕೆಗೆ 25 ವರ್ಷ ಮತ್ತು ಮಹಿಳೆ, ಸುಮಾರು 52 ಕಿಲೋಗ್ರಾಂ. ಶಂಕಿತ ಔಷಧಿಯನ್ನು ಸೇವಿಸಿದ ನಂತರ ಆಕೆ ತೀವ್ರ ತುರಿಕೆ, ದದ್ದುಗಳು, ಮುಖದ ಊತ ಮತ್ತು ಸೌಮ್ಯ ಉಸಿರಾಟದ ತೊಂದರೆಯೊಂದಿಗೆ ಬಂದರು. ಪ್ರತಿಕ್ರಿಯೆಯು 14 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಯಿತು ಮತ್ತು 16 ಆಗಸ್ಟ್ 2026 ರಂದು ರೋಗಲಕ್ಷಣಗಳು ಶಮನಗೊಂಡವು. ನಾವು ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಿದೆವು, ಆಂಟಿಹಿಸ್ಟಮೈನ್ ನೀಡಿದೆವು ಮತ್ತು ಸುಧಾರಿಸುವವರೆಗೆ ವೀಕ್ಷಿಸಿದೆವು. ಫಾಲೋ-ಅಪ್ ಪ್ರಕರಣ.",
+      "english": "This is Pooja Nair, she's 25 years old and female, about 52 kilograms. She came down with severe itching, rashes, facial swelling and mild breathlessness after consuming the suspected drug. The reaction began on 14 August 2026 and symptoms subsided on 16 August 2026. We stopped the medication, gave an antihistamine and watched until it improved. Follow-up case."
+    },
+    "11": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ಮೋಹಿತ್ ಜೈನ್. ವಯಸ್ಸು 45 ವರ್ಷಗಳು, ಕ್ಷಮಿಸಿ, ತಿದ್ದುಪಡಿ, ವಯಸ್ಸು 35 ವರ್ಷಗಳು. ಲಿಂಗ ಪುರುಷ ಮತ್ತು ತೂಕ 68 ಕಿಲೋಗ್ರಾಂಗಳು. ಇವರಿಗೆ ವಾಕರಿಕೆ, ವಾಂತಿ ಮತ್ತು ತಲೆತಿರುಗುವಿಕೆ ಕಾಣಿಸಿಕೊಂಡಿತು. ಪ್ರತಿಕ್ರಿಯೆಯು 10 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 11 ಆಗಸ್ಟ್ 2026 ರಂದು ಕೊನೆಗೊಂಡಿತು. ಶಂಕಿತ ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು ಮತ್ತು ಚಿಕಿತ್ಸೆ ನೀಡಲಾಯಿತು. ಇದು ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ.",
+      "english": "The patient's name is Mohit Jain. Age 45 years, sorry, correction, age 35 years. The sex is male and weighs 68 kilograms. He suffered from nausea, vomiting and dizziness. The response began on 10 August 2026 and ended on 11 August 2026. The suspected drug was stopped and treated. This is a primary case."
+    },
+    "12": {
+      "source": "ರೋಗಿಯನ್ನು ಅಂಜಲಿ ದಾಸ್ ಎಂದು ಗುರುತಿಸಲಾಗಿದೆ. ಲಿಂಗ ಮಹಿಳೆ. ವಯಸ್ಸು 40 ವರ್ಷಗಳು. ತೂಕ 63 ಕಿಲೋಗ್ರಾಂಗಳು. ಕಾಣಿಸಿಕೊಂಡ ಪ್ರತಿಕೂಲ ಪ್ರತಿಕ್ರಿಯೆಯಲ್ಲಿ ಜ್ವರ, ಕೆಮ್ಮು, ದದ್ದು ಮತ್ತು ಮುಖದ ಊತ ಸೇರಿವೆ. ಪ್ರತಿಕ್ರಿಯೆಯು 4 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 6 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ಶಂಕಿತ ಔಷಧಿಯನ್ನು ಹಿಂತೆಗೆದುಕೊಳ್ಳಲಾಯಿತು. ಆಂಟಿಹಿಸ್ಟಮೈನ್ ಚಿಕಿತ್ಸೆ ಮತ್ತು ಬೆಂಬಲ ನಿರ್ವಹಣೆಯನ್ನು ನೀಡಲಾಯಿತು. ಪ್ರಾಥಮಿಕ ADR ಪ್ರಕರಣ.",
+      "english": "The patient has been identified as Anjali Das. The female gender. Age 40. Weight is 63 kilograms. Adverse reactions include fever, cough, rash, and facial swelling. The reaction began on 4 August 2026 and subsided on 6 August 2026. The suspected drug was withdrawn. Antihistamine therapy and supportive management were provided. The primary ADR case."
+    },
+    "13": {
+      "source": "ಸರಿ, ಇವರು ದೀಪಕ್ ಮಿಶ್ರಾ. ಇವರಿಗೆ 33 ವರ್ಷ, ಪುರುಷ, ತೂಕ 71 ಕಿಲೋಗ್ರಾಂ. ಇವರಿಗೆ ಜ್ವರ, ತುರಿಕೆ, ದದ್ದುಗಳು ಮತ್ತು ತುಟಿಗಳ ಊತ ಕಾಣಿಸಿಕೊಳ್ಳುತ್ತಿದೆ. ಇದು 13 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 15 ಆಗಸ್ಟ್ 2026 ರ ವೇಳೆಗೆ ಶಮನಗೊಂಡಿತು. ನಾವು ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಿದೆವು, ಆಂಟಿಹಿಸ್ಟಮೈನ್ ನೀಡಿದೆವು ಮತ್ತು ಕೆಲವು ಗಂಟೆಗಳ ಕಾಲ ವೀಕ್ಷಿಸಿದೆವು. ಇವರು ಸುಧಾರಿಸಿದರು. ಇದು ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ.",
+      "english": "Well, this is Deepak Mishra. He is 33 years old, male, weight 71 kg. They have fever, itching, rashes and swelling of the lips. It began on 13 August 2026 and subsided by 15 August 2026. We stopped the medication, gave an antihistamine and watched for a few hours. He has improved. This is a primary case."
+    },
+    "14": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ರಿಯಾ ಕಪೂರ್. ಆಕೆಗೆ 24 ವರ್ಷ ಮತ್ತು ಮಹಿಳೆ. ಆಕೆಯ ತೂಕ 57 ಕಿಲೋಗ್ರಾಂ. ಶಂಕಿತ ಔಷಧಿಯ ನಂತರ ಆಕೆಗೆ ಜ್ವರ, ತಲೆನೋವು, ಗಂಟಲು ನೋವು ಮತ್ತು ಒಣ ಕೆಮ್ಮು ಇದೆ. ಆಕೆಗೆ ಎದೆನೋವು ಇಲ್ಲ ಮತ್ತು ಉಸಿರಾಟದ ತೊಂದರೆ ಇಲ್ಲ. ಪ್ರತಿಕ್ರಿಯೆಯು 16 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 17 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು ಮತ್ತು ಬೆಂಬಲ ಚಿಕಿತ್ಸೆ ನೀಡಲಾಯಿತು. ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ.",
+      "english": "The patient's name is Rhea Kapoor. She is 24 years old and female. Her weight is 57 kilograms. She has fever, headache, sore throat and dry cough after the suspected drug. She had no chest pains and no shortness of breath. The reaction began on 16 August 2026 and subsided on 17 August 2026. The medication was stopped and supportive treatment was given. The primary case."
+    },
+    "15": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ವಿಕ್ರಮ್ ಜೋಶಿ. ಇವರು 48 ವರ್ಷದ ಪುರುಷ, ತೂಕ 84 ಕಿಲೋಗ್ರಾಂ. ಶಂಕಿತ ಔಷಧಿಯನ್ನು ಸೇವಿಸಿದ ನಂತರ ತೀವ್ರ ತುರಿಕೆ, ಒಣ ಚರ್ಮದ ದದ್ದು, ಮುಖದ ಊತ, ತಲೆತಿರುಗುವಿಕೆ ಮತ್ತು ಸೌಮ್ಯ ಉಸಿರಾಟದ ತೊಂದರೆಯೊಂದಿಗೆ ಬಂದರು. ಪ್ರತಿಕ್ರಿಯೆಯು 10 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 13 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ನಾವು ತಕ್ಷಣ ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಿದೆವು, ಆಂಟಿಹಿಸ್ಟಮೈನ್ ನೀಡಿದೆವು ಮತ್ತು ವೀಕ್ಷಣೆಯಲ್ಲಿ ಇರಿಸಿದೆವು. ಸ್ಥಿತಿ ಸುಧಾರಿಸಿತು. ಪ್ರಾಥಮಿಕ ADR ವರದಿ.",
+      "english": "The patient's name is Vikram Joshi. He is a 48-year-old male, weighing 84 kilograms. They came down with severe itching, dry skin rash, facial swelling, dizziness and mild shortness of breath after consuming the suspected drug. The reaction began on 10 August 2026 and subsided on 13 August 2026. We immediately stopped the drug, gave an antihistamine and kept him under observation. The situation has improved. The initial ADR report."
+    },
+    "16": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ಮೀರಾ ಶಾ ವಯಸ್ಸು 32 ವರ್ಷ ಮಹಿಳೆ ತೂಕ 60 ಕಿಲೋಗ್ರಾಂ ಆಕೆಗೆ ಜ್ವರ ಕೆಮ್ಮು ತುರಿಕೆ ಚರ್ಮದ ದದ್ದು ಮತ್ತು ದೌರ್ಬಲ್ಯ ಕಾಣಿಸಿಕೊಂಡಿತು ಪ್ರತಿಕ್ರಿಯೆ 9 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಯಿತು ಪ್ರತಿಕ್ರಿಯೆ 11 ಆಗಸ್ಟ್ 2026 ರಂದು ನಿಂತಿತು ಶಂಕಿತ ಔಷಧಿ ನಿಲ್ಲಿಸಲಾಯಿತು ಆಂಟಿಹಿಸ್ಟಮೈನ್ ನೀಡಲಾಯಿತು ರೋಗಿಯನ್ನು ವೀಕ್ಷಿಸಲಾಯಿತು ಮತ್ತು ರೋಗಲಕ್ಷಣಗಳು ಸುಧಾರಿಸಿದವು ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ",
+      "english": "The patient was identified as Meera Shah, a 32-year-old woman weighing 60 kg. Her reaction began on 9 August 2026 with fever, cough, itching, skin rash and weakness."
+    },
+    "17": {
+      "source": "ಫಾಲೋ-ಅಪ್ ಪ್ರಕರಣ. ಪ್ರತಿಕ್ರಿಯೆಯು 14 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ರೋಗಿಗೆ ಆಂಟಿಹಿಸ್ಟಮೈನ್ ಮತ್ತು ಬೆಂಬಲ ಚಿಕಿತ್ಸೆ ನೀಡಲಾಯಿತು. ಪ್ರತಿಕ್ರಿಯೆಯು 12 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿತ್ತು. ರೋಗಿಯ ಹೆಸರು ಅಮನ್ ಗುಪ್ತಾ. ಇವರಿಗೆ 30 ವರ್ಷ ಮತ್ತು ಪುರುಷ. ಇವರ ತೂಕ 73 ಕಿಲೋಗ್ರಾಂ. ಶಂಕಿತ ಔಷಧಿಯ ನಂತರ ಇವರಿಗೆ ಸೀನುವುದು, ಮೂಗು ಒಸರುವುದು, ಸೌಮ್ಯ ಜ್ವರ ಮತ್ತು ತುರಿಕೆ ಕಾಣಿಸಿಕೊಂಡಿತು. ಔಷಧಿ ನಿಲ್ಲಿಸಿದ ನಂತರ ಸುಧಾರಿಸಿತು.",
+      "english": "A follow-up case. The reaction subsided on 14 August 2026. The patient was given antihistamines and supportive therapy. The response had begun on 12 August 2026. The patient's name is Aman Gupta. He is 30 years old and male. His weight is 73 kilograms. They developed sneezing, runny nose, mild fever and itching after the suspected drug. Improved after stopping the drug."
+    },
+    "18": {
+      "source": "ರೋಗಿ ನಿಶಾ ವರ್ಮಾ. ಆಕೆಗೆ 37 ವರ್ಷ, ತೂಕ 59 ಕಿಲೋಗ್ರಾಂ. ಆಕೆಗೆ ಪ್ರೂರಿಟಸ್, ಅರ್ಟಿಕೇರಿಯಾ, ಮುಖದ ಊತ, ವಾಕರಿಕೆ ಮತ್ತು ಸೌಮ್ಯ ಡಿಸ್ಪ್ನಿಯಾ ಕಾಣಿಸಿಕೊಂಡಿತು. ಪ್ರತಿಕ್ರಿಯೆಯು 8 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 10 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು ಮತ್ತು ಆಕೆಗೆ ಆಂಟಿಹಿಸ್ಟಮೈನ್ ಚಿಕಿತ್ಸೆ ನೀಡಲಾಯಿತು. ಸ್ಥಿತಿ ಸುಧಾರಿಸುವವರೆಗೆ ವೀಕ್ಷಿಸಲಾಯಿತು. ಇದು ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ.",
+      "english": "The patient is Nisha Verma. She is 37 years old and weighs 59 kilograms. She developed pruritus, urticaria, facial swelling, nausea and mild dyspnea. The reaction began on 8 August 2026 and subsided on 10 August 2026. The medication was stopped and she received antihistamine treatment. The situation was monitored until it improved. This is a primary case."
+    },
+    "19": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ರಾಜೇಶ್ ಕುಮಾರ್. ವಯಸ್ಸು 52 ವರ್ಷ. ಲಿಂಗ ಪುರುಷ. ತೂಕ 77 ಕಿಲೋಗ್ರಾಂ. ಇವರು ಮಧುಮೇಹ ಮತ್ತು ಅಧಿಕ ರಕ್ತದೊತ್ತಡದ ಇತಿಹಾಸ ಹೊಂದಿದ್ದಾರೆ, ಆದರೆ ಇಂದು ಶಂಕಿತ ಔಷಧಿಯ ನಂತರ ಇವರಿಗೆ ತೀವ್ರ ತುರಿಕೆ, ವಾಂತಿ ಮತ್ತು ಮುಖದ ಊತ ಕಾಣಿಸಿಕೊಂಡಿತು. ಪ್ರಸ್ತುತ ಪ್ರತಿಕ್ರಿಯೆಯು 15 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 17 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು. ವೀಕ್ಷಣೆಯ ನಂತರ ಸುಧಾರಿಸಿದರು. ಪ್ರಾಥಮಿಕ ADR ಪ್ರಕರಣ.",
+      "english": "The patient's name is Rajesh Kumar. Age 52 years. Gender Male. Weight 77 kg. He has a history of diabetes and high blood pressure, but today he developed severe itching, vomiting and facial swelling after the suspected drug. The current reaction began on 15 August 2026 and subsided on 17 August 2026. The medication was stopped. Improved after observation. The primary ADR case."
+    },
+    "20": {
+      "source": "ರೋಗಿಯ ಹೆಸರು ಸಿಮ್ರಾನ್ ಕೌರ್. ಆಕೆಗೆ 28 ವರ್ಷ, ಮಹಿಳೆ, ತೂಕ 56 ಕಿಲೋಗ್ರಾಂ. ಆಕೆ ಎರಡು ದಿನಗಳಿಂದ ಜ್ವರ, ಒಣ ಕೆಮ್ಮು, ತುರಿಕೆ ಮತ್ತು ದದ್ದುಗಳ ಬಗ್ಗೆ ದೂರುತ್ತಿದ್ದಾರೆ. ಪ್ರತಿಕ್ರಿಯೆಯು 12 ಆಗಸ್ಟ್ 2026 ರಂದು ಪ್ರಾರಂಭವಾಗಿ 14 ಆಗಸ್ಟ್ 2026 ರಂದು ಶಮನಗೊಂಡಿತು. ಔಷಧಿಯನ್ನು ನಿಲ್ಲಿಸಲಾಯಿತು ಮತ್ತು ಆಂಟಿಹಿಸ್ಟಮೈನ್ ನೀಡಲಾಯಿತು. ದೃಢೀಕರಣಕ್ಕಾಗಿ, ರೋಗಿಯ ಹೆಸರು ಸಿಮ್ರಾನ್ ಕೌರ್, ವಯಸ್ಸು 28, ಮಹಿಳೆ, ತೂಕ 56 ಕಿಲೋ, ಪ್ರತಿಕ್ರಿಯೆ 12 ಆಗಸ್ಟ್ 2026 ಪ್ರಾರಂಭವಾಗಿ 14 ಆಗಸ್ಟ್ 2026 ಶಮನಗೊಂಡಿತು. ಇದು ಪ್ರಾಥಮಿಕ ಪ್ರಕರಣ.",
+      "english": "The patient's name is Simran Kaur. She is 28 years old, female, weight 56 kg. She has been complaining of fever, dry cough, itching and rashes for two days. The reaction began on 12 August 2026 and subsided on 14 August 2026. The medication was stopped and an antihistamine administered. For confirmation, the patient's name is Simran Kaur, age 28 years, female, weight 56 kg, response started on 12 August 2026 and resolved on 14 August 2026. This is a primary case."
+    }
+  },
+  "ml": {
+    "1": {
+      "source": "പ്രാഥമിക കേസ്. രോഗിയുടെ പേര് രാഹുൽ ശർമ്മ. വയസ്സ് 34 വർഷം. ലിംഗം പുരുഷൻ. ഭാരം 70 കിലോഗ്രാം. സംശയാസ്പദമായ മരുന്ന് കഴിച്ചതിനുശേഷം രോഗിക്ക് പനി, ശരീരം മുഴുവൻ ചൊറിച്ചിൽ, ചർമ്മത്തിൽ ചുണങ്ങ് എന്നിവ അനുഭവപ്പെട്ടു. പ്രതികരണം 2026 ഓഗസ്റ്റ് 10-ന് ആരംഭിക്കുകയും 2026 ഓഗസ്റ്റ് 12-ന് ഭേദമാവുകയും ചെയ്തു. സംശയാസ്പദമായ മരുന്ന് നിർത്തലാക്കുകയും രോഗിക്ക് ആന്റിഹിസ്റ്റാമിൻ ചികിത്സ നൽകുകയും ചെയ്തു. ചികിത്സയ്ക്ക് ശേഷം ലക്ഷണങ്ങളിൽ പുരോഗതിയുണ്ടായി.",
+      "english": "the primary case. The patient has been identified as Rahul Sharma, 34 years old. Sex male. Weight 70 kg. After taking the drug in question, the patient experienced fever, itching all over his body and skin rashes. The response began on 10 August 2026 and improved by 12 August 2026. The drug in question was discontinued and the patient received antihistamine treatment. There was improvement in the symptoms after treatment."
+    },
+    "2": {
+      "source": "സംശയാസ്പദമായ പ്രതികരണം ഛർദ്ദി, തലകറക്കം എന്നിവയാണ്. പ്രതികരണം 2026 ഓഗസ്റ്റ് 11-ന് ആരംഭിക്കുകയും 2026 ഓഗസ്റ്റ് 13-ന് അവസാനിക്കുകയും ചെയ്തു. രോഗിയുടെ പേര് പ്രിയ വർമ്മ. 27 വയസ്സുള്ള സ്ത്രീ. ഭാരം 58 കിലോഗ്രാം. മരുന്ന് നിർത്തലാക്കുകയും പിന്തുണ ചികിത്സ നൽകുകയും ചെയ്തു. നിരീക്ഷണത്തിന് ശേഷം ലക്ഷണങ്ങൾ കുറഞ്ഞു. ഇതൊരു പ്രാഥമിക ADR കേസ് ആണ്.",
+      "english": "The suspected reaction is vomiting and dizziness. The response began on 11 August 2026 and ended on 13 August 2026. The patient has been identified as Priya Verma, a 27-year-old woman. It weighs 58 kg. The drug was discontinued and supportive treatment was administered. After observation, the symptoms subsided. This is a primary ADR case."
+    },
+    "3": {
+      "source": "ശരി, ഇത് അമിത് കുമാർ. ഇയാൾക്ക് 42 വയസ്സുണ്ട്, പുരുഷൻ, ഭാരം ഏകദേശം 76 കിലോഗ്രാം. മരുന്ന് കഴിച്ചതിനുശേഷം ഇയാൾക്ക് മുഖത്തിന് ചുറ്റും കഠിനമായ ചൊറിച്ചിലും വീക്കവും വരാൻ തുടങ്ങി. പ്രതികരണം യഥാർത്ഥത്തിൽ 2026 ഓഗസ്റ്റ് 8-ന് ആരംഭിച്ചു, 2026 ഓഗസ്റ്റ് 10-ഓടെ ലക്ഷണങ്ങൾ ഭേദമായി. ഞങ്ങൾ മരുന്ന് നിർത്തുകയും ആന്റിഹിസ്റ്റാമിൻ നൽകി നിരീക്ഷണത്തിൽ സൂക്ഷിക്കുകയും ചെയ്തു. ഇതൊരു പ്രാഥമിക കേസ് ആണ്.",
+      "english": "Well, this is Amit Kumar. He's 42 years old, male and weighs about 76 kilograms. After taking the medicine, he began to experience severe itching and swelling around his face. The reaction actually began on 2026 August 8, and by 2026 August 10 the symptoms had cleared up. We stopped the medication and were put on antihistamines and kept under observation. This is a primary case."
+    },
+    "4": {
+      "source": "ഇന്നലെ മുതൽ കഠിനമായ വയറുവേദന, ഛർദ്ദി, വയറിളക്കം, തളർച്ച എന്നിവയാണ് രോഗിയുടെ പരാതി. പേര് നേഹ സിംഗ്. 31 വയസ്സുള്ള സ്ത്രീ, ഭാരം 62 കിലോഗ്രാം. പ്രതികൂല പ്രതികരണം 2026 ഓഗസ്റ്റ് 15-ന് ആരംഭിക്കുകയും 2026 ഓഗസ്റ്റ് 16-ന് അവസാനിക്കുകയും ചെയ്തു. രോഗിക്ക് ആവശ്യമായ പരിചരണം നൽകിയതോടെ ലക്ഷണങ്ങൾ മെച്ചപ്പെട്ടു. ഇതൊരു പ്രാഥമിക കേസ് ആണ്.",
+      "english": "The patient complained of severe abdominal pain, vomiting, diarrhoea and fatigue since yesterday. Her name is Neha Singh. Female aged 31 years, weight 62 kg. The adverse reaction began on 15 August 2026 and ended on 16 August 2026. The patient's symptoms improved as he was given the necessary care. This is a primary case."
+    },
+    "5": {
+      "source": "രോഗിയുടെ പേര് അർജുൻ പട്ടേൽ. വയസ്സ് 38 വർഷം. പുരുഷ രോഗി. ഭാരം 74 കിലോ. സംശയാസ്പദമായ മരുന്നിന് ശേഷം പനി, ചുമ, ചൊറിച്ചിൽ എന്നിവ ഉണ്ടായി. പ്രതികരണം 2026 ഓഗസ്റ്റ് 9-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 11-ന് അവസാനിച്ചു. മരുന്ന് നിർത്തി. ആന്റിഹിസ്റ്റാമിൻ നൽകി. രോഗിക്ക് പുരോഗതിയുണ്ട്. പ്രാഥമിക കേസ്.",
+      "english": "The patient has been identified as Arjun Patel, aged 38 years. the male patient. It weighs 74 kg. The suspected drug was followed by fever, cough and itching. The response began on 9 August 2026 and ended on 11 August 2026. Stopped the medicine. Antihistamines were given. The patient is progressing. the primary case."
+    },
+    "6": {
+      "source": "രോഗിയുടെ പേര് സ്നേഹ ഗുപ്ത. 29 വയസ്സുണ്ട്, ഭാരം 55 കിലോഗ്രാം. മുഖത്ത് വീക്കവും ശ്വാസതടസ്സവും അനുഭവപ്പെട്ടു. പ്രതികരണം 2026 ഓഗസ്റ്റ് 12-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 13-ന് ഭേദമായി. മരുന്ന് നിർത്തലാക്കുകയും അടിയന്തിര ചികിത്സ നൽകുകയും ചെയ്തു. ഇതൊരു ഫോളോ-അപ്പ് കേസ് ആണ്.",
+      "english": "The patient's name is Sneha Gupta. She is 29 years old and weighs 55 kg. He had swelling on his face and difficulty in breathing. The response began on 12 August 2026 and ended on 13 August 2026. The medication was stopped and emergency treatment was administered. This is a follow-up case."
+    },
+    "7": {
+      "source": "രോഗിയുടെ പേര് രോഹിത് മെഹ്ത. ഇയാൾക്ക് 46 വയസ്സുണ്ട്, ഭാരം 82 കിലോഗ്രാം. മരുന്ന് കഴിച്ചതിനുശേഷം കഠിനമായ തലകറക്കവും ഛർദ്ദിയും അനുഭവപ്പെട്ടു. ലക്ഷണങ്ങൾ 2026 ഓഗസ്റ്റ് 7-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 9-ന് ഭേദമായി. മരുന്ന് നിർത്തി രോഗിയെ നിരീക്ഷിച്ചു. ഇതൊരു പ്രാഥമിക ADR റിപ്പോർട്ട് ആണ്.",
+      "english": "The patient's name is Rohit Mehta. He is 46 years old and weighs 82 kg. After taking the drug, he experienced severe dizziness and vomiting. Symptoms began on 7 August 2026 and improved by 9 August 2026. The drug was stopped and the patient monitored. This is a preliminary ADR report."
+    },
+    "8": {
+      "source": "സംശയാസ്പദമായ മരുന്ന് തിരികെ വിളിക്കുകയും രോഗിയെ നിരീക്ഷണത്തിൽ സൂക്ഷിക്കുകയും ചെയ്തു. ആന്റിഹിസ്റ്റാമിൻ ചികിത്സ നൽകിയതോടെ പ്രതികരണം മെച്ചപ്പെട്ടു. രോഗിയുടെ പേര് കവിത റാവു. 36 വയസ്സുള്ള സ്ത്രീ, ഭാരം 61.5 കിലോഗ്രാം. പനിയും ഛർദ്ദിയും ചൊറിച്ചിലും ഉണ്ടായിരുന്നു. പ്രതികരണം 2026 ഓഗസ്റ്റ് 5-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 7-ന് അവസാനിച്ചു. ഇതൊരു പ്രാഥമിക കേസ് ആണ്.",
+      "english": "The suspected drug was recalled and the patient kept under observation. The response improved with antihistamine treatment. The patient's name is Kavita Rao. Female aged 36 years, weight 61.5 kg. There was fever, cough and shortness of breath. The response began on 5 August 2026 and ended on 7 August 2026. This is a primary case."
+    },
+    "9": {
+      "source": "രോഗിയുടെ പേര് സഞ്ജയ് യാദവ്. 55 വയസ്സുള്ള പുരുഷൻ, ഭാരം 79 കിലോഗ്രാം. തലവേദനയും തലകറക്കവും ചർമ്മത്തിൽ ചുണങ്ങും അനുഭവപ്പെട്ടു. പ്രതികൂല പ്രതികരണം 2026 ഓഗസ്റ്റ് 6-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 8-ന് ഭേദമായി. സംശയാസ്പദമായ മരുന്ന് നിർത്തലാക്കുകയും ചികിത്സ നൽകുകയും ചെയ്തു. രോഗിയുടെ നില മെച്ചപ്പെട്ടു.",
+      "english": "The patient's name is Sanjay Yadav. 55 years old male, weight 79 kg. Headache, dizziness and skin rash were experienced. The adverse reaction began on 6 August 2026 and was resolved by 8 August 2026. The suspected drug was discontinued and treatment was administered. The patient's condition improved."
+    },
+    "10": {
+      "source": "ഇത് പൂജ നായർ, 25 വയസ്സുള്ള സ്ത്രീ, ഭാരം 52 കിലോഗ്രാം. മരുന്ന് കഴിച്ചതിനുശേഷം കഠിനമായ ചൊറിച്ചിലും ശ്വാസതടസ്സവുമായി വന്നു. പ്രതികരണം 2026 ഓഗസ്റ്റ് 14-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 16-ന് ഭേദമായി. മരുന്ന് നിർത്തി ആന്റിഹിസ്റ്റാമിൻ നൽകി നിരീക്ഷിച്ചു. ഫോളോ-അപ്പ് കേസ്.",
+      "english": "This is Pooja Nair, a 25-year-old female, weighing 52 kg. After taking the medicine, he developed severe itching and shortness of breath. The response began on 14 August 2026 and ended on 16 August 2026. The drug was stopped and antihistamines were administered. The follow-up case."
+    },
+    "11": {
+      "source": "രോഗിയുടെ പേര് മോഹിത് ജെയിൻ. വയസ്സ് 45 വർഷം, ക്ഷമിക്കണം, തിരുത്ത്, വയസ്സ് 35 വർഷം. ലിംഗം പുരുഷൻ, ഭാരം 68 കിലോഗ്രാം. ഛർദ്ദിയും തലകറക്കവും അനുഭവപ്പെട്ടു. പ്രതികരണം 2026 ഓഗസ്റ്റ് 10-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 11-ന് അവസാനിച്ചു. മരുന്ന് നിർത്തലാക്കി ചികിത്സ നൽകി. ഇതൊരു പ്രാഥമിക കേസ് ആണ്.",
+      "english": "The patient's name is Mohit Jain. Age 45 years, sorry, correction, age 35 years. Gender male, weight 68 kg. There was nausea and vomiting. The response began on 10 August 2026 and ended on 11 August 2026. The drug was discontinued and treatment was administered. This is a primary case."
+    },
+    "12": {
+      "source": "രോഗി അഞ്ജലി ദാസ്. ലിംഗം സ്ത്രീ. വയസ്സ് 40 വർഷം. ഭാരം 63 കിലോഗ്രാം. പനിയും ചുമയും മുഖത്ത് വീക്കവും അനുഭവപ്പെട്ടു. പ്രതികരണം 2026 ഓഗസ്റ്റ് 4-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 6-ന് ഭേദമായി. മരുന്ന് പിൻവലിച്ചു. ചികിത്സ നൽകിയതോടെ നില മെച്ചപ്പെട്ടു. പ്രാഥമിക ADR കേസ്.",
+      "english": "The patient is Anjali Das. The female gender. Age 40. It weighs 63 kg. He had fever, cough and shortness of breath. The response began on 4 August 2026 and ended on 6 August 2026. The drug was withdrawn. After receiving treatment, his condition improved. The primary ADR case."
+    },
+    "13": {
+      "source": "ശരി, ഇത് ദീപക് മിശ്ര. 33 വയസ്സുള്ള പുരുഷൻ, ഭാരം 71 കിലോഗ്രാം. പനിയും ചൊറിച്ചിലും ചുണ്ടിൽ വീക്കവുമുണ്ട്. 2026 ഓഗസ്റ്റ് 13-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 15-ന് ശമിച്ചു. മരുന്ന് നിർത്തി ആന്റിഹിസ്റ്റാമിൻ നൽകി നിരീക്ഷിച്ചു. ഇയാൾക്ക് സുഖമായി. ഇതൊരു പ്രാഥമിക കേസ് ആണ്.",
+      "english": "Okay, this is Deepak Mishra. A 33-year-old male, weighing 71 kg. There is fever, itching and swelling of the lips. began on 13 August 2026 and ended on 15 August 2026. The drug was stopped and antihistamines were administered. He's fine. This is a primary case."
+    },
+    "14": {
+      "source": "രോഗിയുടെ പേര് റിയ കപൂർ. 24 വയസ്സുള്ള സ്ത്രീ. ഭാരം 57 കിലോഗ്രാം. പനിയും തലവേദനയും തൊണ്ടവേദനയുമുണ്ട്. നെഞ്ചുവേദനയോ ശ്വാസതടസ്സമോ ഇല്ല. പ്രതികരണം 2026 ഓഗസ്റ്റ് 16-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 17-ന് ഭേദമായി. മരുന്ന് നിർത്തി ചികിത്സ നൽകി. പ്രാഥമിക കേസ്.",
+      "english": "The patient's name is Rhea Kapoor. A 24-year-old female. It weighs 57 kg. There is fever, headache and sore throat. There was no chest pain or shortness of breath. The reaction began on August 16 2026 and resolved by 2026 August 17. Medication was stopped and treatment was given. the primary case."
+    },
+    "15": {
+      "source": "രോഗിയുടെ പേര് വിക്രം ജോഷി. 48 വയസ്സുള്ള പുരുഷൻ, ഭാരം 84 കിലോഗ്രാം. കഠിനമായ ചൊറിച്ചിലും തലകറക്കവും ശ്വാസതടസ്സവുമായി വന്നു. പ്രതികരണം 2026 ഓഗസ്റ്റ് 10-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 13-ന് ഭേദമായി. ഉടൻ തന്നെ മരുന്ന് നിർത്തി ആന്റിഹിസ്റ്റാമിൻ നൽകി നിരീക്ഷിച്ചു. നില മെച്ചപ്പെട്ടു. പ്രാഥമിക ADR റിപ്പോർട്ട്.",
+      "english": "The patient's name is Vikram Joshi. 48 year old male, weight 84 kg. It was accompanied by severe itching, dizziness and shortness of breath. The response began on 10 August 2026 and ended on 13 August 2026. Immediately, the medication was stopped and antihistamines were administered. The situation has improved. The initial ADR report."
+    },
+    "16": {
+      "source": "രോഗിയുടെ പേര് മീര ഷാ വയസ്സ് 32 വർഷം സ്ത്രീ ഭാരം 60 കിലോഗ്രാം പനിയും ചുമയും ചൊറിച്ചിലും അനുഭവപ്പെട്ടു പ്രതികരണം 2026 ഓഗസ്റ്റ് 9-ന് ആരംഭിച്ചു 2026 ഓഗസ്റ്റ് 11-ന് അവസാനിച്ചു മരുന്ന് നിർത്തി ആന്റിഹിസ്റ്റാമിൻ നൽകി നിരീക്ഷിച്ചു ലക്ഷണങ്ങൾ മെച്ചപ്പെട്ടു പ്രാഥമിക കേസ്",
+      "english": "The patient's name is Meera Shah aged 32 years female weight 60 kg Fever, cough and itching felt Response Started on 9 August 2026 Ended on 11 August 2026 Stopped medication Administered with antihistamine Observed symptoms improved Initial case"
+    },
+    "17": {
+      "source": "ഫോളോ-അപ്പ് കേസ്. പ്രതികരണം 2026 ഓഗസ്റ്റ് 14-ന് ഭേദമായി. രോഗിക്ക് ചികിത്സ നൽകി. പ്രതികരണം 2026 ഓഗസ്റ്റ് 12-ന് ആരംഭിച്ചിരുന്നു. രോഗിയുടെ പേര് അമൻ ഗുപ്ത. 30 വയസ്സുള്ള പുരുഷൻ. ഭാരം 73 കിലോഗ്രാം. തുമ്മലും മൂൊലപ്പും പനിയും ഉണ്ടായിരുന്നു. മരുന്ന് നിർത്തിയതോടെ ലക്ഷണങ്ങൾ ശമിച്ചു.",
+      "english": "The follow-up case. Response improved on 14 August 2026. The patient was treated. The response had begun on 12 August 2026. The patient has been identified as Aman Gupta, a 30-year-old male and weighs 73 kg. He had fever, cough and cold. After stopping the medication, the symptoms went away."
+    },
+    "18": {
+      "source": "രോഗി നിഷ വർമ്മ. 37 വയസ്സുള്ള സ്ത്രീ, ഭാരം 59 കിലോഗ്രാം. പ്രൂറിറ്റസ്, അർട്ടിക്രിയ, ഡിസ്പ്നിയ എന്നിവ അനുഭവപ്പെട്ടു. പ്രതികരണം 2026 ഓഗസ്റ്റ് 8-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 10-ന് കുറഞ്ഞു. മരുന്ന് നിർത്തി ആന്റിഹിസ്റ്റാമിൻ നൽകി നിരീക്ഷിച്ചു. ഇതൊരു പ്രാഥമിക കേസ് ആണ്.",
+      "english": "The patient is Nisha Verma. A 37-year-old female, weighing 59 kg. Pruritus, urticaria and dyspnea were experienced. The reaction began on 8 August 2026 and subsided by 10 August 2026. The drug was stopped and antihistamines were administered. This is a primary case."
+    },
+    "19": {
+      "source": "രോഗിയുടെ പേര് രാജേഷ് കുമാർ. വയസ്സ് 52 വർഷം. ലിംഗം പുരുഷൻ. ഭാരം 77 കിലോഗ്രാം. പ്രമേഹവും ഉയർന്ന രക്തസമ്മർദ്ദവുമുള്ള രോഗിയാണ്, എന്നാൽ ഇന്ന് മരുന്ന് കഴിച്ചതിനുശേഷം ചൊറിച്ചിലും ഛർദ്ദിയുമുണ്ടായി. പ്രതികരണം 2026 ഓഗസ്റ്റ് 15-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 17-ന് ഭേദമായി. മരുന്ന് നിർത്തി ചികിത്സ നൽകി. പ്രാഥമിക ADR കേസ്.",
+      "english": "The patient's name is Rajesh Kumar. He is 52 years old. Sex male. Weight 77 kg. The patient is diabetic and hypertensive, but today after taking the medicine there was itching and vomiting. The response began on 15 August 2026 and ended on 17 August 2026. Medication was stopped and treatment was given. The primary ADR case."
+    },
+    "20": {
+      "source": "രോഗിയുടെ പേര് സിമ്രാൻ കൗർ. 28 വയസ്സുള്ള സ്ത്രീ, ഭാരം 56 കിലോഗ്രാം. രണ്ടു ദിവസമായി പനിയും ചുമയും ചൊറിച്ചിലുമുണ്ട്. പ്രതികരണം 2026 ഓഗസ്റ്റ് 12-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 14-ന് ഭേദമായി. മരുന്ന് നിർത്തി ചികിത്സ നൽകി. ഉറപ്പാക്കാൻ, പേര് സിമ്രാൻ കൗർ, വയസ്സ് 28, ഭാരം 56 കിലോ, പ്രതികരണം 2026 ഓഗസ്റ്റ് 12-ന് ആരംഭിച്ച് 2026 ഓഗസ്റ്റ് 14-ന് ഭേദമായി. ഇതൊരു പ്രാഥമിക കേസ് ആണ്.",
+      "english": "The patient's name is Simran Kaur. A 28-year-old female, weighing 56 kg. Fever, cough and shortness of breath for two days. The response began on 12 August 2026 and ended on 14 August 2026. Medication was stopped and treatment was given. To be sure, the name is Simran Kaur, 28 years old and weighing 56 kg. The reaction began on 12 August 2026 and was cured by 14 August 2026. This is a primary case."
+    }
+  },
+  "mr": {
+    "1": {
+      "source": "प्राथमिक प्रकरण. रुग्णाचे नाव राहुल शर्मा आहे. वय ३४ वर्षे. लिंग पुरुष. वजन ७० किलोग्रॅम. संशयित औषध घेतल्यानंतर रुग्णाला ताप, अंगाला खाज सुटणे आणि त्वचेवर पुरळ येणे असा त्रास झाला. ही प्रतिक्रिया १० ऑगस्ट २०२६ रोजी सुरू झाली आणि १२ ऑगस्ट २०२६ रोजी बरी झाली. संशयित औषध बंद करण्यात आले आणि रुग्णावर अँटीहिस्टामाइनने उपचार करण्यात आले. उपचारांनंतर लक्षणांमध्ये सुधारणा झाली.",
+      "english": "Primary case. Patient name is Rahul Sharma. Age 34. Male sex. Weight 70 kg. After taking the suspected drug, the patient suffered from fever, itching and skin rashes. The reaction began on 10 August 2026 and was cured on 12 August 2026. The suspected drug was discontinued and the patient was treated with antihistamines. The symptoms improved after treatment."
+    },
+    "2": {
+      "source": "संशयित प्रतिक्रिया मळमळ, उलट्या आणि चक्कर येणे ही आहे. प्रतिक्रिया ११ ऑगस्ट २०२६ रोजी सुरू झाली आणि १३ ऑगस्ट २०२६ रोजी संपली. रुग्णाचे नाव प्रिया वर्मा आहे. ती २७ वर्षांची महिला आहे. तिचे वजन ५८ किलोग्रॅम आहे. औषध बंद करण्यात आले आणि तिला उपचारात्मक मदत देण्यात आली. निरीक्षणांनंतर लक्षणे शांत झाली. हे एक प्राथमिक एडीआर प्रकरण आहे.",
+      "english": "The suspected reaction is nausea, vomiting and dizziness. The reaction began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27-year-old woman. Her weight is 58 kg. The medication was stopped and she was given therapeutic help. After observation, the symptoms subsided. This is a primary ADR case."
+    },
+    "3": {
+      "source": "ठीक आहे, हे अमित कुमार आहेत. हे ४२ वर्षांचे पुरुष आहेत आणि त्यांचे वजन सुमारे ७६ किलोग्रॅम आहे. औषध घेतल्यानंतर त्यांच्या चेहऱ्याभोवती तीव्र खाज, पुरळ आणि सूज येऊ लागली. ही प्रतिक्रिया प्रत्यक्षात ८ ऑगस्ट २०२६ रोजी सुरू झाली होती आणि १० ऑगस्ट २०२६ पर्यंत लक्षणे बरी झाली होती. आम्ही संशयित औषध बंद केले, त्यांना अँटीहिस्टामाइन उपचार दिले आणि निरीक्षणाखाली ठेवले. हे एक प्राथमिक प्रकरण आहे.",
+      "english": "Okay, this is Amit Kumar. He's a 42-year-old male and weighs about 76 kilograms. After taking the medicine, he started experiencing severe itching, rashes and swelling around his face. The reaction had actually begun on 8 August 2026, and by 10 August 2026 the symptoms were resolved. We stopped the suspected drug, gave them antihistamine treatment and kept them under observation. This is a prima facie case."
+    },
+    "4": {
+      "source": "रुग्ण कालपासून पोटात तीव्र दुखणे, मळमळ, जुलाब आणि अशक्तपणाची तक्रार करत आहे. तिचे नाव नेहा सिंग आहे. ती ३१ वर्षांची महिला आहे, तिचे वजन ६२ किलोग्रॅम आहे. प्रतिकूल प्रतिक्रिया १५ ऑगस्ट २०२६ रोजी सुरू झाली आणि १६ ऑगस्ट २०२६ रोजी थांबली. तिला सहाय्यक काळजी आणि तोंडावाटे द्रवपदार्थ देण्यात आले आणि तिच्या लक्षणांमध्ये सुधारणा झाली. हे एक प्राथमिक प्रकरण आहे.",
+      "english": "The patient has been complaining of severe abdominal pain, nausea, loose motions and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old female, weighing 62 kg. The adverse reaction began on 15 August 2026 and ceased on 16 August 2026. She was given supportive care and oral fluids, and her symptoms improved. This is a prima facie case."
+    },
+    "5": {
+      "source": "रुग्णाचे नाव अर्जुन पटेल. वय ३८ वर्षे. पुरुष रुग्ण. वजन ७४ किलो. संशयित औषधानंतर ताप, खोकला, पुरळ आणि खाज सुटली. प्रतिक्रिया ९ ऑगस्ट २०२६ रोजी सुरू झाली आणि ११ ऑगस्ट २०२६ रोजी थांबली. औषध बंद करण्यात आले. अँटीहिस्टामाइन आणि उपचार दिले. रुग्ण बरा झाला. प्राथमिक प्रकरण.",
+      "english": "The patient's name is Arjun Patel. He is 38 years old. Male patient. Weight 74 kg. Fever, cough, rash and itching went away after the suspected drug. The reaction began on 9 August 2026 and ceased on 11 August 2026. The drug was discontinued. Antihistamines and treatment. The patient recovered. the primary case."
+    },
+    "6": {
+      "source": "रुग्णाचे नाव स्नेहा गुप्ता आहे. ती २९ वर्षांची असून तिचे वजन ५५ किलोग्रॅम आहे. तिला चेहऱ्यावर सूज, पित्त (अर्टिकेरिया) आणि श्वास घेण्यास त्रास झाला. प्रतिक्रिया १२ ऑगस्ट २०२६ रोजी सुरू झाली आणि १३ ऑगस्ट २०२६ रोजी बरी झाली. संशयित औषध बंद करण्यात आले आणि तिला तातडीचे उपचार आणि अँटीहिस्टामाइन मिळाले. हे एक फॉलो-अप प्रकरण आहे.",
+      "english": "The patient's name is Sneha Gupta. She is 29 years old and weighs 55 kg. She suffered swelling of the face, bile (urticaria) and difficulty breathing. The reaction began on 12 August 2026 and was cured on 13 August 2026. The suspected drug was discontinued and she received urgent treatment and antihistamines. This is a follow-up case."
+    },
+    "7": {
+      "source": "रुग्णाचे नाव रोहित मेहता आहे. हे ४६ वर्षांचे असून त्यांचे वजन ८२ किलोग्रॅम आहे. संशयित औषधानंतर त्यांना तीव्र चक्कर येणे, उलट्या आणि अशक्तपणा आला. लक्षणे ७ ऑगस्ट २०२६ रोजी सुरू झाली आणि ९ ऑगस्ट २०२६ रोजी बरी झाली. औषध बंद करण्यात आले आणि प्रकृतीत सुधारणा होईपर्यंत त्यांच्यावर लक्ष ठेवण्यात आले. हा एक प्राथमिक एडीआर अहवाल आहे.",
+      "english": "The patient's name is Rohit Mehta. He is 46 years old and weighs 82 kg. The suspected drug was followed by severe dizziness, vomiting and weakness. Symptoms began on 7 August 2026 and resolved by 9 August 2026. The medication was stopped and he was monitored until his condition improved. This is a preliminary ADR report."
+    },
+    "8": {
+      "source": "संशयित औषध काढून घेण्यात आले आणि रुग्णाला निरीक्षणाखाली ठेवण्यात आले. अँटीहिस्टामाइन उपचार देण्यात आले आणि प्रतिक्रियेत सुधारणा झाली. रुग्णाचे नाव कविता राव आहे. ती ३६ वर्षांची महिला असून तिचे वजन ६१.५ किलोग्रॅम आहे. तिला ताप, उलट्या, खाज आणि चेहऱ्यावर सूज होती. प्रतिक्रिया ५ ऑगस्ट २०२६ रोजी सुरू झाली आणि ७ ऑगस्ट २०२६ रोजी संपली. हे एक प्राथमिक प्रकरण आहे.",
+      "english": "The suspected drug was removed and the patient was placed under observation. Antihistamine treatment was administered and the reaction improved. The patient's name is Kavita Rao. She is a 36-year-old female and weighs 61.5 kg. She had fever, vomiting, itching and swelling on her face. The reaction began on 5 August 2026 and ended on 7 August 2026. This is a prima facie case."
+    },
+    "9": {
+      "source": "रुग्णाचे नाव संजय यादव आहे. हे ५५ वर्षांचे पुरुष असून त्यांचे वजन ७९ किलोग्रॅम आहे. त्यांना डोकेदुखी, चक्कर येणे, अशक्तपणा आणि त्वचेवर पुरळ उठली. प्रतिकूल प्रतिक्रिया ६ ऑगस्ट २०२६ रोजी सुरू झाली आणि ८ ऑगस्ट २०२६ रोजी संपली. संशयित औषध बंद करण्यात आले आणि लक्षणानुसार उपचार करण्यात आले. रुग्णावर लक्ष ठेवण्यात आले आणि सुधारणा झाली.",
+      "english": "The patient's name is Sanjay Yadav. He is a 55-year-old male and weighs 79 kg. They developed headaches, dizziness, weakness and skin rashes. The adverse reaction began on 6 August 2026 and ended on 8 August 2026. The suspected drug was discontinued and symptomatic treatment followed. The patient was monitored and improved."
+    },
+    "10": {
+      "source": "ह्या पूजा नायर आहेत, त्या २५ वर्षांच्या महिला असून सुमारे ५२ किलोग्रॅम वजनाच्या आहेत. संशयित औषध घेतल्यानंतर त्यांना तीव्र खाज, पुरळ, चेहऱ्यावर सूज आणि श्वास घेण्यास थोडा त्रास होऊ लागला. प्रतिक्रिया १४ ऑगस्ट २०२६ रोजी सुरू झाली आणि १६ ऑगस्ट २०२६ रोजी लक्षणे बरी झाली. आम्ही औषध बंद केले, अँटीहिस्टामाइन दिले आणि सुधारणा होईपर्यंत त्यांना निरीक्षणाखाली ठेवले. फॉलो-अप प्रकरण.",
+      "english": "This is Pooja Nair, a 25-year-old woman weighing about 52 kg. After taking the suspected drug, she developed severe itching, rashes, swelling on her face and some difficulty in breathing. The reaction began on 14 August 2026 and symptoms resolved on 16 August 2026. We stopped the medication, gave antihistamines and kept them under observation until improvement. Follow-up case."
+    },
+    "11": {
+      "source": "रुग्णाचे नाव मोहित जैन आहे. वय ४५ वर्षे, माफ करा, दुरुस्ती, वय ३५ वर्षे. लिंग पुरुष आणि वजन ६८ किलोग्रॅम आहे. त्यांना मळमळ, उलट्या आणि चक्कर येण्याचा त्रास झाला. प्रतिक्रिया १० ऑगस्ट २०२६ रोजी सुरू झाली आणि ११ ऑगस्ट २०२६ रोजी संपली. संशयित औषध बंद करण्यात आले आणि त्यांच्यावर उपचार करण्यात आले. हे एक प्राथमिक प्रकरण आहे.",
+      "english": "The patient's name is Mohit Jain. Age 45 years, sorry, correction, age 35 years. The gender is male and the weight is 68 kg. He suffered from nausea, vomiting and dizziness. The reaction began on 10 August 2026 and ended on 11 August 2026. The suspected drug was discontinued and they were treated. This is a prima facie case."
+    },
+    "12": {
+      "source": "रुग्णाची ओळख अंजली दास म्हणून झाली. लिंग महिला. वय ४० वर्षे. वजन ६३ किलोग्रॅम. प्रस्तुत प्रतिकूल प्रतिक्रियेमध्ये ताप, खोकला, पुरळ आणि चेहऱ्यावर सूज समाविष्ट आहे. प्रतिक्रिया ४ ऑगस्ट २०२६ रोजी सुरू झाली आणि ६ ऑगस्ट २०२६ रोजी बरी झाली. संशयित औषध बंद करण्यात आले. अँटीहिस्टामाइन उपचार आणि वैद्यकीय मदत देण्यात आली. प्राथमिक एडीआर प्रकरण.",
+      "english": "The patient was identified as Anjali Das. the female sex. Age 40. Weight 63 kg. Present adverse reactions include fever, cough, rash and swelling of the face. The reaction began on 4 August 2026 and was cured on 6 August 2026. The suspected drug was discontinued. Antihistamine treatment and medical assistance were provided. Primary ADR case."
+    },
+    "13": {
+      "source": "ठीक आहे, हे दीपक मिश्रा आहेत. हे ३३ वर्षांचे पुरुष असून त्यांचे वजन ७१ किलोग्रॅम आहे. त्यांना ताप, खाज, पुरळ आणि ओठांवर सूज येत आहे. हे १३ ऑगस्ट २०२६ रोजी सुरू झाले आणि १५ ऑगस्ट २०२६ पर्यंत शांत झाले. आम्ही औषध बंद केले, अँटीहिस्टामाइन दिले आणि काही तास लक्ष ठेवले. ते बरे झाले. हे एक प्राथमिक प्रकरण आहे.",
+      "english": "Okay, this is Deepak Mishra. He's a 33-year-old male who weighs 71 kilograms. They have fever, itching, rash and swelling of the lips. It began on 13 August 2026 and subsided by 15 August 2026. We stopped the medication, gave antihistamines and monitored for a few hours. It got better. This is a prima facie case."
+    },
+    "14": {
+      "source": "रुग्णाचे नाव रिया कपूर आहे. ती २४ वर्षांची महिला आहे. तिचे वजन ५७ किलोग्रॅम आहे. औषधानंतर तिला ताप, डोकेदुखी, घसा दुखणे आणि कोरडा खोकला आहे. तिला छातीत दुखणे किंवा श्वास घेण्यास त्रास नाही. प्रतिक्रिया १६ ऑगस्ट २०२६ रोजी सुरू झाली आणि १७ ऑगस्ट २०२६ रोजी बरी झाली. औषध बंद करण्यात आले आणि उपचार देण्यात आले. प्राथमिक प्रकरण.",
+      "english": "The patient's name is Rhea Kapoor. She is a 24-year-old woman. Her weight is 57 kg. After the medication, she has a fever, headache, sore throat and dry cough. She has no chest pain or difficulty breathing. The reaction began on 16 August 2026 and was cured on 17 August 2026. The drug was discontinued and treatment was administered. the primary case."
+    },
+    "15": {
+      "source": "रुग्णाचे नाव विक्रम जोशी आहे. हे ४८ वर्षांचे पुरुष असून त्यांचे वजन ८४ किलोग्रॅम आहे. संशयित औषध घेतल्यानंतर त्यांना तीव्र खाज, कोरडी पुरळ, चेहऱ्यावर सूज, चक्कर येणे आणि श्वास कोंडणे असा त्रास झाला. प्रतिक्रिया १० ऑगस्ट २०२६ रोजी सुरू झाली आणि १३ ऑगस्ट २०२६ रोजी लक्षणे बरी झाली. आम्ही लगेच औषध बंद केले, अँटीहिस्टामाइन दिले आणि निरीक्षणाखाली ठेवले. प्रकृतीत सुधारणा झाली. हा प्राथमिक एडीआर अहवाल आहे.",
+      "english": "The patient's name is Vikram Joshi. He is a 48-year-old male and weighs 84 kg. After taking the suspected drug, he suffered from severe itching, dry rash, swelling on his face, dizziness and shortness of breath. The reaction began on 10 August 2026 and symptoms resolved by 13 August 2026. We immediately stopped the drug, administered antihistamines and kept under observation. His health improved. This is the primary ADR report."
+    },
+    "16": {
+      "source": "रुग्णाचे नाव मीरा शाह वय ३२ वर्षे महिला वजन ६० किलोग्रॅम तिला ताप खोकला खाज पुरळ आणि अशक्तपणा झाला प्रतिक्रिया ९ ऑगस्ट २०२६ रोजी सुरू झाली प्रतिक्रिया ११ ऑगस्ट २०२६ रोजी थांबली औषध बंद अँटीहिस्टामाइन दिले रुग्ण निरीक्षणाखाली ठेवला आणि लक्षणे बरी झाली प्राथमिक प्रकरण",
+      "english": "The name of the patient is Meera Shah age 32 years female weight 60 kg She had fever, cough, itchy rash and weakness Reaction started on 9 August 2026 Response stopped on 11 August 2026 Drug discontinued Antihistamine administered Patient kept under observation and symptoms resolved Primary case"
+    },
+    "17": {
+      "source": "फॉलो-अप प्रकरण. प्रतिक्रिया १४ ऑगस्ट २०२६ रोजी बरी झाली. रुग्णाला अँटीहिस्टामाइन आणि उपचार देण्यात आले. प्रतिक्रिया १२ ऑगस्ट २०२६ रोजी सुरू झाली होती. रुग्णाचे नाव अमन गुप्ता आहे. हे ३० वर्षांचे पुरुष आहेत. त्यांचे वजन ७३ किलोग्रॅम आहे. औषधानंतर त्यांना शिंका येणे, नाक गळणे, हलका ताप आणि खाज सुटली. औषध बंद केल्यानंतर लक्षणे बरी झाली.",
+      "english": "A follow-up case. Reaction recovered on 14 August 2026. The patient was given antihistamines and treatment. The reaction had begun on 12 August 2026. The patient's name is Aman Gupta. These are men in their 30s. They weigh 73 kilograms. He developed sneezing, runny nose, mild fever and itching after the medication. After stopping the drug, the symptoms went away."
+    },
+    "18": {
+      "source": "रुग्ण निशा वर्मा आहे. ती ३७ वर्षांची महिला असून तिचे वजन ५९ किलोग्रॅम आहे. तिला प्रुरिटस, अर्टिकेरिया, चेहऱ्यावर सूज, मळमळ आणि डिस्पेनियाचा त्रास झाला. प्रतिक्रिया ८ ऑगस्ट २०२६ रोजी सुरू झाली आणि १० ऑगस्ट २०२६ रोजी कमी झाली. संशयित औषध बंद करण्यात आले आणि तिला अँटीहिस्टामाइन उपचार देण्यात आले. प्रकृतीत सुधारणा होईपर्यंत तिच्यावर लक्ष ठेवण्यात आले. हे एक प्राथमिक प्रकरण आहे.",
+      "english": "The patient is Nisha Verma. She is a 37-year-old woman and weighs 59 kilograms. She suffered from pruritus, urticaria, facial swelling, nausea and dyspnea. The reaction began on 8 August 2026 and subsided on 10 August 2026. The suspected drug was discontinued and she received antihistamine treatment. She was kept under observation until her condition improved. This is a prima facie case."
+    },
+    "19": {
+      "source": "रुग्णाचे नाव राजेश कुमार आहे. वय ५२ वर्षे. लिंग पुरुष. वजन ७७ किलोग्रॅम. ते मधुमेह आणि उच्च रक्तदाबाचे रुग्ण आहेत, पण आज संशयित औषधानंतर त्यांना तीव्र खाज, उलट्या आणि चेहऱ्यावर सूज आली. सद्य प्रतिक्रिया १५ ऑगस्ट २०२६ रोजी सुरू झाली आणि १७ ऑगस्ट २०२६ रोजी बरी झाली. संशयित औषध बंद करण्यात आले आणि अँटीहिस्टामाइन दिले. निरीक्षणांनंतर प्रकृती सुधारली. प्राथमिक एडीआर प्रकरण.",
+      "english": "The patient's name is Rajesh Kumar. He is 52. Gender Male. Weight 77 kg. They are diabetic and hypertensive, but today after suspected medication they experienced severe itching, vomiting, and swelling of the face. The current reaction began on 15 August 2026 and recovered by 17 August 2026. The suspected drug was discontinued and antihistamines were administered. The condition improved after observation. Primary ADR case."
+    },
+    "20": {
+      "source": "रुग्णाचे नाव सिमरन कौर आहे. ती २८ वर्षांची महिला असून तिचे वजन ५६ किलोग्रॅम आहे. तिला दोन दिवसांपासून ताप, कोरडा खोकला, खाज आणि पुरळ येण्याची तक्रार आहे. प्रतिक्रिया १२ ऑगस्ट २०२६ रोजी सुरू झाली आणि १४ ऑगस्ट २०२६ रोजी बरी झाली. तिचे औषध बंद करण्यात आले आणि तिच्यावर उपचार करण्यात आले. खात्रीसाठी, रुग्णाचे नाव सिमरन कौर, वय २८ वर्षे, महिला, वजन ५६ किलोग्रॅम, प्रतिक्रिया १२ ऑगस्ट २०२६ रोजी सुरू झाली आणि १४ ऑगस्ट २०२६ रोजी बरी झाली. हे एक प्राथमिक प्रकरण आहे.",
+      "english": "The patient's name is Simran Kaur. She is a 28-year-old female and weighs 56 kg. She has been complaining of fever, dry cough, itching and rash for two days. The reaction began on 12 August 2026 and was resolved by 14 August 2026. Her medication was stopped and she was treated. For confirmation, the patient's name is Simran Kaur, age 28 years, female, weight 56 kg, reaction started on 12 August 2026 and recovered on 14 August 2026. This is a prima facie case."
+    }
+  },
+  "ne": {
+    "1": {
+      "source": "प्रारम्भिक केस। बिरामीको नाम राहुल शर्मा हो। उमेर ३४ वर्ष। लिङ्ग पुरुष। तौल ७० किलोग्राम। शंकास्पद औषधि खाएपछि बिरामीलाई ज्वरो, सामान्य चिलाउने र छालामा डाबर (र्याश) आयो। प्रतिक्रिया १० अगस्ट २०२६ मा सुरु भयो र १२ अगस्ट २०२६ मा निको भयो। शंकास्पद औषधि रोकियो र बिरामीलाई एन्टिहिस्टामिन दिएर उपचार गरियो। उपचारपछि लक्षणहरूमा सुधार आयो।",
+      "english": "the initial case. The patient's name is Rahul Sharma. Aged 34 years. the male sex. Weight 70 kg. The patient developed fever, general malaise and skin rash after taking the suspected drug. The reaction began on 10 August 2026 and recovered by 12 August 2026. The suspected drug was stopped and the patient treated with an antihistamine. The symptoms improved after treatment."
+    },
+    "2": {
+      "source": "शंकास्पद प्रतिक्रिया वाकवाकी, उल्टी र चक्कर लाग्नु हो। प्रतिक्रिया ११ अगस्ट २०२६ मा सुरु भयो र १३ अगस्ट २०२६ मा समाप्त भयो। बिरामीको नाम प्रिया वर्मा हो। उहाँ २७ वर्षकी महिला हुनुहुन्छ। उहाँको तौल ५८ किलोग्राम छ। औषधि रोकियो र उहाँलाई सहायक उपचार दिइयो। अवलोकनपछि लक्षणहरू शान्त भए। यो एक प्रारम्भिक ADR केस हो।",
+      "english": "The suspected reaction is nausea, vomiting and dizziness. The response began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27-year-old woman. He weighs 58 kg. The medication was stopped and he was given supportive treatment. After observation, the symptoms subsided. This is an initial ADR case."
+    },
+    "3": {
+      "source": "ठिक छ, यो अमित कुमार हुनुहुन्छ। उहाँ ४२ वर्षको पुरुष हुनुहुन्छ र तौल लगभग ७६ किलोग्राम छ। औषधि खाएपछि उहाँलाई अनुहार वरपर कडा चिलाउने, डाबर र सुन्निने हुन थाल्यो। प्रतिक्रिया वास्तवमा ८ अगस्ट २०२६ मा सुरु भएको थियो र १० अगस्ट २०२६ सम्ममा लक्षणहरू निको भएका थिए। हामीले औषधि रोक्यौं, एन्टिहिस्टामिन उपचार दियौं र अवलोकनमा राख्यौं। यो एक प्रारम्भिक केस हो।",
+      "english": "Well, this is Amit Kumar. He is a 42-year-old male and weighs approximately 76 kg. After taking the medicine, he began to have severe tingling, burping and swelling around his face. The reaction actually began on 8 August 2026 and by 10 August 2026 the symptoms had resolved. We stopped the medication, gave antihistamine treatment and kept him under observation. This is an early case."
+    },
+    "4": {
+      "source": "बिरामीले हिजोदेखि कडा पेट दुख्ने, वाकवाकी, पखाला र कमजोरीको गुनासो गरिरहनुभएको छ। उहाँको नाम नेहा सिंह हो। उहाँ ३१ वर्षकी महिला हुनुहुन्छ, तौल ६२ किलोग्राम। प्रतिकूल प्रतिक्रिया १५ अगस्ट २०२६ मा सुरु भयो र १६ अगस्ट २०२६ मा रोकियो। उहाँलाई सहायक हेरचाह र तरल पदार्थ दिइयो, र लक्षणहरूमा सुधार आयो। यो एक प्रारम्भिक केस हो।",
+      "english": "The patient has been complaining of severe abdominal pain, nausea, diarrhea and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old female, weighing 62 kg. The adverse reaction began on 15 August 2026 and stopped on 16 August 2026. He was given supportive care and fluids, and symptoms improved. This is an early case."
+    },
+    "5": {
+      "source": "बिरामीको नाम अर्जुन पटेल। उमेर ३८ वर्ष। पुरुष बिरामी। तौल ७४ किलो। शंकास्पद औषधिपछि ज्वरो, खोकी, डाबर र चिलाउने भयो। प्रतिक्रिया ९ अगस्ट २०२६ सुरु भयो र ११ अगस्ट २०२६ रोकियो। औषधि बन्द गरियो। एन्टिहिस्टामिन र उपचार दिइयो। बिरामी निको हुनुभयो। प्रारम्भिक केस।",
+      "english": "The patient's name is Arjun Patel. Aged 38 years. the male patient. Weight 74 kg. The suspected drug was followed by fever, cough, wheezing and chills. The response began on 9 August 2026 and stopped on 11 August 2026. The medicine was stopped. Antihistamines and treatment were given. The patient recovered. the initial case."
+    },
+    "6": {
+      "source": "बिरामीको नाम स्नेहा गुप्ता हो। उहाँ २९ वर्षको हुनुहुन्छ र तौल ५५ किलोग्राम छ। उहाँलाई अनुहार सुन्निने, डाबर र सास फेर्न गाह्रो भयो। प्रतिक्रिया १२ अगस्ट २०२६ मा सुरु भयो र १३ अगस्ट २०२६ मा निको भयो। औषधि रोकियो र उहाँले आपतकालीन उपचार पाउनुभयो। यो एक फलो-अप केस हो।",
+      "english": "The patient's name is Sneha Gupta. He is 29 years old and weighs 55 kg. He suffered a swollen face, fever and difficulty in breathing. The reaction began on 12 August 2026 and recovered by 13 August 2026. The medication was stopped and he received emergency treatment. This is a follow-up case."
+    },
+    "7": {
+      "source": "बिरामीको नाम रोहित मेहता हो। उहाँ ४६ वर्षको हुनुहुन्छ र तौल ८२ किलोग्राम छ। शंकास्पद औषधिपछि उहाँलाई कडा चक्कर लाग्ने, उल्टी र कमजोरी भयो। लक्षणहरू ७ अगस्ट २०२६ मा सुरु भए र ९ अगस्ट २०२६ मा निको भए। औषधि रोकियो र सुधार नभएसम्म अवलोकन गरियो। यो प्रारम्भिक ADR रिपोर्ट हो।",
+      "english": "The patient's name is Rohit Mehta. He is 46 years old and weighs 82 kg. He developed severe dizziness, vomiting and weakness after the suspected medication. Symptoms began on 7 August 2026 and resolved by 9 August 2026. The drug was stopped and observed until improvement. This is the initial ADR report."
+    },
+    "8": {
+      "source": "शंकास्पद औषधि निकालियो र बिरामीलाई अवलोकनमा राखियो। एन्टिहिस्टामिन उपचार दिइयो र प्रतिक्रियामा सुधार आयो। बिरामीको नाम कविता राव हो। उहाँ ३६ वर्षकी महिला हुनुहुन्छ, तौल ६१.५ किलोग्राम। उहाँलाई ज्वरो, उल्टी, चिलाउने र अनुहार सुन्निने समस्या थियो। प्रतिक्रिया ५ अगस्ट २०२६ मा सुरु भयो र ७ अगस्ट २०२६ मा समाप्त भयो। यो प्रारम्भिक केस हो।",
+      "english": "The suspected drug was removed and the patient placed under observation. Antihistamine treatment was given and the response improved. The patient's name is Kavita Rao. She is a 36-year-old female, weighing 61.5 kg. He had fever, vomiting, chills and a swollen face. The response began on 5 August 2026 and ended on 7 August 2026. This is the initial case."
+    },
+    "9": {
+      "source": "बिरामीको नाम संजय यादव हो। उहाँ ५५ वर्षको पुरुष हुनुहुन्छ, तौल ७९ किलोग्राम। उहाँलाई टाउको दुख्ने, चक्कर लाग्ने, कमजोरी र छालामा डाबर आयो। प्रतिकूल प्रतिक्रिया ६ अगस्ट २०२६ मा सुरु भयो र ८ अगस्ट २०२६ मा निको भयो। औषधि रोकियो र उपचार प्रदान गरियो। बिरामीको सुधार भयो।",
+      "english": "The patient's name is Sanjay Yadav. He is a 55-year old male, weighing 79 kg. He developed a headache, dizziness, weakness and skin rashes. The adverse reaction began on 6 August 2026 and was cured on 8 August 2026. The drug was stopped and treatment provided. The patient improved."
+    },
+    "10": {
+      "source": "यो पूजा नायर हुनुहुन्छ, उहाँ २५ वर्षकी महिला हुनुहुन्छ, लगभग ५२ किलोग्राम। औषधि खाएपछि कडा चिलाउने, डाबर, अनुहार सुन्निने र सास फेर्न गाह्रो भएर आउनुभएको थियो। प्रतिक्रिया १४ अगस्ट २०२६ मा सुरु भयो र १६ अगस्ट २०२६ मा लक्षण निको भयो। हामीले औषधि रोक्यौं, एन्टिहिस्टामिन दियौं र अवलोकन गर्यौं। फलो-अप केस।",
+      "english": "This is Pooja Nair, she's a 25-year-old woman, about 52 kg. After taking the medicine, he came down with severe shaking, dizziness, swelling of face and difficulty in breathing. The reaction began on 14 August 2026 and symptoms resolved by 16 August 2026. We stopped the medication, gave antihistamines and observed. The follow-up case."
+    },
+    "11": {
+      "source": "बिरामीको नाम मोहित जैन हो। उमेर ४५ वर्ष, माफ गर्नुहोला, सच्याइएको, उमेर ३५ वर्ष। लिङ्ग पुरुष र तौल ६८ किलोग्राम। उहाँलाई वाकवाकी, उल्टी र चक्कर आयो। प्रतिक्रिया १० अगस्ट २०२६ मा सुरु भयो र ११ अगस्ट २०२६ मा समाप्त भयो। औषधि रोकियो र उपचार गरियो। यो प्रारम्भिक केस हो।",
+      "english": "The patient's name is Mohit Jain. Age 45, sorry, corrected, age 35. Gender male and weight 68 kg. He had nausea, vomiting and dizziness. The response began on 10 August 2026 and ended on 11 August 2026. The drug was stopped and treatment was given. This is the initial case."
+    },
+    "12": {
+      "source": "बिरामी अञ्जली दास। लिङ्ग महिला। उमेर ४० वर्ष। तौल ६३ किलोग्राम। प्रस्तुत प्रतिकूल प्रतिक्रियामा ज्वरो, खोकी, डाबर र अनुहार सुन्निने समावेश छ। प्रतिक्रिया ४ अगस्ट २०२६ मा सुरु भयो र ६ अगस्ट २०२६ मा निको भयो। औषधि निकालियो। एन्टिहिस्टामिन र उपचार प्रदान गरियो। प्रारम्भिक ADR केस।",
+      "english": "Patient Anjali Das. the female gender. Aged 40 years. Weight 63 kg. Adverse reactions presented include fever, cough, rash and facial swelling. The reaction began on 4 August 2026 and recovered by 6 August 2026. The medicine was removed. Antihistamines and treatment were provided. The initial ADR case."
+    },
+    "13": {
+      "source": "ठिक छ, यो दीपक मिश्रा हुनुहुन्छ। ३३ वर्षको पुरुष, तौल ७१ किलोग्राम। उहाँलाई ज्वरो, चिलाउने, डाबर र ओठ सुन्निने भएको छ। यो १३ अगस्ट २०२६ मा सुरु भयो र १५ अगस्ट २०२६ सम्ममा निको भयो। हामीले औषधि रोक्यौं, एन्टिहिस्टामिन दियौं र केही घण्टा हेर्यौं। उहाँ निको हुनुभयो। यो प्रारम्भिक केस हो।",
+      "english": "Well, this is Deepak Mishra. Male of 33 years, weight 71 kg. He has a fever, chills, rashes and swollen lips. It started on 13 August 2026 and recovered by 15 August 2026. We stopped the medication, gave antihistamines and watched for a few hours. He was healed. This is the initial case."
+    },
+    "14": {
+      "source": "बिरामीको नाम रिया कपुर हो। उहाँ २४ वर्षकी महिला हुनुहुन्छ। तौल ५७ किलोग्राम। औषधि खाएपछि उहाँलाई ज्वरो, टाउको दुख्ने, घाँटी दुख्ने र सुक्खा खोकी छ। उहाँलाई छाती दुख्ने र सास फेर्न गाह्रो छैन। प्रतिक्रिया १६ अगस्ट २०२६ मा सुरु भयो र १७ अगस्ट २०२६ मा निको भयो। औषधि रोकियो। प्रारम्भिक केस।",
+      "english": "The patient's name is Rhea Kapoor. She is a 24-year-old woman. Weight 57 kg. After taking the medicine, he has fever, headache, sore throat and dry cough. He does not have chest pains and breathing difficulties. The reaction began on 16 August 2026 and recovered by 17 August 2026. The medicine was stopped. the initial case."
+    },
+    "15": {
+      "source": "बिरामीको नाम विक्रम जोशी हो। उहाँ ४८ वर्षको पुरुष हुनुहुन्छ, तौल ८४ किलोग्राम। औषधि खाएपछि कडा चिलाउने, डाबर, अनुहार सुन्निने, चक्कर लाग्ने र सास फेर्न गाह्रो भएर आउनुभयो। प्रतिक्रिया १० अगस्ट २०२६ मा सुरु भयो र १३ अगस्ट २०२६ मा निको भयो। हामीले तुरुन्तै औषधि रोक्यौं, एन्टिहिस्टामिन दियौं र अवलोकनमा राख्यौं। अवस्थामा सुधार आयो। प्रारम्भिक ADR रिपोर्ट।",
+      "english": "The patient's name is Vikram Joshi. He is a 48-year-old male, weighing 84 kg. After taking the medicine, he came down with severe tingling, burping, swelling of face, dizziness and difficulty in breathing. The reaction began on 10 August 2026 and recovered by 13 August 2026. We immediately stopped the medication, gave antihistamines and kept him under observation. The situation has improved. Initial ADR report."
+    },
+    "16": {
+      "source": "बिरामीको नाम मीरा शाह उमेर ३२ वर्ष महिला तौल ६० किलोग्राम उहाँलाई ज्वरो खोकी चिलाउने डाबर र कमजोरी भयो प्रतिक्रिया ९ अगस्ट २०२६ सुरु भयो प्रतिक्रिया ११ अगस्ट २०२६ रोकियो औषधि बन्द एन्टिहिस्टामिन दिइयो बिरामी अवलोकन गरियो र लक्षण निको भयो प्रारम्भिक केस",
+      "english": "The patient was identified as Meera Shah aged 32 years female weight 60 kgs She developed fever, cough and weakness Response started on 9 August 2026 Response stopped on 11 August 2026 Drug discontinued Antihistamine administered Patient observed and symptoms cured Initial case"
+    },
+    "17": {
+      "source": "फलो-अप केस। प्रतिक्रिया १४ अगस्ट २०२६ मा निको भयो। बिरामीलाई एन्टिहिस्टामिन र उपचार दिइयो। प्रतिक्रिया १२ अगस्ट २०२६ मा सुरु भएको थियो। बिरामीको नाम अमन गुप्ता हो। उहाँ ३० वर्षको पुरुष हुनुहुन्छ। तौल ७३ किलोग्राम। औषधि खाएपछि हाछ्युँ आउने, सिँगान बग्ने, हल्का ज्वरो र चिलाउने भयो। औषधि रोकेपछि सुधार आयो।",
+      "english": "The follow-up case. The reaction healed on 14 August 2026. The patient was given antihistamines and treatment. The response began on 12 August 2026. The patient's name is Aman Gupta. He is a 30-year-old man. Weight 73 kg. After taking the medicine, there was sneezing, a runny nose, mild fever and chills. There was improvement after stopping the drug."
+    },
+    "18": {
+      "source": "बिरामी निशा वर्मा हुनुहुन्छ। उहाँ ३७ वर्षकी महिला, तौल ५९ किलोग्राम। उहाँलाई प्रुरिटस, अर्टिकरिया, अनुहार सुन्निने, वाकवाकी र डिसप्निया भयो। प्रतिक्रिया ८ अगस्ट २०२६ मा सुरु भयो र १० अगस्ट २०२६ मा घट्यो। औषधि रोकियो र एन्टिहिस्टामिन उपचार दिइयो। सुधार नभएसम्म अवलोकन गरियो। यो प्रारम्भिक केस हो।",
+      "english": "The patient is Nisha Verma. She is a 37-year-old female, weighing 59 kg. He developed pruritus, urticaria, facial swelling, giddiness and dyspnea. The reaction began on 8 August 2026 and subsided by 10 August 2026. The drug was stopped and antihistamine treatment was given. Observed until improvement. This is the initial case."
+    },
+    "19": {
+      "source": "बिरामीको नाम राजेश कुमार हो। उमेर ५२ वर्ष। लिङ्ग पुरुष। तौल ७७ किलोग्राम। उहाँ मधुमेह र उच्च रक्तचापको बिरामी हुनुहुन्छ, तर आज औषधि खाएपछि उहाँलाई कडा चिलाउने, उल्टी र अनुहार सुन्निने भयो। वर्तमान प्रतिक्रिया १५ अगस्ट २०२६ मा सुरु भयो र १७ अगस्ट २०२६ मा निको भयो। औषधि रोकियो र उपचार दिइयो। प्रारम्भिक ADR केस।",
+      "english": "The patient's name is Rajesh Kumar. Age 52 years. the male sex. Weight 77 kg. He is a diabetic and hypertensive, but today after taking the medicine he had severe cramps, vomiting and swollen face. The current response began on 15 August 2026 and recovered by 17 August 2026. The medication was stopped and treatment was given. The initial ADR case."
+    },
+    "20": {
+      "source": "बिरामीको नाम सिमरन कौर हो। उहाँ २८ वर्षकी महिला, तौल ५६ किलोग्राम। उहाँ दुई दिनदेखि ज्वरो, सुक्खा खोकी, चिलाउने र डाबरको गुनासो गर्दै हुनुहुन्छ। प्रतिक्रिया १२ अगस्ट २०२६ मा सुरु भयो र १४ अगस्ट २०२६ मा निको भयो। उहाँको औषधि रोकियो र उपचार गरियो। पुष्टिका लागि, बिरामीको नाम सिमरन कौर, उमेर २८ वर्ष, महिला, तौल ५६ किलो, प्रतिक्रिया १२ अगस्ट २०२६ सुरु भयो र १४ अगस्ट २०२६ निको भयो। यो प्रारम्भिक केस हो।",
+      "english": "The patient's name is Simran Kaur. She is a 28-year-old female, weighing 56 kg. He has been complaining of fever, dry cough, chills and nausea for two days. The reaction began on 12 August 2026 and recovered by 14 August 2026. His medication was stopped and he underwent treatment. For confirmation, the patient's name is Simran Kaur, age 28 years, female, weight 56 kg, reaction started on 12 August 2026 and recovered on 14 August 2026. This is the initial case."
+    }
+  },
+  "pa": {
+    "1": {
+      "source": "ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ। ਮਰੀਜ਼ ਦਾ ਨਾਮ ਰਾਹੁਲ ਸ਼ਰਮਾ ਹੈ। ਉਮਰ 34 ਸਾਲ। ਲਿੰਗ ਮਰਦ। ਵਜ਼ਨ 70 ਕਿਲੋਗ੍ਰਾਮ। ਸ਼ੱਕੀ ਦਵਾਈ ਲੈਣ ਤੋਂ ਬਾਅਦ ਮਰੀਜ਼ ਨੂੰ ਬੁਖਾਰ, ਸਾਰੇ ਸਰੀਰ 'ਤੇ ਖਾਰਸ਼ ਅਤੇ ਚਮੜੀ 'ਤੇ ਧੱਫੜ ਹੋ ਗਏ। ਪ੍ਰਤੀਕਿਰਿਆ 10 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 12 ਅਗਸਤ 2026 ਨੂੰ ਠੀਕ ਹੋ ਗਈ। ਸ਼ੱਕੀ ਦਵਾਈ ਬੰਦ ਕਰ ਦਿੱਤੀ ਗਈ ਅਤੇ ਮਰੀਜ਼ ਦਾ ਐਂਟੀਹਿਸਟਾਮਾਈਨ ਨਾਲ ਇਲਾਜ ਕੀਤਾ ਗਿਆ। ਇਲਾਜ ਤੋਂ ਬਾਅਦ ਲੱਛਣਾਂ ਵਿੱਚ ਸੁਧਾਰ ਹੋਇਆ।",
+      "english": "The initial case. The patient's name is Rahul Sharma. Age 34 years. The male gender. Weight 70 kg. The patient developed fever, itching all over the body and rashes on the skin after taking the suspected drug. The response began on 10 August 2026 and recovered by 12 August 2026. The suspected drug was discontinued and the patient was treated with antihistamines. The symptoms improved after treatment."
+    },
+    "2": {
+      "source": "ਸ਼ੱਕੀ ਪ੍ਰਤੀਕਿਰਿਆ ਜੀ ਮਿਚਲਾਉਣਾ, ਉਲਟੀ ਅਤੇ ਚੱਕਰ ਆਉਣਾ ਹੈ। ਪ੍ਰਤੀਕਿਰਿਆ 11 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 13 ਅਗਸਤ 2026 ਨੂੰ ਖਤਮ ਹੋਈ। ਮਰੀਜ਼ ਦਾ ਨਾਮ ਪ੍ਰਿਯਾ ਵਰਮਾ ਹੈ। ਉਹ 27 ਸਾਲ ਦੀ ਔਰਤ ਹੈ। ਉਸਦਾ ਵਜ਼ਨ 58 ਕਿਲੋਗ੍ਰਾਮ ਹੈ। ਦਵਾਈ ਬੰਦ ਕਰ ਦਿੱਤੀ ਗਈ ਅਤੇ ਉਸਨੂੰ ਸਹਾਇਕ ਇਲਾਜ ਦਿੱਤਾ ਗਿਆ। ਨਿਰੀਖਣ ਤੋਂ ਬਾਅਦ ਲੱਛਣ ਠੀਕ ਹੋ ਗਏ। ਇਹ ਇੱਕ ਪ੍ਰਾਰਥਮਿਕ ADR ਕੇਸ ਹੈ।",
+      "english": "The suspected reaction is nausea, vomiting and dizziness. The response began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27-year-old woman. His weight is 58 kg. The medication was stopped and he was given supportive treatment. After examination, the symptoms improved. This is a preliminary ADR case."
+    },
+    "3": {
+      "source": "ਠੀਕ ਹੈ, ਇਹ ਅਮਿਤ ਕੁਮਾਰ ਹਨ। ਇਹ 42 ਸਾਲ ਦੇ ਮਰਦ ਹਨ ਅਤੇ ਇਹਨਾਂ ਦਾ ਵਜ਼ਨ ਲਗਭਗ 76 ਕਿਲੋਗ੍ਰਾਮ ਹੈ। ਦਵਾਈ ਲੈਣ ਤੋਂ ਬਾਅਦ ਇਹਨਾਂ ਦੇ ਚਿਹਰੇ ਦੇ ਆਲੇ-ਦੁਆਲੇ ਤੇਜ਼ ਖਾਰਸ਼, ਧੱਫੜ ਅਤੇ ਸੋਜ ਹੋਣ ਲੱਗੀ। ਪ੍ਰਤੀਕਿਰਿਆ ਅਸਲ ਵਿੱਚ 8 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਸੀ ਅਤੇ 10 ਅਗਸਤ 2026 ਤੱਕ ਲੱਛਣ ਠੀਕ ਹੋ ਗਏ ਸਨ। ਅਸੀਂ ਸ਼ੱਕੀ ਦਵਾਈ ਬੰਦ ਕਰ ਦਿੱਤੀ, ਐਂਟੀਹਿਸਟਾਮਾਈਨ ਇਲਾਜ ਦਿੱਤਾ ਅਤੇ ਨਿਰੀਖਣ ਵਿੱਚ ਰੱਖਿਆ। ਇਹ ਇੱਕ ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ ਹੈ।",
+      "english": "Okay, this is Amit Kumar. He is a 42-year-old male and weighs approximately 76 kg. After taking the medicine, they began to have intense itching, rashes and swelling around their faces. The reaction actually began on 8 August 2026 and symptoms had resolved by 10 August 2026. We stopped the suspected drug, administered antihistamine treatment and kept under observation. This is a prima facie case."
+    },
+    "4": {
+      "source": "ਮਰੀਜ਼ ਕੱਲ੍ਹ ਤੋਂ ਪੇਟ ਵਿੱਚ ਤੇਜ਼ ਦਰਦ, ਉਲਟੀ, ਦਸਤ ਅਤੇ ਕਮਜ਼ੋਰੀ ਦੀ ਸ਼ਿਕਾਇਤ ਕਰ ਰਹੀ ਹੈ। ਉਸਦਾ ਨਾਮ ਨੇਹਾ ਸਿੰਘ ਹੈ। ਉਹ 31 ਸਾਲ ਦੀ ਔਰਤ ਹੈ, ਵਜ਼ਨ 62 ਕਿਲੋਗ੍ਰਾਮ। ਪ੍ਰਤੀਕੂਲ ਪ੍ਰਤੀਕਿਰਿਆ 15 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 16 ਅਗਸਤ 2026 ਨੂੰ ਬੰਦ ਹੋਈ। ਉਸਨੂੰ ਸਹਾਇਕ ਦੇਖਭਾਲ ਦਿੱਤੀ ਗਈ, ਅਤੇ ਲੱਛਣਾਂ ਵਿੱਚ ਸੁਧਾਰ ਹੋਇਆ। ਇਹ ਇੱਕ ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ ਹੈ।",
+      "english": "The patient has been complaining of severe abdominal pain, vomiting, diarrhoea and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old female, weighing 62 kg. The adverse reaction began on 15 August 2026 and ceased on 16 August 2026. He was given supportive care, and symptoms improved. This is a prima facie case."
+    },
+    "5": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਅਰਜੁਨ ਪਟੇਲ। ਉਮਰ 38 ਸਾਲ। ਮਰਦ ਮਰੀਜ਼। ਵਜ਼ਨ 74 ਕਿਲੋ। ਸ਼ੱਕੀ ਦਵਾਈ ਤੋਂ ਬਾਅਦ ਬੁਖਾਰ, ਖੰਘ, ਧੱਫੜ ਅਤੇ ਖਾਰਸ਼ ਹੋਈ। ਪ੍ਰਤੀਕਿਰਿਆ 9 ਅਗਸਤ 2026 ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 11 ਅਗਸਤ 2026 ਬੰਦ ਹੋਈ। ਦਵਾਈ ਬੰਦ। ਇਲਾਜ ਦਿੱਤਾ ਗਿਆ। ਮਰੀਜ਼ ਠੀਕ ਹੋਇਆ। ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ।",
+      "english": "The patient's name is Arjun Patel. Aged 38 years. the male patient. Weight 74 kg. The suspected drug was followed by fever, cough, rash and itching. The reaction began on 9 August 2026 and ceased on 11 August 2026. Stop the medication. Treatment was given. The patient recovered. The initial case."
+    },
+    "6": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਸਨੇਹਾ ਗੁਪਤਾ ਹੈ। ਉਹ 29 ਸਾਲ ਦੀ ਹੈ ਅਤੇ ਉਸਦਾ ਵਜ਼ਨ 55 ਕਿਲੋਗ੍ਰਾਮ ਹੈ। ਉਸਨੂੰ ਚਿਹਰੇ 'ਤੇ ਸੋਜ, ਧੱਫੜ ਅਤੇ ਸਾਹ ਲੈਣ ਵਿੱਚ ਤਕਲੀਫ਼ ਹੋਈ। ਪ੍ਰਤੀਕਿਰਿਆ 12 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 13 ਅਗਸਤ 2026 ਨੂੰ ਠੀਕ ਹੋ ਗਈ। ਦਵਾਈ ਬੰਦ ਕੀਤੀ ਗਈ ਅਤੇ ਉਸਨੂੰ ਇਲਾਜ ਮਿਲਿਆ। ਇਹ ਇੱਕ ਫਾਲੋ-ਅੱਪ ਕੇਸ ਹੈ।",
+      "english": "The patient's name is Sneha Gupta. She is 29 years old and weighs 55 kg. He suffered swelling on his face, rashes and difficulty in breathing. The response began on 12 August 2026 and recovered by 13 August 2026. The medication was stopped and he received treatment. This is a follow-up case."
+    },
+    "7": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਰੋਹਿਤ ਮਹਿਤਾ ਹੈ। ਇਹ 46 ਸਾਲ ਦੇ ਹਨ ਅਤੇ ਵਜ਼ਨ 82 ਕਿਲੋਗ੍ਰਾਮ ਹੈ। ਦਵਾਈ ਤੋਂ ਬਾਅਦ ਇਹਨਾਂ ਨੂੰ ਚੱਕਰ, ਉਲਟੀ ਅਤੇ ਕਮਜ਼ੋਰੀ ਹੋਈ। ਲੱਛਣ 7 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਏ ਅਤੇ 9 ਅਗਸਤ 2026 ਨੂੰ ਠੀਕ ਹੋਏ। ਦਵਾਈ ਬੰਦ ਕੀਤੀ ਗਈ ਅਤੇ ਨਿਰੀਖਣ ਕੀਤਾ ਗਿਆ। ਇਹ ਪ੍ਰਾਰਥਮਿਕ ADR ਰਿਪੋਰਟ ਹੈ।",
+      "english": "The patient's name is Rohit Mehta. He is 46 years old and weighs 82 kg. They had dizziness, vomiting and weakness after the medication. Symptoms began on 7 August 2026 and resolved on 9 August 2026. The medication was stopped and monitored. This is the initial ADR report."
+    },
+    "8": {
+      "source": "ਸ਼ੱਕੀ ਦਵਾਈ ਵਾਪਸ ਲੈ ਲਈ ਗਈ ਅਤੇ ਮਰੀਜ਼ ਨੂੰ ਨਿਰੀਖਣ ਵਿੱਚ ਰੱਖਿਆ ਗਿਆ। ਇਲਾਜ ਦਿੱਤਾ ਗਿਆ ਅਤੇ ਪ੍ਰਤੀਕਿਰਿਆ ਵਿੱਚ ਸੁਧਾਰ ਹੋਇਆ। ਮਰੀਜ਼ ਦਾ ਨਾਮ ਕਵਿਤਾ ਰਾਓ ਹੈ। ਉਹ 36 ਸਾਲ ਦੀ ਔਰਤ ਹੈ, ਵਜ਼ਨ 61.5 ਕਿਲੋਗ੍ਰਾਮ। ਉਸਨੂੰ ਬੁਖਾਰ, ਉਲਟੀ, ਖਾਰਸ਼ ਅਤੇ ਸੋਜ ਸੀ। ਪ੍ਰਤੀਕਿਰਿਆ 5 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 7 ਅਗਸਤ 2026 ਨੂੰ ਖਤਮ ਹੋਈ। ਇਹ ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ ਹੈ।",
+      "english": "The suspected drug was withdrawn and the patient kept under observation. Treatment was given and the response improved. The patient's name is Kavita Rao. She is a 36-year-old female, weighing 61.5 kg. He had fever, vomiting, itching and swelling. The response began on 5 August 2026 and ended on 7 August 2026. This is a prima facie case."
+    },
+    "9": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਸੰਜੇ ਯਾਦਵ ਹੈ। ਇਹ 55 ਸਾਲ ਦੇ ਮਰਦ ਹਨ, ਵਜ਼ਨ 79 ਕਿਲੋਗ੍ਰਾਮ। ਇਹਨਾਂ ਨੂੰ ਸਿਰ ਦਰਦ, ਚੱਕਰ, ਕਮਜ਼ੋਰੀ ਅਤੇ ਧੱਫੜ ਹੋਏ। ਪ੍ਰਤੀਕੂਲ ਪ੍ਰਤੀਕਿਰਿਆ 6 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 8 ਅਗਸਤ 2026 ਨੂੰ ਠੀਕ ਹੋਈ। ਦਵਾਈ ਬੰਦ ਕਰਕੇ ਇਲਾਜ ਕੀਤਾ ਗਿਆ। ਮਰੀਜ਼ ਠੀਕ ਹੋਇਆ।",
+      "english": "The patient's name is Sanjay Yadav. This is a 55 year old male, weighing 79 kg. They suffered headaches, dizziness, weakness and rashes. The adverse reaction started on 6 August 2026 and resolved on 8 August 2026. The drug was discontinued and the treatment continued. The patient recovered."
+    },
+    "10": {
+      "source": "ਇਹ ਪੂਜਾ ਨਾਇਰ ਹਨ, ਉਹ 25 ਸਾਲ ਦੀ ਔਰਤ ਹਨ, ਲਗਭਗ 52 ਕਿਲੋਗ੍ਰਾਮ। ਦਵਾਈ ਲੈਣ ਤੋਂ ਬਾਅਦ ਤੇਜ਼ ਖਾਰਸ਼, ਧੱਫੜ, ਸੋਜ ਅਤੇ ਸਾਹ ਦੀ ਤਕਲੀਫ਼ ਨਾਲ ਆਏ ਸਨ। ਪ੍ਰਤੀਕਿਰਿਆ 14 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 16 ਅਗਸਤ 2026 ਨੂੰ ਲੱਛਣ ਠੀਕ ਹੋਏ। ਅਸੀਂ ਦਵਾਈ ਬੰਦ ਕੀਤੀ, ਇਲਾਜ ਦਿੱਤਾ ਅਤੇ ਦੇਖਭਾਲ ਕੀਤੀ। ਫਾਲੋ-ਅੱਪ ਕੇਸ।",
+      "english": "This is Pooja Nair, she's a 25-year-old woman, about 52 kg. They came down with severe itching, rash, swelling and shortness of breath after taking the medicine. The reaction began on 14 August 2026 and symptoms resolved on 16 August 2026. We stopped the medication, gave treatment and took care. Follow-up case."
+    },
+    "11": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਮੋਹਿਤ ਜੈਨ ਹੈ। ਉਮਰ 45 ਸਾਲ, ਮਾਫ਼ ਕਰਨਾ, ਸੁਧਾਰ, ਉਮਰ 35 ਸਾਲ। ਲਿੰਗ ਮਰਦ ਅਤੇ ਵਜ਼ਨ 68 ਕਿਲੋਗ੍ਰਾਮ। ਇਹਨਾਂ ਨੂੰ ਉਲਟੀ ਅਤੇ ਚੱਕਰ ਆਏ। ਪ੍ਰਤੀਕਿਰਿਆ 10 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 11 ਅਗਸਤ 2026 ਨੂੰ ਖਤਮ ਹੋਈ। ਦਵਾਈ ਬੰਦ ਕੀਤੀ ਗਈ ਅਤੇ ਇਲਾਜ ਕੀਤਾ ਗਿਆ। ਇਹ ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ ਹੈ।",
+      "english": "The patient's name is Mohit Jain. Age 45 years, sorry, corrections, age 35 years. Gender Male and Weight 68 kg. They suffered from vomiting and dizziness. The response began on 10 August 2026 and ended on 11 August 2026. The drug was discontinued and the treatment continued. This is a prima facie case."
+    },
+    "12": {
+      "source": "ਮਰੀਜ਼ ਦੀ ਪਛਾਣ ਅੰਜਲੀ ਦਾਸ। ਲਿੰਗ ਔਰਤ। ਉਮਰ 40 ਸਾਲ। ਵਜ਼ਨ 63 ਕਿਲੋਗ੍ਰਾਮ। ਪ੍ਰਤੀਕੂਲ ਪ੍ਰਤੀਕਿਰਿਆ ਵਿੱਚ ਬੁਖਾਰ, ਖੰਘ, ਧੱਫੜ ਅਤੇ ਸੋਜ ਸ਼ਾਮਲ ਹਨ। ਪ੍ਰਤੀਕਿਰਿਆ 4 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 6 ਅਗਸਤ 2026 ਨੂੰ ਠੀਕ ਹੋਈ। ਦਵਾਈ ਵਾਪਸ ਲਈ ਗਈ। ਇਲਾਜ ਦਿੱਤਾ ਗਿਆ ਅਤੇ ਸੁਧਾਰ ਹੋਇਆ। ਪ੍ਰਾਰਥਮਿਕ ADR ਕੇਸ।",
+      "english": "The patient has been identified as Anjali Das. The female gender. Aged 40 years. Weight 63 kg. Adverse reactions include fever, cough, rash, and swelling. The response began on 4 August 2026 and recovered on 6 August 2026. The medicine was withdrawn. Treatment was given and improvement occurred. The initial ADR case."
+    },
+    "13": {
+      "source": "ਠੀਕ ਹੈ, ਇਹ ਦੀਪਕ ਮਿਸ਼ਰਾ ਹਨ। ਇਹ 33 ਸਾਲ ਦੇ ਮਰਦ ਹਨ, ਵਜ਼ਨ 71 ਕਿਲੋਗ੍ਰਾਮ। ਇਹਨਾਂ ਨੂੰ ਬੁਖਾਰ, ਖਾਰਸ਼, ਧੱਫੜ ਅਤੇ ਬੁੱਲਾਂ 'ਤੇ ਸੋਜ ਹੈ। ਇਹ 13 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਇਆ ਅਤੇ 15 ਅਗਸਤ 2026 ਤੱਕ ਠੀਕ ਹੋ ਗਿਆ। ਅਸੀਂ ਦਵਾਈ ਬੰਦ ਕੀਤੀ, ਇਲਾਜ ਦਿੱਤਾ ਅਤੇ ਦੇਖਿਆ। ਇਹ ਠੀਕ ਹੋ ਗਏ। ਇਹ ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ ਹੈ।",
+      "english": "Okay, this is Deepak Mishra. This is a 33 year old male, weighing 71 kg. They have fever, itching, rash and swelling on the lips. It started on 13 August 2026 and recovered by 15 August 2026. We stopped the medicine, gave treatment and watched. It was okayed. This is a prima facie case."
+    },
+    "14": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਰੀਆ ਕਪੂਰ ਹੈ। ਉਹ 24 ਸਾਲ ਦੀ ਔਰਤ ਹੈ। ਵਜ਼ਨ 57 ਕਿਲੋਗ੍ਰਾਮ। ਦਵਾਈ ਤੋਂ ਬਾਅਦ ਉਸਨੂੰ ਬੁਖਾਰ, ਸਿਰ ਦਰਦ, ਗਲੇ ਵਿੱਚ ਦਰਦ ਅਤੇ ਖੰਘ ਹੈ। ਉਸਨੂੰ ਛਾਤੀ ਵਿੱਚ ਦਰਦ ਨਹੀਂ ਹੈ ਅਤੇ ਸਾਹ ਦੀ ਤਕਲੀਫ਼ ਨਹੀਂ ਹੈ। ਪ੍ਰਤੀਕਿਰਿਆ 16 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 17 ਅਗਸਤ 2026 ਨੂੰ ਠੀਕ ਹੋਈ। ਦਵਾਈ ਬੰਦ ਕੀਤੀ ਗਈ। ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ।",
+      "english": "The patient's name is Rhea Kapoor. She is a 24-year-old woman. Weight 57 kg. He has fever, headache, sore throat and cough after the medication. He has no chest pain and no shortness of breath. The response began on 16 August 2026 and recovered on 17 August 2026. The medication was discontinued. The initial case."
+    },
+    "15": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਵਿਕਰਮ ਜੋਸ਼ੀ ਹੈ। ਇਹ 48 ਸਾਲ ਦੇ ਮਰਦ ਹਨ, ਵਜ਼ਨ 84 ਕਿਲੋਗ੍ਰਾਮ। ਦਵਾਈ ਤੋਂ ਬਾਅਦ ਤੇਜ਼ ਖਾਰਸ਼, ਧੱਫੜ, ਸੋਜ, ਚੱਕਰ ਅਤੇ ਸਾਹ ਦੀ ਤਕਲੀਫ਼ ਨਾਲ ਆਏ। ਪ੍ਰਤੀਕਿਰਿਆ 10 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 13 ਅਗਸਤ 2026 ਨੂੰ ਲੱਛਣ ਠੀਕ ਹੋਏ। ਅਸੀਂ ਤੁਰੰਤ ਦਵਾਈ ਬੰਦ ਕੀਤੀ, ਇਲਾਜ ਦਿੱਤਾ ਅਤੇ ਨਿਰੀਖਣ ਕੀਤਾ। ਹਾਲਤ ਠੀਕ ਹੋਈ। ਪ੍ਰਾਰਥਮਿਕ ADR ਰਿਪੋਰਟ।",
+      "english": "The patient's name is Vikram Joshi. This is a 48-year-old male, weighing 84 kg. The medication was followed by severe itching, rash, swelling, dizziness and shortness of breath. The reaction began on 10 August 2026 and symptoms resolved by 13 August 2026. We immediately stopped the medication, administered treatment and conducted observation. The situation has improved. Initial ADR report."
+    },
+    "16": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਮੀਰਾ ਸ਼ਾਹ ਉਮਰ 32 ਸਾਲ ਔਰਤ ਵਜ਼ਨ 60 ਕਿਲੋਗ੍ਰਾਮ ਉਸਨੂੰ ਬੁਖਾਰ ਖੰਘ ਖਾਰਸ਼ ਧੱਫੜ ਅਤੇ ਕਮਜ਼ੋਰੀ ਹੋਈ ਪ੍ਰਤੀਕਿਰਿਆ 9 ਅਗਸਤ 2026 ਸ਼ੁਰੂ ਹੋਈ ਪ੍ਰਤੀਕਿਰਿਆ 11 ਅਗਸਤ 2026 ਬੰਦ ਹੋਈ ਦਵਾਈ ਬੰਦ ਇਲਾਜ ਦਿੱਤਾ ਗਿਆ ਨਿਰੀਖਣ ਕੀਤਾ ਅਤੇ ਲੱਛਣ ਠੀਕ ਹੋਏ ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ",
+      "english": "Patient Name Meera Shah Age 32 years Female Weight 60 kg She had Fever, Cough, Scabies and Weakened Reaction 9 Aug 2026 Started Reaction 11 Aug 2026 Stopped Drug Administered Treatment Observed and Symptoms Recovered Primary Case"
+    },
+    "17": {
+      "source": "ਫਾਲੋ-ਅੱਪ ਕੇਸ। ਪ੍ਰਤੀਕਿਰਿਆ 14 ਅਗਸਤ 2026 ਨੂੰ ਠੀਕ ਹੋਈ। ਮਰੀਜ਼ ਨੂੰ ਇਲਾਜ ਦਿੱਤਾ ਗਿਆ। ਪ੍ਰਤੀਕਿਰਿਆ 12 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਸੀ। ਮਰੀਜ਼ ਦਾ ਨਾਮ ਅਮਨ ਗੁਪਤਾ ਹੈ। ਇਹ 30 ਸਾਲ ਦੇ ਮਰਦ ਹਨ। ਵਜ਼ਨ 73 ਕਿਲੋਗ੍ਰਾਮ। ਦਵਾਈ ਤੋਂ ਬਾਅਦ ਛਿੱਕਾਂ, ਨੱਕ ਵਗਣਾ, ਬੁਖਾਰ ਅਤੇ ਖਾਰਸ਼ ਹੋਈ। ਦਵਾਈ ਬੰਦ ਕਰਨ ਤੋਂ ਬਾਅਦ ਲੱਛਣ ਠੀਕ ਹੋਏ।",
+      "english": "Follow-up case. The reaction healed on 14 August 2026. The patient was treated. The response began on 12 August 2026. The patient's name is Aman Gupta. These are men in their 30s. Weight 73 kg. Sneezing, runny nose, fever and itching occurred after the medication. The symptoms improved after stopping the medication."
+    },
+    "18": {
+      "source": "ਮਰੀਜ਼ ਨਿਸ਼ਾ ਵਰਮਾ ਹੈ। ਉਹ 37 ਸਾਲ ਦੀ ਔਰਤ ਹੈ, ਵਜ਼ਨ 59 ਕਿਲੋਗ੍ਰਾਮ। ਉਸਨੂੰ ਖਾਰਸ਼, ਧੱਫੜ, ਸੋਜ, ਉਲਟੀ ਅਤੇ ਸਾਹ ਦੀ ਤਕਲੀਫ਼ ਹੋਈ। ਪ੍ਰਤੀਕੂਲ ਘਟਨਾ 8 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 10 ਅਗਸਤ 2026 ਨੂੰ ਘੱਟ ਗਈ। ਦਵਾਈ ਬੰਦ ਕੀਤੀ ਗਈ ਅਤੇ ਇਲਾਜ ਦਿੱਤਾ ਗਿਆ। ਸੁਧਾਰ ਹੋਣ ਤੱਕ ਨਿਰੀਖਣ ਕੀਤਾ ਗਿਆ। ਇਹ ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ ਹੈ।",
+      "english": "The patient is Nisha Verma. She is a 37-year-old female, weighing 59 kg. He suffered from itching, rash, swelling, vomiting and shortness of breath. The adverse event started on 8 August 2026 and subsided on 10 August 2026. The medication was stopped and treatment was administered. Observed until improvement. This is a prima facie case."
+    },
+    "19": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਰਾਜੇਸ਼ ਕੁਮਾਰ ਹੈ। ਉਮਰ 52 ਸਾਲ। ਲਿੰਗ ਮਰਦ। ਵਜ਼ਨ 77 ਕਿਲੋਗ੍ਰਾਮ। ਇਹ ਸ਼ੂਗਰ ਅਤੇ ਬਲੱਡ ਪ੍ਰੈਸ਼ਰ ਦੇ ਮਰੀਜ਼ ਹਨ, ਪਰ ਅੱਜ ਦਵਾਈ ਤੋਂ ਬਾਅਦ ਇਹਨਾਂ ਨੂੰ ਤੇਜ਼ ਖਾਰਸ਼, ਉਲਟੀ ਅਤੇ ਸੋਜ ਹੋ ਗਈ। ਪ੍ਰਤੀਕਿਰਿਆ 15 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 17 ਅਗਸਤ 2026 ਨੂੰ ਠੀਕ ਹੋਈ। ਦਵਾਈ ਬੰਦ ਕੀਤੀ ਗਈ। ਨਿਰੀਖਣ ਤੋਂ ਬਾਅਦ ਸੁਧਾਰ ਹੋਇਆ। ਪ੍ਰਾਰਥਮਿਕ ADR ਕੇਸ।",
+      "english": "The patient's name is Rajesh Kumar. Aged 52 years. The male gender. Weight 77 kg. These are patients of diabetes and blood pressure, but today after the medicine they got acute itching, vomiting and swelling. The response began on 15 August 2026 and recovered by 17 August 2026. The medication was discontinued. There was improvement after the inspection. The initial ADR case."
+    },
+    "20": {
+      "source": "ਮਰੀਜ਼ ਦਾ ਨਾਮ ਸਿਮਰਨ ਕੌਰ ਹੈ। ਉਹ 28 ਸਾਲ ਦੀ ਔਰਤ ਹੈ, ਵਜ਼ਨ 56 ਕਿਲੋਗ੍ਰਾਮ। ਉਹ ਦੋ ਦਿਨਾਂ ਤੋਂ ਬੁਖਾਰ, ਖੰਘ, ਖਾਰਸ਼ ਅਤੇ ਧੱਫੜ ਦੀ ਸ਼ਿਕਾਇਤ ਕਰ ਰਹੀ ਹੈ। ਪ੍ਰਤੀਕਿਰਿਆ 12 ਅਗਸਤ 2026 ਨੂੰ ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 14 ਅਗਸਤ 2026 ਨੂੰ ਠੀਕ ਹੋਈ। ਦਵਾਈ ਬੰਦ ਕਰਕੇ ਇਲਾਜ ਕੀਤਾ ਗਿਆ। ਪੁਸ਼ਟੀ ਲਈ, ਮਰੀਜ਼ ਦਾ ਨਾਮ ਸਿਮਰਨ ਕੌਰ, ਉਮਰ 28 ਸਾਲ, ਔਰਤ, ਵਜ਼ਨ 56 ਕਿਲੋ, ਪ੍ਰਤੀਕਿਰਿਆ 12 ਅਗਸਤ 2026 ਸ਼ੁਰੂ ਹੋਈ ਅਤੇ 14 ਅਗਸਤ 2026 ਠੀਕ ਹੋਈ। ਇਹ ਪ੍ਰਾਰਥਮਿਕ ਕੇਸ ਹੈ।",
+      "english": "The patient's name is Simran Kaur. She is a 28-year-old female, weighing 56 kg. She has been complaining of fever, cough, itching and rash for two days. The response began on 12 August 2026 and recovered by 14 August 2026. The drug was discontinued and the treatment continued. For confirmation, the patient's name is Simran Kaur, age 28 years, female, weight 56 kg, reaction started on 12 August 2026 and recovered on 14 August 2026. This is a prima facie case."
+    }
+  },
+  "ta": {
+    "1": {
+      "source": "ஆரம்ப வழக்கு. நோயாளி பெயர் ராகுல் சர்மா. வயது 34 ஆண்டுகள். பாலினம் ஆண். எடை 70 கிலோகிராம். சந்தேகத்திற்குரிய மருந்தை உட்கொண்ட பிறகு நோயாளிக்கு காய்ச்சல், உடல் முழுவதும் அரிப்பு மற்றும் தோலில் தடிப்புகள் ஏற்பட்டன. எதிர்வினை 10 ஆகஸ்ட் 2026 அன்று தொடங்கி 12 ஆகஸ்ட் 2026 அன்று சரியானது. சந்தேகத்திற்குரிய மருந்து நிறுத்தப்பட்டு, நோயாளிக்கு ஆண்டிஹிஸ்டமைன் சிகிச்சை அளிக்கப்பட்டது. சிகிச்சைக்குப் பிறகு அறிகுறிகள் முன்னேற்றமடைந்தன.",
+      "english": "the initial case. The patient's name is Rahul Sharma. Age 34. The gender is male. The weight is 70 kg. The patient developed fever, itching all over the body and skin rashes after taking the suspected drug. The reaction began on 10 August 2026 and was corrected on 12 August 2026. The suspected drug was discontinued and the patient received antihistamine treatment. The symptoms improved after treatment."
+    },
+    "2": {
+      "source": "சந்தேகத்திற்குரிய எதிர்வினை குமட்டல், வாந்தி மற்றும் மயக்கம் ஆகும். எதிர்வினை 11 ஆகஸ்ட் 2026 அன்று தொடங்கி 13 ஆகஸ்ட் 2026 அன்று முடிந்தது. நோயாளி பெயர் பிரியா வர்மா. அவர் 27 வயது பெண். அவரது எடை 58 கிலோகிராம். மருந்து நிறுத்தப்பட்டு அவருக்கு ஆதரவு சிகிச்சை அளிக்கப்பட்டது. கண்காணிப்பிற்குப் பிறகு அறிகுறிகள் குறைந்தன. இது ஒரு ஆரம்ப ADR வழக்கு.",
+      "english": "The suspected reaction is nausea, vomiting and drowsiness. The reaction began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27-year-old woman. His weight was 58 kilograms. The medication was stopped and he was given supportive treatment. Symptoms decreased after observation. This is an early ADR case."
+    },
+    "3": {
+      "source": "சரி, இவர் அமித் குமார். இவருக்கு 42 வயது, ஆண், மற்றும் எடை சுமார் 76 கிலோகிராம். மருந்தை உட்கொண்ட பிறகு இவருக்கு கடுமையான அரிப்பு, தடிப்புகள் மற்றும் முகத்தைச் சுற்றி வீக்கம் ஏற்படத் தொடங்கியது. எதிர்வினை உண்மையில் 8 ஆகஸ்ட் 2026 அன்று தொடங்கியது மற்றும் 10 ஆகஸ்ட் 2026 க்குள் அறிகுறிகள் சரியாயின. சந்தேகத்திற்குரிய மருந்தை நிறுத்தி, ஆண்டிஹிஸ்டமைன் சிகிச்சை அளித்து கண்காணிப்பில் வைத்திருந்தோம். இது ஒரு ஆரம்ப வழக்கு.",
+      "english": "Well, this is Amit Kumar. He is 42 years old, male, and weighs approximately 76 kilograms. After taking the drug, he began to have severe itching, rashes and swelling around his face. The reaction actually began on 8 August 2026 and symptoms resolved by 10 August 2026. We stopped the suspected drug, treated with antihistamines and kept it under observation. This is an early case."
+    },
+    "4": {
+      "source": "நோயாளி நேற்று முதல் கடுமையான வயிற்று வலி, குமட்டல், வயிற்றுப்போக்கு மற்றும் பலவீனத்தை புகாரளிக்கிறார். அவரது பெயர் நேஹா சிங். அவர் 31 வயது பெண், எடை 62 கிலோகிராம். பாதகமான எதிர்வினை 15 ஆகஸ்ட் 2026 அன்று தொடங்கி 16 ஆகஸ்ட் 2026 அன்று நின்றது. அவருக்கு ஆதரவு பராமரிப்பு மற்றும் வாய்வழி திரவங்கள் வழங்கப்பட்டன, மேலும் அவரது அறிகுறிகள் முன்னேற்றமடைந்தன. இது ஒரு ஆரம்ப வழக்கு.",
+      "english": "The patient reports severe abdominal pain, nausea, diarrhea and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old woman and weighs 62 kilograms. The adverse reaction started on 15 August 2026 and stopped on 16 August 2026. He was given supportive care and oral fluids, and his symptoms improved. this is an early case."
+    },
+    "5": {
+      "source": "நோயாளி பெயர் அர்ஜுன் படேல். வயது 38 ஆண்டுகள். ஆண் நோயாளி. எடை 74 கிலோ. சந்தேகத்திற்குரிய மருந்துக்கு பின் காய்ச்சல், இருமல், தடிப்புகள் மற்றும் அரிப்பு ஏற்பட்டது. எதிர்வினை 9 ஆகஸ்ட் 2026 தொடங்கி 11 ஆகஸ்ட் 2026 நின்றது. மருந்து நிறுத்தப்பட்டது. ஆண்டிஹிஸ்டமைன் மற்றும் ஆதரவு சிகிச்சை அளிக்கப்பட்டது. நோயாளி தேறினார். ஆரம்ப வழக்கு.",
+      "english": "The patient's name is Arjun Patel. He was aged 38. the male patient. It weighs 74 kg. The suspected drug was followed by fever, cough, rashes and itching. The reaction began on 9 August 2026 and stopped on 11 August 2026. The medication was stopped. Antihistamines and supportive therapy were administered. The patient has recovered. the initial case."
+    },
+    "6": {
+      "source": "நோயாளியின் பெயர் சினேகா குப்தா. அவருக்கு வயது 29 மற்றும் எடை 55 கிலோகிராம். அவருக்கு முக வீக்கம், அரிப்பு தடிப்புகள் மற்றும் மூச்சுத்திணறல் ஏற்பட்டது. எதிர்வினை 12 ஆகஸ்ட் 2026 அன்று தொடங்கி 13 ஆகஸ்ட் 2026 அன்று சரியானது. சந்தேகத்திற்குரிய மருந்து நிறுத்தப்பட்டு, அவசர ஆதரவு சிகிச்சையும் ஆண்டிஹிஸ்டமைன்களும் வழங்கப்பட்டன. இது ஒரு பின்தொடர் (Follow-up) வழக்கு.",
+      "english": "The patient's name is Sneha Gupta. He was 29 years old and weighed 55 kilograms. He had facial swelling, itchy rashes and wheezing. The reaction began on 12 August 2026 and was perfect on 13 August 2026. The suspected drug was stopped and emergency supportive treatment and antihistamines were administered. This is a follow-up case."
+    },
+    "7": {
+      "source": "நோயாளி பெயர் ரோஹித் மேத்தா. இவருக்கு 46 வயது, எடை 82 கிலோகிராம். சந்தேகத்திற்குரிய மருந்துக்கு பின் இவருக்கு கடுமையான மயக்கம், வாந்தி மற்றும் பலவீனம் ஏற்பட்டது. அறிகுறிகள் 7 ஆகஸ்ட் 2026 அன்று தொடங்கி 9 ஆகஸ்ட் 2026 அன்று சரியாயின. மருந்து நிறுத்தப்பட்டு, அவர் குணமடையும் வரை கண்காணிக்கப்பட்டார். இது ஒரு ஆரம்ப ADR அறிக்கை.",
+      "english": "The patient's name is Rohit Mehta. He was 46 years old and weighed 82 kilograms. He suffered severe drowsiness, vomiting and weakness after the suspected drug. Symptoms began on 7 August 2026 and resolved on 9 August 2026. The medication was stopped and he was monitored until recovery. This is an initial ADR report."
+    },
+    "8": {
+      "source": "சந்தேகத்திற்குரிய மருந்து திரும்பப் பெறப்பட்டு நோயாளி கண்காணிப்பில் வைக்கப்பட்டார். ஆண்டிஹிஸ்டமைன் சிகிச்சை அளிக்கப்பட்டு எதிர்வினை மேம்பட்டது. நோயாளி பெயர் கவிதா ராவ். அவர் 36 வயது பெண், எடை 61.5 கிலோகிராம். அவருக்கு காய்ச்சல், வாந்தி, அரிப்பு மற்றும் முக வீக்கம் இருந்தது. எதிர்வினை 5 ஆகஸ்ட் 2026 அன்று தொடங்கி 7 ஆகஸ்ட் 2026 அன்று முடிந்தது. இது ஒரு ஆரம்ப வழக்கு.",
+      "english": "The suspected drug was withdrawn and the patient kept under observation. Antihistamine treatment was administered and the reaction improved. The patient's name is Kavita Rao. She is a 36-year-old female, weighing 61.5 kilograms. He had fever, vomiting, itching and facial swelling. The reaction began on 5 August 2026 and ended on 7 August 2026. This is an early case."
+    },
+    "9": {
+      "source": "நோயாளி பெயர் சஞ்சய் யாதவ். இவர் 55 வயது ஆண், எடை 79 கிலோகிராம். இவருக்கு தலைவலி, மயக்கம், பலவீனம் மற்றும் தோலில் தடிப்புகள் ஏற்பட்டன. பாதகமான எதிர்வினை 6 ஆகஸ்ட் 2026 அன்று தொடங்கி 8 ஆகஸ்ட் 2026 அன்று சரியானது. சந்தேகத்திற்குரிய மருந்து நிறுத்தப்பட்டு அறிகுறி சிகிச்சை அளிக்கப்பட்டது. நோயாளி கண்காணிக்கப்பட்டு தேறினார்.",
+      "english": "The patient's name is Sanjay Yadav. He is a 55-year-old male and weighs 79 kilograms. He developed headache, drowsiness, weakness and skin rashes. The adverse reaction started on 6 August 2026 and was corrected on 8 August 2026. The suspected drug was stopped and symptomatic treatment was administered. The patient was monitored and examined."
+    },
+    "10": {
+      "source": "இவர் பூஜா நாயர், 25 வயது பெண், சுமார் 52 கிலோகிராம். சந்தேகத்திற்குரிய மருந்தை உட்கொண்ட பிறகு கடுமையான அரிப்பு, தடிப்புகள், முக வீக்கம் மற்றும் லேசான மூச்சுத்திணறலுடன் வந்தார். எதிர்வினை 14 ஆகஸ்ட் 2026 அன்று தொடங்கியது மற்றும் 16 ஆகஸ்ட் 2026 அன்று அறிகுறிகள் சரியாயின. மருந்தை நிறுத்தி, ஆண்டிஹிஸ்டமைன் மற்றும் ஆதரவு பராமரிப்பு அளித்து கண்காணித்தோம். பின்தொடர் வழக்கு.",
+      "english": "She is Pooja Nair, a 25-year-old woman who weighs around 52 kilograms. He came down with severe itching, rashes, facial swelling and mild breathlessness after taking the suspected drug. The reaction began on 14 August 2026 and symptoms resolved on 16 August 2026. We stopped the drug, administered antihistamines and supportive care and monitored. Follow-up case."
+    },
+    "11": {
+      "source": "நோயாளி பெயர் மோஹித் ஜெயின். வயது 45 ஆண்டுகள், மன்னிக்கவும், திருத்தம், வயது 35 ஆண்டுகள். பாலினம் ஆண் மற்றும் எடை 68 கிலோகிராம். இவருக்கு குமட்டல், வாந்தி மற்றும் மயக்கம் ஏற்பட்டது. எதிர்வினை 10 ஆகஸ்ட் 2026 அன்று தொடங்கி 11 ஆகஸ்ட் 2026 அன்று முடிந்தது. மருந்து நிறுத்தப்பட்டு அறிகுறி சிகிச்சை அளிக்கப்பட்டது. இது ஒரு ஆரம்ப வழக்கு.",
+      "english": "The patient's name is Mohit Jain. Age 45 years, sorry, correction, age 35 years. The sex is male and the weight is 68 kg. He had nausea, vomiting and fainting. The reaction began on 10 August 2026 and ended on 11 August 2026. The medication was stopped and symptomatic treatment was administered. This is an early case."
+    },
+    "12": {
+      "source": "நோயாளி அஞ்சலி தாஸ் என அடையாளம் காணப்பட்டார். பாலினம் பெண். வயது 40 ஆண்டுகள். எடை 63 கிலோகிராம். தற்போதைய பாதகமான எதிர்வினையில் காய்ச்சல், இருமல், தடிப்புகள் மற்றும் முக வீக்கம் ஆகியவை அடங்கும். எதிர்வினை 4 ஆகஸ்ட் 2026 அன்று தொடங்கி 6 ஆகஸ்ட் 2026 அன்று சரியானது. மருந்து திரும்பப் பெறப்பட்டது. ஆண்டிஹிஸ்டமைன் மற்றும் ஆதரவு சிகிச்சை அளிக்கப்பட்டு முன்னேற்றம் ஏற்பட்டது. ஆரம்ப ADR வழக்கு.",
+      "english": "The patient was identified as Anjali Das. Gender is female. Age 40. The weight is 63 kg. The current adverse reaction includes fever, cough, rashes and facial swelling. The reaction began on 4 August 2026 and was perfect on 6 August 2026. The drug was withdrawn. Antihistamines and supportive therapy were administered and improvement occurred. The initial ADR case."
+    },
+    "13": {
+      "source": "சரி, இவர் தீபக் மிஸ்ரா. 33 வயது ஆண், எடை 71 கிலோகிராம். இவருக்கு காய்ச்சல், அரிப்பு, தடிப்புகள் மற்றும் உதடுகளில் வீக்கம் உள்ளது. இது 13 ஆகஸ்ட் 2026 அன்று தொடங்கி 15 ஆகஸ்ட் 2026 க்குள் சரியானது. மருந்தை நிறுத்தி, ஆண்டிஹிஸ்டமைன் கொடுத்து சில மணிநேரம் பார்த்தோம். அவர் தேறினார். இது ஒரு ஆரம்ப வழக்கு.",
+      "english": "Well, this is Deepak Mishra. A 33-year-old male, weighing 71 kg. He has a fever, itching, rashes and swelling of the lips. It began on 13 August 2026 and was correct by 15 August 2026. We stopped the medication, took an antihistamine and watched for a few hours. He sought. This is an early case."
+    },
+    "14": {
+      "source": "நோயாளி பெயர் ரியா கபூர். இவர் 24 வயது பெண். எடை 57 கிலோகிராம். மருந்துக்கு பின் காய்ச்சல், தலைவலி, தொண்டை வலி மற்றும் வறட்டு இருமல் உள்ளது. இவருக்கு நெஞ்சு வலி மற்றும் மூச்சுத்திணறல் இல்லை. எதிர்வினை 16 ஆகஸ்ட் 2026 அன்று தொடங்கி 17 ஆகஸ்ட் 2026 அன்று சரியானது. மருந்து நிறுத்தப்பட்டு ஆதரவு சிகிச்சை அளிக்கப்பட்டது. ஆரம்ப வழக்கு.",
+      "english": "The patient's name is Rhea Kapoor. She is a 24-year-old woman. The weight is 57 kg. After the drug there is a fever, headache, sore throat and dry cough. He had no chest pain or shortness of breath. The reaction began on 16 August 2026 and was perfect on 17 August 2026. The medication was stopped and supportive treatment was given. the initial case."
+    },
+    "15": {
+      "source": "நோயாளியின் பெயர் விக்ரம் ஜோஷி. இவர் 48 வயது ஆண், எடை 84 கிலோகிராம். மருந்தை உட்கொண்ட பிறகு கடுமையான அரிப்பு, வறண்ட தோல் தடிப்புகள், முக வீக்கம், மயக்கம் மற்றும் லேசான மூச்சுத்திணறலுடன் வந்தார். எதிர்வினை 10 ஆகஸ்ட் 2026 அன்று தொடங்கி 13 ஆகஸ்ட் 2026 அன்று சரியானது. மருந்தை உடனடியாக நிறுத்தி, ஆண்டிஹிஸ்டமைன் மற்றும் ஆதரவு சிகிச்சை அளித்து கண்காணித்தோம். நிலைமை மேம்பட்டது. ஆரம்ப ADR அறிக்கை.",
+      "english": "The patient's name is Vikram Joshi. He is a 48-year-old male and weighs 84 kilograms. He came down with severe itching, dry skin rashes, facial swelling, drowsiness and mild breathlessness after taking the medicine. The reaction began on 10 August 2026 and was perfect on 13 August 2026. We stopped the drug immediately and monitored it with antihistamines and supportive therapy. The situation has improved. Initial ADR report."
+    },
+    "16": {
+      "source": "நோயாளி பெயர் மீரா ஷா வயது 32 ஆண்டுகள் பெண் எடை 60 கிலோகிராம் காய்ச்சல் இருமல் அரிப்பு தடிப்புகள் மற்றும் பலவீனம் ஏற்பட்டது எதிர்வினை 9 ஆகஸ்ட் 2026 தொடங்கியது எதிர்வினை 11 ஆகஸ்ட் 2026 நின்றது மருந்து நிறுத்தப்பட்டது ஆண்டிஹிஸ்டமைன் கொடுக்கப்பட்டது நோயாளி கண்காணிக்கப்பட்டு அறிகுறிகள் சரியாயின ஆரம்ப வழக்கு",
+      "english": "Patient Name Meera Shah Age 32 years Female Weight 60 kg Fever Coughing Irritation Rashes and Weakness Reaction Started on 9 August 2026 Reaction stopped on 11 August 2026 Drug was administered Antihistamine Patient monitored and symptoms resolved Initial case"
+    },
+    "17": {
+      "source": "பின்தொடர் வழக்கு. எதிர்வினை 14 ஆகஸ்ட் 2026 அன்று சரியானது. நோயாளிக்கு ஆண்டிஹிஸ்டமைன் மற்றும் ஆதரவு சிகிச்சை அளிக்கப்பட்டது. எதிர்வினை 12 ஆகஸ்ட் 2026 அன்று தொடங்கியிருந்தது. நோயாளி பெயர் அமன் குப்தா. 30 வயது ஆண். எடை 73 கிலோகிராம். மருந்துக்கு பின் தும்மல், மூக்கு ஒழுகுதல், லேசான காய்ச்சல் மற்றும் அரிப்பு ஏற்பட்டது. மருந்து நிறுத்தப்பட்ட பின் அறிகுறிகள் சரியாயின.",
+      "english": "Follow-up case. The reaction was correct on 14 August 2026. The patient was given antihistamines and supportive therapy. The reaction had begun on 12 August 2026. The patient's name is Aman Gupta. 30-year-old man. The weight is 73 kg. The drug was followed by sneezing, runny nose, mild fever and itching. After discontinuation of the drug, symptoms improved."
+    },
+    "18": {
+      "source": "நோயாளி நிஷா வர்மா. 37 வயது பெண், எடை 59 கிலோகிராம். இவருக்கு அரிப்பு (Pruritus), தடிப்புகள் (Urticaria), முக வீக்கம், குமட்டல் மற்றும் லேசான மூச்சுத்திணறல் ஏற்பட்டது. எதிர்வினை 8 ஆகஸ்ட் 2026 அன்று தொடங்கி 10 ஆகஸ்ட் 2026 அன்று தணிந்தது. மருந்து நிறுத்தப்பட்டு ஆண்டிஹிஸ்டமைன் மற்றும் ஆதரவு சிகிச்சை அளிக்கப்பட்டது. நிலைமை சரியாகும் வரை கண்காணிக்கப்பட்டார். ஆரம்ப வழக்கு.",
+      "english": "The patient is Nisha Verma. Female 37 years old, weight 59 kg. He developed pruritus, urticaria, facial swelling, nausea and mild breathlessness. The reaction began on 8 August 2026 and subsided on 10 August 2026. The medication was stopped and antihistamines and supportive therapy were administered. He was monitored until the situation improved. the initial case."
+    },
+    "19": {
+      "source": "நோயாளி பெயர் ராஜேஷ் குமார். வயது 52 ஆண்டுகள். பாலினம் ஆண். எடை 77 கிலோகிராம். இவர் நீரிழிவு மற்றும் உயர் ரத்த அழுத்த நோயாளி, ஆனால் இன்று மருந்துக்கு பின் கடுமையான அரிப்பு, வாந்தி மற்றும் முக வீக்கம் ஏற்பட்டது. தற்போதைய எதிர்வினை 15 ஆகஸ்ட் 2026 அன்று தொடங்கி 17 ஆகஸ்ட் 2026 அன்று சரியானது. மருந்து நிறுத்தப்பட்டு ஆண்டிஹிஸ்டமைன் அளிக்கப்பட்டது. கண்காணிப்பிற்கு பின் தேறினார். ஆரம்ப ADR வழக்கு.",
+      "english": "The patient's name is Rajesh Kumar. He is 52. The gender is male. The weight is 77 kg. He was a diabetic and hypertensive, but developed severe itching, vomiting and facial swelling after the drug today. The current reaction began on 15 August 2026 and was correct on 17 August 2026. The medication was stopped and antihistamines were administered. He went under surveillance. The initial ADR case."
+    },
+    "20": {
+      "source": "நோயாளி பெயர் சிம்ரன் கவுர். 28 வயது பெண், எடை 56 கிலோகிராம். இரண்டு நாட்களாக காய்ச்சல், வறட்டு இருமல், அரிப்பு மற்றும் தடிப்புகள் உள்ளது என்கிறார். எதிர்வினை 12 ஆகஸ்ட் 2026 அன்று தொடங்கி 14 ஆகஸ்ட் 2026 அன்று சரியானது. மருந்து நிறுத்தப்பட்டு ஆண்டிஹிஸ்டமைன் சிகிச்சை அளிக்கப்பட்டது. உறுதிப்படுத்துவதற்காக, நோயாளி பெயர் சிம்ரன் கவுர், வயது 28, பெண், எடை 56 கிலோ, எதிர்வினை 12 ஆகஸ்ட் 2026 தொடங்கி 14 ஆகஸ்ட் 2026 சரியானது. இது ஒரு ஆரம்ப வழக்கு.",
+      "english": "The patient's name is Simran Kaur. Female 28 years old, weight 56 kg. He says he has had a fever, dry cough, itching and rashes for two days. The reaction began on 12 August 2026 and was perfect on 14 August 2026. The medication was stopped and antihistamine treatment was administered. For confirmation, the patient's name is Simran Kaur, 28 years old, female, weight 56 kg, reaction started on 12 August 2026 and corrected 14 August 2026. This is an early case."
+    }
+  },
+  "te": {
+    "1": {
+      "source": "ప్రాథమిక కేసు. రోగి పేరు రాహుల్ శర్మ. వయస్సు 34 సంవత్సరాలు. లింగం పురుషుడు. బరువు 70 కిలోగ్రాములు. అనుమానిత మందు తిన్న తర్వాత రోగికి జ్వరం, శరీరం అంతటా దురద మరియు చర్మంపై దద్దుర్లు వచ్చాయి. ప్రతిచర్య 10 ఆగస్టు 2026న ప్రారంభమై 12 ఆగస్టు 2026న నయమైంది. అనుమానిత మందు నిలిపివేయబడింది మరియు రోగికి యాంటిహిస్టామైన్‌తో చికిత్స అందించబడింది. చికిత్స తర్వాత లక్షణాలు మెరుగయ్యాయి.",
+      "english": "the primary case. The patient has been identified as Rahul Sharma, 34 years old. The gender is male. The weight is 70 kilograms. The patient developed fever, itching all over the body and skin rashes after consuming the suspected drug. The reaction began on 10 August 2026 and was cured on 12 August 2026. The suspected drug was discontinued and the patient was treated with an antihistamine. The symptoms improved after treatment."
+    },
+    "2": {
+      "source": "అనుమానిత ప్రతిచర్య వికారం, వాంతులు మరియు మైకం. ప్రతిచర్య 11 ఆగస్టు 2026న ప్రారంభమై 13 ఆగస్టు 2026న ముగిసింది. రోగి పేరు ప్రియా వర్మ. ఆమె వయస్సు 27 సంవత్సరాలు మరియు స్త్రీ. ఆమె బరువు 58 కిలోగ్రాములు. మందు నిలిపివేయబడింది మరియు ఆమెకు మద్దతు చికిత్స అందించబడింది. పరిశీలన తర్వాత లక్షణాలు తగ్గాయి. ఇది ప్రాథమిక ADR కేసు.",
+      "english": "The suspected reaction is nausea, vomiting and dizziness. The reaction began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is 27 years old and female. Her weight was 58 kilograms. The drug was stopped and she was given supportive treatment. Symptoms decreased after observation. This is the basic ADR case."
+    },
+    "3": {
+      "source": "సరే, ఇది అమిత్ కుమార్. ఇతని వయస్సు 42 సంవత్సరాలు, పురుషుడు, బరువు సుమారు 76 కిలోగ్రాములు. మందు తిన్న తర్వాత ముఖం చుట్టూ తీవ్రమైన దురద, దద్దుర్లు మరియు వాపు రావడం ప్రారంభమైంది. ప్రతిచర్య వాస్తవానికి 8 ఆగస్టు 2026న ప్రారంభమైంది మరియు 10 ఆగస్టు 2026 నాటికి లక్షణాలు నయమయ్యాయి. మేము అనుమానిత మందును నిలిపివేసి, యాంటిహిస్టామైన్ చికిత్స ఇచ్చి పరిశీలనలో ఉంచాము. ఇది ప్రాథమిక కేసు.",
+      "english": "Okay, this is Amit Kumar. He was 42 years old, male and weighed approximately 76 kilograms. Severe itching, rash and swelling around the face began after ingesting the drug. The reaction actually began on 8 August 2026 and the symptoms were cured by 10 August 2026. We stopped the suspected drug, gave antihistamine treatment and kept it under observation. This is the basic case."
+    },
+    "4": {
+      "source": "రోగి నిన్నటి నుండి తీవ్రమైన కడుపు నొప్పి, వికారం, విరేచనాలు మరియు బలహీనతతో బాధపడుతున్నారు. ఆమె పేరు నేహా సింగ్. ఆమె వయస్సు 31 సంవత్సరాలు, స్త్రీ, బరువు 62 కిలోగ్రాములు. ప్రతికూల ప్రతిచర్య 15 ఆగస్టు 2026న ప్రారంభమై 16 ఆగస్టు 2026న ఆగిపోయింది. ఆమెకు సపోర్టివ్ కేర్ మరియు నోటి ద్వారా ద్రవాలు అందించగా, ఆమె లక్షణాలు మెరుగయ్యాయి. ఇది ప్రాథమిక కేసు.",
+      "english": "The patient was suffering from severe abdominal pain, nausea, diarrhoea and weakness since yesterday. Her name is Neha Singh. She is 31 years old, female and weighs 62 kilograms. The adverse reaction started on 15 August 2026 and stopped on 16 August 2026. She was given supportive care and oral fluids, which improved her symptoms. This is the basic case."
+    },
+    "5": {
+      "source": "రోగి పేరు అర్జున్ పటేల్. వయస్సు 38 సంవత్సరాలు. పురుష రోగి. బరువు 74 కిలోలు. అనుమానిత మందు తర్వాత జ్వరం, దగ్గు, దద్దుర్లు మరియు దురద వచ్చాయి. ప్రతిచర్య 9 ఆగస్టు 2026న ప్రారంభమై 11 ఆగస్టు 2026న ఆగింది. అనుమానిత మందు నిలిపివేయబడింది. యాంటిహిస్టామైన్ మరియు మద్దతు చికిత్స ఇచ్చారు. రోగి కోలుకున్నారు. ప్రాథమిక కేసు.",
+      "english": "The patient's name is Arjun Patel. He was aged 38. the male patient. It weighs 74 kg. The suspected drug was followed by fever, cough, rash and itching. The reaction began on 9 August 2026 and stopped on 11 August 2026. The suspected drug has been discontinued. Antihistamines and supportive therapy were administered. The patient has recovered. the primary case."
+    },
+    "6": {
+      "source": "రోగి పేరు స్నేహా గుప్తా. ఆమె వయస్సు 29 సంవత్సరాలు మరియు బరువు 55 కిలోగ్రాములు. ఆమె ముఖ వాపు, అర్టికేరియా మరియు శ్వాస తీసుకోవడంలో ఇబ్బంది పడింది. ప్రతిచర్య 12 ఆగస్టు 2026న ప్రారంభమై 13 ఆగస్టు 2026న నయమైంది. అనుమానిత మందు నిలిపివేయబడింది మరియు ఆమెకు అత్యవసర సపోర్టివ్ చికిత్స మరియు యాంటిహిస్టామైన్లు అందించబడ్డాయి. ఇది ఫాలో-అప్ కేసు.",
+      "english": "The patient's name is Sneha Gupta. She is 29 years old and weighs 55 kilograms. She had facial swelling, urticaria and difficulty breathing. The reaction began on 12 August 2026 and was cured on 13 August 2026. The suspected drug was stopped and she was given emergency supportive treatment and antihistamines. This is a follow-up case."
+    },
+    "7": {
+      "source": "రోగి పేరు రోహిత్ మెహతా. ఇతని వయస్సు 46 సంవత్సరాలు, బరువు 82 కిలోగ్రాములు. అనుమానిత మందు తర్వాత అతనికి తీవ్రమైన మైకం, వాంతులు మరియు బలహీనత వచ్చాయి. లక్షణాలు 7 ఆగస్టు 2026న ప్రారంభమై 9 ఆగస్టు 2026న తగ్గాయి. మందు నిలిపివేయబడింది మరియు మెరుగుపడే వరకు అతనిని గమనించారు. ఇది ప్రాథమిక ADR నివేదిక.",
+      "english": "The patient's name is Rohit Mehta. He was 46 years old and weighed 82 kilograms. He had severe dizziness, vomiting and weakness after the suspected drug. Symptoms began on 7 August 2026 and subsided on 9 August 2026. The drug was stopped and he was observed until improvement. This is the basic ADR report."
+    },
+    "8": {
+      "source": "అనుమానిత మందు వెనక్కి తీసుకోబడింది మరియు రోగిని పరిశీలనలో ఉంచారు. యాంటిహిస్టామైన్ చికిత్స ఇవ్వబడింది మరియు ప్రతిచర్య మెరుగైంది. రోగి పేరు కవితా రావు. ఆమె వయస్సు 36 సంవత్సరాలు, స్త్రీ, బరువు 61.5 కిలోగ్రాములు. ఆమెకు జ్వరం, వాంతులు, శరీరం అంతటా దురద మరియు ముఖ వాపు ఉన్నాయి. ప్రతిచర్య 5 ఆగస్టు 2026న ప్రారంభమై 7 ఆగస్టు 2026న ముగిసింది. ఇది ప్రాథమిక కేసు.",
+      "english": "The suspected drug was withdrawn and the patient placed under observation. Antihistamine treatment was given and the reaction improved. The patient's name is Kavita Rao. She was 36 years old, female and weighed 61.5 kilograms. She had fever, vomiting, itching all over her body and facial swelling. The reaction began on 5 August 2026 and ended on 7 August 2026. This is the basic case."
+    },
+    "9": {
+      "source": "రోగి పేరు సంజయ్ యాదవ్. ఇతని వయస్సు 55 సంవత్సరాలు, పురుషుడు, బరువు 79 కిలోగ్రాములు. అతనికి తలనొప్పి, మైకం, బలహీనత మరియు చర్మంపై దద్దుర్లు వచ్చాయి. ప్రతికూల ప్రతిచర్య 6 ఆగస్టు 2026న ప్రారంభమై 8 ఆగస్టు 2026న పూర్తయింది. అనుమానిత మందు నిలిపివేయబడింది మరియు లక్షణాల చికిత్స అందించబడింది. రోగిని పరిశీలించి మెరుగుపరిచారు.",
+      "english": "The patient's name is Sanjay Yadav. He was 55 years old, male and weighed 79 kilograms. He had a headache, dandruff, weakness and skin rashes. The adverse reaction began on 6 August 2026 and was completed on 8 August 2026. The suspected drug was discontinued and symptomatic treatment was provided. The patient was evaluated and improved."
+    },
+    "10": {
+      "source": "ఇది పూజా నాయర్, ఆమె వయస్సు 25 సంవత్సరాలు మరియు స్త్రీ, సుమారు 52 కిలోగ్రాములు. అనుమానిత మందు తిన్న తర్వాత ఆమె తీవ్రమైన దురద, దద్దుర్లు, ముఖ వాపు మరియు తేలికపాటి శ్వాస ఇబ్బందితో వచ్చింది. ప్రతిచర్య 14 ఆగస్టు 2026న ప్రారంభమైంది మరియు 16 ఆగస్టు 2026న లక్షణాలు తగ్గాయి. మేము మందు నిలిపివేసి, యాంటిహిస్టామైన్లు మరియు సపోర్టివ్ కేర్ ఇచ్చి మెరుగుపడే వరకు గమనించాము. ఫాలో-అప్ కేసు.",
+      "english": "This is Pooja Nair, she's 25 years old and female, about 52 kilograms. She came down with severe itching, rash, facial swelling and mild breathing difficulty after consuming the suspected drug. The reaction began on 14 August 2026 and symptoms subsided on 16 August 2026. We stopped the drug, gave antihistamines and supportive care and watched until it got better. Follow-up case."
+    },
+    "11": {
+      "source": "రోగి పేరు మోహిత్ జైన్. వయస్సు 45 సంవత్సరాలు, క్షమించండి, సరిదిద్దుబాటు, వయస్సు 35 సంవత్సరాలు. లింగం పురుషుడు మరియు బరువు 68 కిలోగ్రాములు. అతనికి వికారం, వాంతులు మరియు మైకం వచ్చాయి. ప్రతిచర్య 10 ఆగస్టు 2026న ప్రారంభమై 11 ఆగస్టు 2026న ముగిసింది. అనుమానిత మందు నిలిపివేయబడింది మరియు అతనికి చికిత్స అందించబడింది. ఇది ప్రాథమిక కేసు.",
+      "english": "The patient's name is Mohit Jain. Age 45 years, sorry, correction, age 35 years. The gender is male and the weight is 68 kilograms. He had nausea, vomiting and dizziness. The reaction began on 10 August 2026 and ended on 11 August 2026. The suspected drug was stopped and he was given treatment. This is the basic case."
+    },
+    "12": {
+      "source": "రోగి అంజలి దాస్ అని గుర్తించబడ్డారు. లింగం స్త్రీ. వయస్సు 40 సంవత్సరాలు. బరువు 63 కిలోగ్రాములు. కనిపించిన ప్రతికూల ప్రతిచర్యలో జ్వరం, దగ్గు, దద్దుర్లు మరియు ముఖ వాపు ఉన్నాయి. ప్రతిచర్య 4 ఆగస్టు 2026న ప్రారంభమై 6 ఆగస్టు 2026న తగ్గింది. అనుమానిత మందు నిలిపివేయబడింది. యాంటిహిస్టామైన్ చికిత్స మరియు సపోర్టివ్ మేనేజ్‌మెంట్ అందించబడగా, క్లినికల్ మెరుగుదల కనిపింంచింది. ప్రాథమిక ADR కేసు.",
+      "english": "The patient has been identified as Anjali Das. Gender is female. Age 40. The weight is 63 kilograms. The adverse reaction seen included fever, cough, rash and facial swelling. The reaction began on 4 August 2026 and subsided on 6 August 2026. The suspected drug has been discontinued. While antihistamine treatment and supportive management were provided, clinical improvement was seen. The basic ADR case."
+    },
+    "13": {
+      "source": "సరే, ఇది దీపక్ మిశ్రా. ఇతని వయస్సు 33 సంవత్సరాలు, పురుషుడు, బరువు 71 కిలోగ్రాములు. అతనికి జ్వరం, దురద, దద్దుర్లు మరియు పెదవుల వాపు వస్తున్నాయి. ఇది 13 ఆగస్టు 2026న ప్రారంభమై 15 ఆగస్టు 2026 నాటికి తగ్గింది. మేము అనుమానిత మందును నిలిపివేసి, యాంటిహిస్టామైన్ ఇచ్చి కొన్ని గంటల పాటు చూశాము. అతను కోలుకున్నాడు. ఇది ప్రాథమిక కేసు.",
+      "english": "Okay, this is Deepak Mishra. He is 33 years old, male and weighs 71 kilograms. He is having fever, itching, rashes and swelling of the lips. It began on 13 August 2026 and subsided by 15 August 2026. We stopped the suspected drug, gave an antihistamine and watched for a few hours. He has recovered. This is the basic case."
+    },
+    "14": {
+      "source": "రోగి పేరు రియా కపూర్. ఆమె వయస్సు 24 సంవత్సరాలు మరియు స్త్రీ. ఆమె బరువు 57 కిలోగ్రాములు. అనుమానిత మందు తర్వాత ఆమెకు జ్వరం, తలనొప్పి, గొంతు నొప్పి మరియు పొడి దగ్గు ఉన్నాయి. ఆమెకు ఛాతీ నొప్పి లేదు మరియు శ్వాస తీసుకోవడంలో ఇబ్బంది లేదు. ప్రతిచర్య 16 ఆగస్టు 2026న ప్రారంభమై 17 ఆగస్టు 2026న తగ్గింది. మందు నిలిపివేయబడింది మరియు సపోర్టివ్ చికిత్స ఇవ్వబడింది. ప్రాథమిక కేసు.",
+      "english": "The patient's name is Rhea Kapoor. She is 24 years old and female. Her weight was 57 kilograms. She had a fever, headache, sore throat and dry cough after the suspected drug. She had no chest pain and no difficulty breathing. The reaction began on 16 August 2026 and subsided on 17 August 2026. The drug was stopped and supportive treatment was given. the primary case."
+    },
+    "15": {
+      "source": "రోగి పేరు విక్రమ్ జోషి. ఇతను 48 ఏళ్ల పురుషుడు, బరువు 84 కిలోగ్రాములు. అనుమానిత మందు తిన్న తర్వాత తీవ్రమైన దురద, చర్మంపై దద్దుర్లు, ముఖ వాపు, మైకం మరియు తేలికపాటి శ్వాస ఆడకపోవడంతో వచ్చాడు. ప్రతిచర్య 10 ఆగస్టు 2026న ప్రారంభమై 13 ఆగస్టు 2026న తగ్గింది. మేము వెంటనే మందు నిలిపివేసి, యాంటిహిస్టామైన్లు ఇచ్చి పరిశీలనలో ఉంచాము. అతని పరిస్థితి మెరుగైంది. ఇది ప్రాథమిక ADR నివేదిక.",
+      "english": "The patient's name is Vikram Joshi. He is a 48-year-old male, weighing 84 kilograms. He developed severe itching, skin rashes, facial swelling, dizziness and mild breathlessness after consuming the suspected drug. The reaction began on 10 August 2026 and subsided on 13 August 2026. We immediately stopped the drug, gave antihistamines and kept him under observation. His condition has improved. This is the basic ADR report."
+    },
+    "16": {
+      "source": "రోగి పేరు మీరా షా వయస్సు 32 సంవత్సరాలు స్త్రీ బరువు 60 కిలోగ్రాములు ఆమెకు జ్వరం దగ్గు సాధారణ దురద చర్మ దద్దుర్లు మరియు బలహీనత వచ్చాయి ప్రతిచర్య 9 ఆగస్టు 2026న ప్రారంభమైంది ప్రతిచర్య 11 ఆగస్టు 2026న ఆగింది అనుమానిత మందు నిలిపివేయబడింది యాంటిహిస్టామైన్ ఇచ్చారు రోగిని గమనించారు మరియు లక్షణాలు మెరుగయ్యాయి ప్రాథమిక కేసు",
+      "english": "Patient's name Meera Shah Age 32 years Female Weight 60 Kilograms She had Fever Cough Common itchy skin rash and weakness Reaction started on 9 August 2026 Reaction stopped on 11 August 2026 Suspected drug was discontinued Antihistamine given patient observed and symptoms improved Primary case"
+    },
+    "17": {
+      "source": "ఫాలో-అప్ కేసు. ప్రతిచర్య 14 ఆగస్టు 2026న నయమైంది. రోగికి యాంటిహిస్టామైన్లు మరియు మద్దతు చికిత్స అందించబడ్డాయి. ప్రతిచర్య 12 ఆగస్టు 2026న ప్రారంభమైంది. రోగి పేరు అమన్ గుప్తా. ఇతని వయస్సు 30 సంవత్సరాలు మరియు పురుషుడు. ఇతని బరువు 73 కిలోగ్రాములు. మందు తిన్న తర్వాత అతనికి తుమ్ములు, ముక్కు కారటం, తేలికపాటి జ్వరం మరియు దురద వచ్చాయి. మందు ఆపిన తర్వాత లక్షణాలు మెరుగయ్యాయి.",
+      "english": "Follow-up case. The reaction was cured on 14 August 2026. The patient was given antihistamines and supportive therapy. The reaction began on 12 August 2026. The patient's name is Aman Gupta. He is 30 years old and male. His weight was 73 kilograms. He developed sneezing, runny nose, mild fever and itching after consuming the medicine. The symptoms improved after stopping the drug."
+    },
+    "18": {
+      "source": "రోగి నిషా వర్మ. ఆమె 37 ఏళ్ల స్త్రీ, బరువు 59 కిలోగ్రాములు. ఆమెకు ప్రూరిటస్, అర్టికేరియా, ముఖ వాపు, వికారం మరియు తేలికపాటి డిస్ప్నియా వచ్చాయి. ప్రతికూల సంఘటన 8 ఆగస్టు 2026న ప్రారంభమై 10 ఆగస్టు 2026న తగ్గింది. మందు నిలిపివేయబడింది మరియు ఆమె యాంటిహిస్టామైన్ థెరపీని పొందింది. పరిస్థితి మెరుగయ్యే వరకు ఆమెను గమనించారు. ఇది ప్రాథమిక కేసు.",
+      "english": "The patient is Nisha Verma. She is a 37-year-old woman and weighs 59 kilograms. She developed pruritus, urticaria, facial swelling, nausea and mild dyspnea. The adverse event started on 8 August 2026 and subsided on 10 August 2026. The drug was stopped and she received antihistamine therapy. She was observed until the condition improved. This is the basic case."
+    },
+    "19": {
+      "source": "రోగి పేరు రాజేష్ కుమార్. వయస్సు 52 సంవత్సరాలు. లింగం పురుషుడు. బరువు 77 కిలోగ్రాములు. ఇతనికి మధుమేహం మరియు అధిక రక్తపోటు చరిత్ర ఉంది, પરંતુ ఈ రోజు అనుమానిత మందు తిన్న తర్వాత తీవ్రమైన దురద, వాంతులు మరియు ముఖ వాపు వచ్చాయి. ప్రస్తుత ప్రతిచర్య 15 ఆగస్టు 2026న ప్రారంభమై 17 ఆగస్టు 2026న తగ్గింది. మందు నిలిపివేసి యాంటిహిస్టామైన్ ఇచ్చారు. పరిశీలన తర్వాత కోలుకున్నారు. ప్రాథమిక ADR కేసు.",
+      "english": "The patient's name is Rajesh Kumar. He was aged 52. The gender is male. The weight is 77 kilograms. He had a history of diabetes and high blood pressure, but suffered severe itching, vomiting and facial swelling after consuming the suspected drug today. The current reaction began on 15 August 2026 and subsided on 17 August 2026. The drug was stopped and an antihistamine administered. He recovered after treatment. The basic ADR case."
+    },
+    "20": {
+      "source": "రోగి పేరు సిమ్రాన్ కౌర్. ఆమె వయస్సు 28 సంవత్సరాలు మరియు స్త్రీ, బరువు 56 కిలోగ్రాములు. ఆమె రెండు రోజులుగా జ్వరం, పొడి దగ్గు, దురద మరియు దద్దుర్లతో బాధపడుతోంది. ప్రతిచర్య 12 ఆగస్టు 2026న ప్రారంభమై 14 ఆగస్టు 2026న తగ్గింది. మందు నిలిపివేసి యాంటిహిస్టామైన్లు ఇచ్చారు. నిర్ధారణ కోసం, రోగి పేరు సిమ్రాన్ కౌర్, వయస్సు 28 సంవత్సరాలు, స్త్రీ, బరువు 56 కిలోలు, ప్రతిచర్య 12 ఆగస్టు 2026న ప్రారంభమై 14 ఆగస్టు 2026న తగ్గింది. ఇది ప్రాథమిక కేసు.",
+      "english": "The patient's name is Simran Kaur. She is 28 years old and female, weighing 56 kilograms. She was suffering from fever, dry cough, itching and rash for two days. The reaction began on 12 August 2026 and subsided on 14 August 2026. The drug was stopped and antihistamines were given. For confirmation, the patient's name was Simran Kaur, age 28 years, female, weight 56 kg, reaction started on 12 August 2026 and subsided on 14 August 2026. This is the basic case."
+    }
+  },
+  "ur": {
+    "1": {
+      "source": "ابتدائی کیس۔ مریض کا نام راہول شرما ہے۔ عمر 34 سال ہے۔ جنس مرد ہے۔ وزن 70 کلوگرام ہے۔ مشکوک دوا لینے کے بعد مریض کو بخار، جسم میں خارش اور جلد پر ریش ہو گئے۔ ردعمل 10 اگست 2026 کو شروع ہوا اور 12 اگست 2026 کو ٹھیک ہو گیا۔ مشکوک دوا بند کر دی گئی اور مریض کا اینٹی ہسٹامائن سے علاج کیا گیا۔ علاج کے بعد علامات میں بہتری آئی۔",
+      "english": "Initial case: Patient's name is Rahul Sharma. Age 34 years. Sex is male. Weight 70 kg. After taking the suspected drug, patient developed fever, body itching and skin rashes. Reaction started on 10 August 2026 and healed by 12 August 2026. The suspected drug was discontinued and the patient recovered. Treated with antihistamines; symptoms improved after treatment."
+    },
+    "2": {
+      "source": "مشکوک ردعمل متلی، الٹی اور چکر آنا ہے۔ ردعمل 11 اگست 2026 کو شروع ہوا اور 13 اگست 2026 کو ختم ہوا۔ مریض کا نام پریا ورما ہے۔ وہ 27 سالہ خاتون ہے۔ اس کا وزن 58 کلوگرام ہے۔ دوا بند کر دی گئی اور اسے حمایتی علاج دیا گیا۔ مشاہدے کے بعد علامات ٹھیک ہو گئیں۔ یہ ایک ابتدائی ADR کیس ہے۔",
+      "english": "The suspected reaction is nausea, vomiting and dizziness. The response began on 11 August 2026 and ended on 13 August 2026. The patient's name is Priya Verma. She is a 27-year-old woman. Her weight is 58 kg. The medication was discontinued and she was given supportive treatment. After observation the symptoms were cured. This is an initial one. ADR is the case."
+    },
+    "4": {
+      "source": "مریضہ کل سے پیٹ میں شدید درد، متلی، موشن اور کمزوری کی شکایت کر رہی ہیں۔ ان کا نام نیہا سنگھ ہے۔ وہ 31 سالہ خاتون ہیں، وزن 62 کلوگرام ہے۔ ردعمل 15 اگست 2026 کو شروع ہوا اور 16 اگست 2026 کو رک گیا۔ انہیں طبی دیکھ بھال دی گئی اور علامات میں بہتری آئی۔ یہ ایک ابتدائی کیس ہے۔",
+      "english": "The patient has been complaining of severe abdominal pain, nausea, motions and weakness since yesterday. Her name is Neha Singh. She is a 31-year-old woman, weighing 62 kg. The reaction started on 15 August 2026 and stopped on 16 August 2026. She was given medical care and the symptoms improved. is."
+    },
+    "5": {
+      "source": "مریض کا نام ارجن پٹیل۔ عمر 38 سال۔ مرد مریض۔ وزن 74 کلو۔ مشکوک دوا کے بعد بخار، کھانسی، ریش اور خارش ہوئی۔ ردعمل 9 اگست 2026 شروع ہوا اور 11 اگست 2026 بند ہوا۔ دوا بند۔ علاج دیا گیا۔ مریض ٹھیک ہوا۔ ابتدائی کیس۔",
+      "english": "Patient's name Arjun Patel. Age 38 years. Male patient. Weight 74 kg. Fever, cough, rash and itching occurred after suspected medication. Reaction started on 9 August 2026 and stopped on 11 August 2026. Medication discontinued. Treatment given. Patient cured. Initial case."
+    },
+    "6": {
+      "source": "مریض کا نام سنیہا گپتا ہے۔ وہ 29 سال کی ہیں اور وزن 55 کلوگرام ہے۔ انہیں چہرے پر سوجن، دانے اور سانس لینے میں دشواری ہوئی۔ ردعمل 12 اگست 2026 کو شروع ہوا اور 13 اگست 2026 کو ٹھیک ہو گیا۔ دوا بند کر دی گئی اور انہیں اینٹی ہسٹامائن ملی۔ یہ ایک فالو اپ کیس ہے۔",
+      "english": "The patient's name is Sneha Gupta; she is 29 years old and weighs 55 kg. She developed swelling, rashes, and breathing problems on her face. The reaction started on 12 August 2026 and was cured on 13 August 2026. The medication was stopped and she received antihistamines. This is a follow-up case."
+    },
+    "8": {
+      "source": "مشکوک دوا واپس لے لی گئی اور مریض کو مشاہدے میں رکھا گیا۔ علاج دیا گیا اور ردعمل میں بہتری آئی۔ مریض کا نام کواِتا راؤ ہے۔ وہ 36 سالہ خاتون ہیں، وزن 61.5 کلوگرام ہے۔ انہیں بخار، الٹی، خارش اور سوجن تھی۔ ردعمل 5 اگست 2026 کو شروع ہوا اور 7 اگست 2026 کو ختم ہوا۔ یہ ایک ابتدائی کیس ہے۔",
+      "english": "The suspected drug was withdrawn and the patient was kept under observation; treatment was given and response improved. The patient's name is Kavita Rao. She is a 36-year-old woman, weighing 61.5 kg. She had fever, vomiting, itching and swelling. Reaction started on 5 August 2026 and ended on 7 August 2026. It is an initial one. It's a case."
+    },
+    "9": {
+      "source": "مریض کا نام سنجے یادو ہے۔ ان کی عمر 55 سال ہے، مرد، وزن 79 کلوگرام۔ انہیں سر درد، چکر، کمزوری اور جلد پر دانے نکل آئے۔ ردعمل 6 اگست 2026 کو شروع ہوا اور 8 اگست 2026 کو ٹھیک ہو گیا۔ دوا بند کر دی گئی اور علاج فراہم کیا گیا۔ مریض کی حالت میں بہتری آئی۔",
+      "english": "The patient's name is Sanjay Yadav. He is 55 years old, male, weight 79 kg. He developed headache, dizziness, weakness and skin rashes. Reaction started on 6 August 2026 and healed on 8 August 2026. Medication was stopped and treatment provided."
+    },
+    "10": {
+      "source": "یہ پوجا نائر ہیں، وہ 25 سالہ خاتون ہیں، تقریباً 52 کلوگرام۔ دوا لینے کے بعد شدید خارش، سوجن اور سانس کی معمولی دشواری کے ساتھ آئی تھیں۔ ردعمل 14 اگست 2026 کو شروع ہوا اور 16 اگست 2026 کو علامات ٹھیک ہو گئیں۔ ہم نے دوا بند کی، اینٹی ہسٹامائن دی اور بہتری تک مشاہدہ کیا۔ فالو اپ کیس۔",
+      "english": "This is Pooja Nair, she is a 25-year-old woman, about 52 kg. She came with severe itching, swelling and minor breathing problems after taking the medicine. The reaction started on 14 August 2026 and symptoms got better on 16 August 2026. We stopped the medicine, gave antihistamines and observed improvement until the follow up case."
+    },
+    "12": {
+      "source": "مریض کی شناخت انجلی داس۔ جنس خاتون۔ عمر 40 سال۔ وزن 63 کلوگرام۔ ردعمل میں بخار، کھانسی، ریش اور سوجن شامل ہیں۔ ردعمل 4 اگست 2026 کو شروع ہوا اور 6 اگست 2026 کو ٹھیک ہو گیا۔ دوا واپس لے لی گئی۔ اینٹی ہسٹامائن علاج دیا گیا اور بہتری آئی۔ ابتدائی ADR کیس۔",
+      "english": "The patient was identified as Anjali Das. Gender Female. Age 40 years. Weight 63 kg. Reactions include fever, cough, rash and swelling. Response began on 4 August 2026 and healed on 6 August 2026. Medication was withdrawn. Antihistamine treatment was given and improvement occurred. Initial ADR case."
+    },
+    "13": {
+      "source": "ٹھیک ہے، یہ دیپک مشرا ہیں۔ 33 سالہ مرد، وزن 71 کلوگرام۔ انہیں بخار، خارش، دانے اور ہونٹوں پر سوجن ہو رہی ہے۔ یہ 13 اگست 2026 کو شروع ہوا اور 15 اگست 2026 تک ٹھیک ہو گیا۔ ہم نے دوا بند کی، اینٹی ہسٹامائن دی اور کچھ گھنٹے دیکھا۔ وہ ٹھیک ہو گئے۔ یہ ایک ابتدائی کیس ہے۔",
+      "english": "Well, this is Deepak Mishra; 33 years old male, weight 71 kg. He has fever, itching, rash and swelling on his lips. It started on 13 August 2026 and healed by 15 August 2026. We stopped the medicine, gave antihistamines and watched for a few hours."
+    },
+    "15": {
+      "source": "مریض کا نام وکرم جوشی ہے۔ وہ 48 سالہ مرد ہیں، وزن 84 کلوگرام۔ دوا لینے کے بعد شدید خارش، ریش، سوجن، چکر اور سانس کی تکلیف کے ساتھ آئے۔ ردعمل 10 اگست 2026 کو شروع ہوا اور 13 اگست 2026 کو علامات ٹھیک ہو گئیں۔ ہم نے فوری دوا بند کی، اینٹی ہسٹامائن دی اور مشاہدے میں رکھا۔ حالت بہتر ہوئی۔ ابتدائی ADR رپورٹ۔",
+      "english": "The patient's name is Vikram Joshi; he is a 48-year-old male, weight 84 kg. After taking the medicine came with severe itching, rash, swelling, dizziness and shortness of breath. The reaction started on 10 August 2026 and symptoms were cured on 13 August 2026. We immediately stopped the medicine, gave antihistamines and kept under observation. Improved initial ADR report."
+    },
+    "16": {
+      "source": "مریض کا نام میرا شاہ عمر 32 سال خاتون وزن 60 کلوگرام بخار کھانسی خارش ریش اور کمزوری ہوئی ردعمل 9 اگست 2026 شروع ہوا ردعمل 11 اگست 2026 بند ہوا دوا بند اینٹی ہسٹامائن دی گئی مریض کا مشاہدہ کیا گیا اور علامات بہتر ہوئیں ابتدائی کیس",
+      "english": "Patient Name Meera Shah Omar 32 years old Female Weight 60 kg Fever Coughing Itchy Rashes and Weakened Reaction 9 August 2026 Started Response 11 August 2026 Stopped Drug Administered Antihistamine The patient was observed and symptoms improved in the initial case."
+    },
+    "17": {
+      "source": "فالو اپ کیس۔ ردعمل 14 اگست 2026 کو ٹھیک ہو گیا۔ مریض کو اینٹی ہسٹامائن اور علاج دیا گیا۔ ردعمل 12 اگست 2026 کو شروع ہوا تھا۔ مریض کا نام امن گپتا ہے۔ وہ 30 سالہ مرد ہیں۔ وزن 73 کلوگرام۔ دوا کے بعد چھینکیں، ناک بہنا، ہلکا بخار اور خارش ہوئی۔ دوا بند کرنے کے بعد علامات ٹھیک ہو گئیں۔",
+      "english": "Follow-up case. Response recovered on 14 August 2026. Patient was given antihistamine and treatment. Reaction started on 12 August 2026. The patient's name is Aman Gupta. He is 30 years old male. Weight 73 kg. Sneeze, runny nose, mild fever and itching occurred after medication. Went."
+    },
+    "18": {
+      "source": "مریضہ نیشا ورما ہیں۔ وہ 37 سالہ خاتون ہیں، وزن 59 کلوگرام۔ انہیں خارش، دانے، سوجن، متلی اور سانس کی تکلیف ہوئی۔ ردعمل 8 اگست 2026 کو شروع ہوا اور 10 اگست 2026 کو کم ہو گیا۔ دوا بند کی گئی اور علاج فراہم کیا گیا۔ بہتری تک نگرانی کی گئی۔ یہ ایک ابتدائی کیس ہے۔",
+      "english": "The patient is Nisha Verma; she is a 37-year-old female, weighing 59 kg. She developed itching, rash, swelling, nausea and shortness of breath. The reaction started on 8 August 2026 and subsided on 10 August 2026. Medication was discontinued and treatment provided. Monitoring done until improvement. This is an early case."
+    },
+    "19": {
+      "source": "مریض کا نام راجیش کمار ہے۔ عمر 52 سال ہے۔ جنس مرد۔ وزن 77 کلوگرام ہے۔ وہ ذیابیطس اور ہائی بلڈ پریشر کے مریض ہیں، لیکن آج دوا کے بعد انہیں شدید خارش، الٹی اور سوجن ہو گئی۔ موجودہ ردعمل 15 اگست 2026 کو شروع ہوا اور 17 اگست 2026 کو ٹھیک ہو گیا۔ دوا بند کر دی گئی اور علاج کیا گیا۔ ابتدائی ADR کیس۔",
+      "english": "The patient's name is Rajesh Kumar. Age 52 years. Sex Male. Weight 77 kg. He is a diabetic and hypertensive, but today after medication he developed severe itching, vomiting and swelling. Current reaction started on 15 August 2026 and was cured on 17 August 2026. Medication discontinued and Treated early ADR cases."
+    }
+  }
+}

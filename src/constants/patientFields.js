@@ -26,10 +26,35 @@ export const PATIENT_FIELDS = [
   },
   {
     key: 'additionalRemarks',
-    label: 'Additional Remarks',
+    label: 'Additional Information',
     multiline: true,
     required: false,
   },
+];
+
+export const CORE_ADR_FIELDS = [
+  { key: 'caseType', label: 'Case Type', placeholder: 'Initial / Follow-up', required: false },
+  { key: 'patientName', label: 'Patient Name', required: true },
+  { key: 'age', label: 'Age', keyboard: 'number-pad', required: true },
+  { key: 'dateOfBirth', label: 'Date of Birth', placeholder: 'DD/MM/YYYY', required: false },
+  { key: 'gender', label: 'Gender', required: false },
+  { key: 'weight', label: 'Weight (kg)', keyboard: 'decimal-pad', required: false },
+  { key: 'reactionStartDate', label: 'Event / Reaction Start Date', placeholder: 'DD/MM/YYYY', required: true },
+  { key: 'reactionStopDate', label: 'Event / Reaction Stop Date', placeholder: 'DD/MM/YYYY', required: false },
+  { key: 'reactionDescription', label: 'Describe Event / Reaction', multiline: true, required: true },
+  { key: 'reactionManagement', label: 'Management With Details, If Any', multiline: true, required: false },
+  { key: 'additionalRemarks', label: 'Additional Information', multiline: true, required: false },
+];
+
+export const ADR_SPOKEN_FIELDS = [
+  { key: 'patientInitials', label: 'Patient Initials' },
+  { key: 'reactionStartDate', label: 'Event / Reaction Start Date' },
+  { key: 'reactionDescription', label: 'Describe Event / Reaction' },
+];
+
+export const SPOKEN_FIELD_KEYS = [
+  ...PATIENT_FIELDS.map(field => field.key),
+  ...ADR_SPOKEN_FIELDS.map(field => field.key),
 ];
 
 export const REQUIRED_FIELDS = PATIENT_FIELDS.filter(field => field.required);
@@ -40,3 +65,4 @@ export const EMPTY_PATIENT_RECORD = PATIENT_FIELDS.reduce((acc, field) => {
   acc[field.key] = field.list ? [] : '';
   return acc;
 }, {});
+

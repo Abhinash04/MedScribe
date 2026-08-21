@@ -20,11 +20,20 @@ import { CAPTURE_OUTCOME, decideCaptureOutcome } from './captureOutcome';
 import useRecordingStore, {
   selectFullTranscript,
 } from '../store/useRecordingStore';
+import { TRANSCRIPT_SOURCE } from './consultationTranscripts';
+import { needsTranslation } from './consultationTranslation';
+import { translateSession } from './transcriptTranslation';
+import { ensureHydrated, getDictationLanguage } from '../store/useSettingsStore';
+import {
+  DEFAULT_LANGUAGE_CODE,
+  isLatinScript,
+  recognizerTag,
+} from '../constants/languages';
 import { extractPatientFields } from './extractionService';
 
 const SAMPLE_RATE_HZ = 16000;
-const RECOGNITION_LANGUAGE = 'en-IN';
 const SHARED_MIC_POLL_MS = 400;
+const FALLBACK_SAMPLE_CHARS = 40;
 const SHARED_MIC_RETRY_DELAY_MS = 400;
 const SHARED_MIC_START_ATTEMPTS = 3;
 const rmsToLevel = rms => Math.max(0, Math.min(10, ((rms ?? 0) / 3000) * 10));
@@ -41,6 +50,7 @@ class DictationSessionManager {
     this.sharedMicPollId = null;
     this.lastSharedText = '';
     this.passIndex = 0;
+    this.fallbackChecked = false;
     this.appStateSubscription = AppState.addEventListener('change', state => {
       if (state === 'background' || state === 'inactive') {
         flushPendingSave().catch(() => {});
@@ -50,9 +60,15 @@ class DictationSessionManager {
   }
 
   async startSession() {
+    await ensureHydrated();
+
     const store = useRecordingStore.getState();
     this.lastExtractedTranscript = '';
+    this.fallbackChecked = false;
     store.setCaptureUnavailable(false);
+    store.setRecognizerFellBack(false);
+    const language = store.language ?? getDictationLanguage();
+    store.setSessionLanguage(language);
     audioFeedbackService.playStartCue();
     this.startTimer();
     store.setStatus(RECORDING_STATE.LISTENING);
@@ -71,16 +87,16 @@ class DictationSessionManager {
     }
 
     beginPass();
-    await this.startSharedMic(store.sessionId);
+    await this.startSharedMic(store.sessionId, recognizerTag(language));
   }
 
-  async startSharedMic(sessionId) {
+  async startSharedMic(sessionId, tag) {
     this.passIndex += 1;
     const name = `${sessionId}-${this.passIndex}`;
 
     for (let attempt = 1; attempt <= SHARED_MIC_START_ATTEMPTS; attempt += 1) {
       try {
-        await sharedMic.start(SAMPLE_RATE_HZ, name, RECOGNITION_LANGUAGE, true);
+        await sharedMic.start(SAMPLE_RATE_HZ, name, tag, true);
         this.sharedMicActive = true;
         this.lastSharedText = '';
         this.startSharedMicPolling();
@@ -146,6 +162,31 @@ class DictationSessionManager {
     if (addition) {
       useRecordingStore.getState().appendSegment({ text: addition });
       this.scheduleLiveExtraction();
+    }
+    this.checkRecognizerFallback(full);
+  }
+
+  checkRecognizerFallback(text) {
+    if (this.fallbackChecked) {
+      return;
+    }
+
+    const store = useRecordingStore.getState();
+    const language = store.language ?? DEFAULT_LANGUAGE_CODE;
+    if (isLatinScript(language)) {
+      this.fallbackChecked = true;
+      return;
+    }
+
+    const sample = text.slice(0, FALLBACK_SAMPLE_CHARS * 2);
+    if (sample.length < FALLBACK_SAMPLE_CHARS) {
+      return;
+    }
+
+    this.fallbackChecked = true;
+    const asciiWords = sample.split(/\s+/).filter(word => /^[a-zA-Z]{3,}$/.test(word));
+    if (asciiWords.length >= 2) {
+      store.setRecognizerFellBack(true);
     }
   }
 
@@ -229,6 +270,16 @@ class DictationSessionManager {
     this.persistCurrentSession();
     captured = captured ?? (await consultationAudio.finish());
 
+    const language = useRecordingStore.getState().language;
+    if (needsTranslation(language)) {
+      const source = selectFullTranscript(useRecordingStore.getState());
+      translateSession({
+        text: source,
+        language,
+        sourceKind: TRANSCRIPT_SOURCE.NATIVE,
+      }).catch(() => {});
+    }
+
     const outcome = decideCaptureOutcome({
       path: captured?.path,
       withinBudget: captured?.withinBudget,
@@ -236,7 +287,7 @@ class DictationSessionManager {
     });
 
     if (outcome === CAPTURE_OUTCOME.REFINE) {
-      refineTranscript().catch(() => {});
+      refineTranscript({ language: language ?? undefined }).catch(() => {});
       return outcome;
     }
 
@@ -309,6 +360,10 @@ class DictationSessionManager {
   runLiveExtraction() {
     try {
       const store = useRecordingStore.getState();
+      if (needsTranslation(store.language)) {
+        return;
+      }
+
       const fullTranscript = selectFullTranscript(store);
       if (!fullTranscript || fullTranscript === this.lastExtractedTranscript) {
         return;
@@ -335,6 +390,8 @@ class DictationSessionManager {
       anuvadiniTranscript: store.anuvadini,
       transcriptSource: store.transcriptSource,
       nativeRaw: store.nativeRaw,
+      language: store.language,
+      translation: store.translation,
     });
   }
 

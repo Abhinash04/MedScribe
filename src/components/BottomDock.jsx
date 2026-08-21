@@ -1,15 +1,11 @@
 import { useNavigation } from '@react-navigation/native';
+import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
-import MicGlyph from './MicGlyph';
 import useStartConsultation from '../hooks/useStartConsultation';
-import { colors, spacing } from '../theme';
-import styles, {
-  BAR_HEIGHT,
-  FAB_LIFT,
-  FAB_SIZE,
-} from './styles/BottomDock.styles';
+import styles, { BAR_HEIGHT } from './styles/BottomDock.styles';
 
 const DESTINATIONS = [
   { route: 'Dashboard', label: 'Home', icon: 'home' },
@@ -18,28 +14,26 @@ const DESTINATIONS = [
   { route: 'Settings', label: 'Settings', icon: 'settings' },
 ];
 
-const safeBottom = inset => Math.max(inset, spacing.sm);
+const safeBottom = inset => Math.max(inset, 20); // Base 20px padding from bottom
 
 export function useDockClearance() {
   const insets = useSafeAreaInsets();
-  return BAR_HEIGHT + safeBottom(insets.bottom) + spacing.lg;
+  return BAR_HEIGHT + safeBottom(insets.bottom) + 20; // 20px extra clearance
 }
 
 const DockTab = ({ label, icon, selected, onPress }) => (
   <Pressable
-    style={({ pressed }) => [styles.tab, pressed && styles.tabPressed]}
+    style={[styles.tab, selected && styles.tabActive]}
     onPress={onPress}
     accessibilityRole="tab"
     accessibilityLabel={label}
     accessibilityState={{ selected }}
   >
-    <View style={[styles.iconPill, selected && styles.iconPillActive]}>
-      <Icon
-        name={icon}
-        size={22}
-        color={selected ? colors.primaryAccent : colors.textMuted}
-      />
-    </View>
+    <Icon
+      name={icon}
+      size={22}
+      color={selected ? '#6c63ff' : '#c4c9d4'}
+    />
     <Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>
       {label}
     </Text>
@@ -52,52 +46,63 @@ const BottomDock = ({ active }) => {
   const startConsultation = useStartConsultation();
   const bottomPad = safeBottom(insets.bottom);
 
-  const [home, reports, patients, settings] = DESTINATIONS;
-
   const go = route => {
-    if (route === active) {
-      return;
-    }
+    if (route === active) return;
     navigation.navigate(route);
   };
 
-  const tabFor = destination => (
-    <DockTab
-      label={destination.label}
-      icon={destination.icon}
-      selected={active === destination.route}
-      onPress={() => go(destination.route)}
-    />
-  );
+  const [home, reports, patients, settings] = DESTINATIONS;
 
   return (
     <View
       style={[styles.wrapper, { paddingBottom: bottomPad }]}
       pointerEvents="box-none"
     >
-      <View style={styles.bar}>
-        {tabFor(home)}
-        {tabFor(reports)}
+      <View style={styles.pill}>
+        <DockTab
+          label={home.label}
+          icon={home.icon}
+          selected={active === home.route}
+          onPress={() => go(home.route)}
+        />
+        <DockTab
+          label={reports.label}
+          icon={reports.icon}
+          selected={active === reports.route}
+          onPress={() => go(reports.route)}
+        />
+        
         <View style={styles.fabSlot}>
-          <Text style={styles.fabCaption}>Record</Text>
+          <Pressable
+            style={styles.fab}
+            onPress={startConsultation}
+            accessibilityRole="button"
+            accessibilityLabel="Start a new consultation"
+          >
+            <LinearGradient
+              colors={['#6c63ff', '#a78bfa']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.fabGradient}
+            >
+              <Icon name="mic" size={24} color="#fff" />
+            </LinearGradient>
+          </Pressable>
         </View>
-        {tabFor(patients)}
-        {tabFor(settings)}
-      </View>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.fab,
-          { bottom: bottomPad + BAR_HEIGHT - FAB_SIZE + FAB_LIFT },
-          pressed && styles.fabPressed,
-        ]}
-        onPress={startConsultation}
-        accessibilityRole="button"
-        accessibilityLabel="Start a new consultation"
-        accessibilityHint="Opens the dictation screen"
-      >
-        <MicGlyph size={28} color={colors.onPrimary} />
-      </Pressable>
+        <DockTab
+          label={patients.label}
+          icon={patients.icon}
+          selected={active === patients.route}
+          onPress={() => go(patients.route)}
+        />
+        <DockTab
+          label={settings.label}
+          icon={settings.icon}
+          selected={active === settings.route}
+          onPress={() => go(settings.route)}
+        />
+      </View>
     </View>
   );
 };

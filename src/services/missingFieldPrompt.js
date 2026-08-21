@@ -1,3 +1,8 @@
+import {
+  DEFAULT_CATALOG_CODE,
+  catalogFor,
+} from '../constants/prompts/index.js';
+
 export const SPOKEN_FIELD_LIMIT = 4;
 
 const SPOKEN_LABEL = {
@@ -8,19 +13,30 @@ const SPOKEN_LABEL = {
   additionalRemarks: 'additional remarks',
 };
 
-const spokenLabel = field =>
-  SPOKEN_LABEL[field?.key] || String(field?.label ?? '').toLowerCase();
+const spokenLabel = (field, catalog) =>
+  catalog?.labels?.[field?.key] ||
+  SPOKEN_LABEL[field?.key] ||
+  String(field?.label ?? '').toLowerCase();
 
-function joinNames(names) {
+function joinNames(names, join) {
   if (names.length <= 1) {
     return names[0] ?? '';
   }
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `${names.slice(0, -1).join(join.separator)}${join.and}${
+    names[names.length - 1]
+  }`;
 }
 
-export function missingFieldPrompt(fields) {
+const fill = (frame, values) =>
+  String(frame).replace(/\{(\w+)\}/g, (match, key) =>
+    key in values ? String(values[key]) : match,
+  );
+
+export function missingFieldPrompt(fields, language = DEFAULT_CATALOG_CODE) {
+  const catalog = catalogFor(language) ?? catalogFor(DEFAULT_CATALOG_CODE);
+
   const names = (Array.isArray(fields) ? fields : [])
-    .map(spokenLabel)
+    .map(field => spokenLabel(field, catalog))
     .filter(Boolean);
 
   if (!names.length) {
@@ -28,23 +44,21 @@ export function missingFieldPrompt(fields) {
   }
 
   if (names.length === 1) {
-    return `The ${names[0]} is still missing. Please provide this mandatory detail.`;
+    return fill(catalog.frames.one, { names: names[0] });
   }
 
   if (names.length <= SPOKEN_FIELD_LIMIT) {
-    return `The ${joinNames(
-      names,
-    )} are still missing. Please provide these mandatory details.`;
+    return fill(catalog.frames.few, {
+      names: joinNames(names, catalog.join),
+    });
   }
 
   const spoken = names.slice(0, SPOKEN_FIELD_LIMIT);
   const rest = names.length - SPOKEN_FIELD_LIMIT;
-  const detail = rest === 1 ? 'detail' : 'details';
 
-  return (
-    `The ${spoken.join(
-      ', ',
-    )}, and ${rest} other mandatory ${detail} are still ` +
-    'missing. Please provide the missing information.'
-  );
+  return fill(catalog.frames.many, {
+    names: spoken.join(catalog.join.separator),
+    count: rest,
+    detailWord: rest === 1 ? catalog.detailWord.one : catalog.detailWord.other,
+  });
 }

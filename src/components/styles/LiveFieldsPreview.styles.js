@@ -16,6 +16,11 @@ export const styles = StyleSheet.create({
     color: colors.primaryAccent,
     letterSpacing: 0.8,
   },
+  deferredNote: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textSecondary,
+  },
   pillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

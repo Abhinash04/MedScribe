@@ -50,6 +50,7 @@ const AppHeader = ({
         activeOpacity={1}
         onLongPress={onLongPressTitle}
         disabled={!onLongPressTitle}
+        style={styles.titleContainer}
       >
         <Text style={typography.brandTitle}>{title}</Text>
       </TouchableOpacity>

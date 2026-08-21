@@ -1,4 +1,3 @@
-
 import { PATIENT_FIELDS } from '../src/constants/patientFields.js';
 import { blockingFields, validateReportCompleteness } from '../src/services/reportCompleteness.js';
 import { missingFieldPrompt, SPOKEN_FIELD_LIMIT } from '../src/services/missingFieldPrompt.js';

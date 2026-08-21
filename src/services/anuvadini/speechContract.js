@@ -1,3 +1,4 @@
+import { DICTATION_LANGUAGES } from '../../constants/languages.js';
 import { ERROR_KIND } from './proxyContract.js';
 
 export const SPEECH_REQUEST_FIELDS = {
@@ -14,9 +15,12 @@ export const DIRECT_SPEECH_REQUEST_FIELDS = {
   GENDER: 'gender',
 };
 
-const VOICES = {
-  'en-IN': { voice: 'en-IN-PrabhatNeural', gender: 'Female' },
-};
+const VOICES = Object.fromEntries(
+  DICTATION_LANGUAGES.filter(language => language.voice).map(language => [
+    language.tag,
+    { voice: language.voice, gender: language.gender },
+  ]),
+);
 
 export function voiceFor(normalizedLanguage) {
   return VOICES[normalizedLanguage] || null;

@@ -32,9 +32,12 @@ export async function isSupported() {
 export async function start(
   sampleRateHz = 16000,
   name = '',
-  language = 'en-IN',
+  language,
   useSegmented = true,
 ) {
+  if (!language) {
+    throw new Error('sharedMic.start requires a recognition language tag.');
+  }
   const module = sharedMic();
   if (!module) {
     throw new Error('SharedMic module is not in this build. Rebuild natively.');

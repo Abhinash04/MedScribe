@@ -75,7 +75,10 @@ export function collectResidue(transcript, record) {
     if (!field?.value) {
       continue;
     }
-    const entries = Array.isArray(field.value) ? field.value : [field.value];
+    const entries = Array.isArray(field.value) ? [...field.value] : [field.value];
+    if (field.sourceText) {
+      entries.push(field.sourceText);
+    }
     for (const entry of entries) {
       for (const word of contentWords(entry)) {
         captured.add(word);

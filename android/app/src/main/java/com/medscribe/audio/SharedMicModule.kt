@@ -299,6 +299,45 @@ class SharedMicModule(reactContext: ReactApplicationContext) :
     promise.resolve(buildState())
   }
 
+  override fun invalidate() {
+    releaseWithoutPromise()
+    super.invalidate()
+  }
+
+  private fun releaseWithoutPromise() {
+    val record: AudioRecord?
+    val readerThread: Thread?
+    val pumpThread: Thread?
+
+    synchronized(lock) {
+      if (!running) {
+        return
+      }
+      running = false
+      record = recorder
+      readerThread = reader
+      pumpThread = pump
+      recorder = null
+      reader = null
+      pump = null
+    }
+
+    try {
+      record?.stop()
+    } catch (error: Exception) {
+      Log.w(TAG, "invalidate stop failed", error)
+    }
+
+    readerThread?.join(JOIN_TIMEOUT_MS)
+    pumpThread?.join(JOIN_TIMEOUT_MS)
+    record?.release()
+    closeWriteEnd()
+    main.post { destroyRecognizer() }
+    closeReadEnd()
+
+    outputFile?.let { writeWavHeader(it, sampleRate, synchronized(this) { totalBytes }) }
+  }
+
   override fun getState(promise: Promise) {
     promise.resolve(buildState())
   }

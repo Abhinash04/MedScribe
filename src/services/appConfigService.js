@@ -28,3 +28,20 @@ export function getAnuvadiniToken() {
 export function hasAnuvadiniToken() {
   return getAnuvadiniToken().length > 0;
 }
+
+export function getPravahKey() {
+  const module = appConfig();
+  if (!module || typeof module.getPravahKey !== 'function') {
+    return '';
+  }
+  try {
+    return module.getPravahKey() || '';
+  } catch {
+    return '';
+  }
+}
+
+export function hasPravahKey() {
+  return getPravahKey().length > 0;
+}
+

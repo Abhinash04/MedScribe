@@ -40,9 +40,21 @@ const useReportsStore = create((set, get) => ({
     return getReport(id);
   },
 
-  saveNew: async ({ transcript, extracted, edited }) => {
+  saveNew: async ({
+    transcript,
+    extracted,
+    edited,
+    language,
+    sourceTranscript,
+  }) => {
     ensureSchema();
-    const id = await createReport({ transcript, extracted, edited });
+    const id = await createReport({
+      transcript,
+      extracted,
+      edited,
+      language,
+      sourceTranscript,
+    });
     await get().loadAll();
     return id;
   },

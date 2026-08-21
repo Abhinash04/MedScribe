@@ -1,4 +1,34 @@
 import { ADVERB_GAP, MEDICATION_UNITS } from './clinicalCues.js';
+import {
+  KNOWN_FINDINGS,
+  accompaniedBy,
+  afterDateWith,
+  cameDownWith,
+  coordinatedPresents,
+  findingsWere,
+  existential,
+  followedBy,
+  reactionIncluded,
+  subjectPresents,
+  symptomRun,
+  verbFinalList,
+} from './symptomCues.js';
+import {
+  PATIENT_SUBJECT,
+  REACTION_PRONOUN,
+  DATE_AHEAD,
+  REACTION_SUBJECT,
+  START_VERB_CONTEXTUAL,
+  START_VERB_PLAIN,
+  STOP_VERB_CONTEXTUAL,
+  STOP_STATE_ADJECTIVE,
+  STOP_VERB_PLAIN,
+  coordinated,
+  dateGuarded,
+  dateThenVerb,
+  stateAnchored,
+  subjectAnchored,
+} from './reactionCues.js';
 
 export const CONFIDENCE = {
   EXPLICIT: 0.95,
@@ -32,14 +62,36 @@ export const CLINICAL_CONDITIONS =
   'diabetic|hypertensive|asthmatic|epileptic|hypothyroid|hyperthyroid|anaemic|anemic|obese|immunocompromised|arthritic|tubercular';
 
 export const FIELD_MARKERS = {
+  caseType: {
+    priority: 10,
+    postProcessor: 'caseType',
+    validator: 'caseType',
+    markers: [
+      m(/\b(?:this\s+is\s+(?:an?\s+)?)?initial\s+(?:case|report|adr\s+report)\b/i, CONFIDENCE.EXPLICIT, 'initial case'),
+      m(/\b(?:first|first-time|new|primary|index|baseline|fresh|early|preliminary|prima\s+facie)\s+(?:report|adr\s+report|adr\s+cases?|case|cases|time|events?|incidents?)\b/i, CONFIDENCE.STRONG, 'first report'),
+      m(/\bfirst\s+time\b/i, CONFIDENCE.STRONG, 'first time'),
+      m(/\b(?:newly\s+reported|freshly\s+reported)\s+(?:case|adr|report)\b/i, CONFIDENCE.STRONG, 'fresh report'),
+      m(/\b(?:this\s+is\s+a\s+)?follow[- ]up\s+(?:case|report|adr\s+report)\b/i, CONFIDENCE.EXPLICIT, 'follow-up case'),
+      m(/\bpatient\s+is\s+here\s+for\s+(?:a\s+)?follow[- ]up\b/i, CONFIDENCE.STRONG, 'follow-up patient'),
+      m(/\b(?:subsequent|review|repeat|secondary|re-evaluation|progress)\s+(?:report|case|adr\s+report)\b/i, CONFIDENCE.STRONG, 'review report'),
+      m(/\binitial(?:\s+case)?\b/i, CONFIDENCE.EXPLICIT, 'initial case'),
+      m(/\bfollow[\s-]*up(?:\s+case)?\b/i, CONFIDENCE.EXPLICIT, 'follow-up case'),
+    ],
+  },
   patientName: {
     priority: 10,
     postProcessor: 'name',
     validator: 'personName',
     markers: [
+      m(/\bpatient(?:'s|s)?\s+initials?\s+(?:are|is)?\s*/i, CONFIDENCE.EXPLICIT, "patient's initials are"),
+      m(/\binitials\s+(?:are|is)\s*/i, CONFIDENCE.EXPLICIT, 'initials are'),
       m(/\bpatient(?:'s|s)?\s+name\s+(?:is[\s,]+)?/i, CONFIDENCE.EXPLICIT, "patient's name is"),
       m(/\bname\s+of\s+the\s+patient\s+(?:is[\s,]+)?/i, CONFIDENCE.EXPLICIT, 'name of the patient is'),
-      m(/\b(?:her|his|the)\s+name\s+(?:is[\s,]+)?/i, CONFIDENCE.STRONG, 'name is'),
+      m(
+        /\b(?:her|his|the)\s+name\s+(?!of\s+the\s+patient)(?:is[\s,]+)?/i,
+        CONFIDENCE.STRONG,
+        'name is',
+      ),
       m(/\bname\s+is[\s,]+/i, CONFIDENCE.STRONG, 'name is'),
       m(/\bthe\s+patient\s+is[\s,]+/i, CONFIDENCE.MODERATE, 'the patient is'),
       m(/\bpatient\s+is[\s,]+/i, CONFIDENCE.MODERATE, 'patient is'),
@@ -48,8 +100,11 @@ export const FIELD_MARKERS = {
       m(/\bthis\s+is\s+(?:mr|mrs|ms|miss|master)\.?[\s,]+/i, CONFIDENCE.STRONG, 'this is Mr/Mrs'),
       m(/\bthis\s+is[\s,]+/i, CONFIDENCE.MODERATE, 'this is'),
       m(/\bpatient\s+identified\s+as[\s,]+/i, CONFIDENCE.EXPLICIT, 'patient identified as'),
+      m(/\b(?:registered|recorded)\s+as[\s,]+/i, CONFIDENCE.STRONG, 'registered as'),
+      m(/\bpatient(?:'s)?\s+identity\s+(?:is|recorded\s+as)[\s,]+/i, CONFIDENCE.EXPLICIT, 'patient identity'),
       m(/\bidentified\s+as[\s,]+/i, CONFIDENCE.STRONG, 'identified as'),
       m(/\b(?:patient\s+)?ka\s+naam[\s,]+/i, CONFIDENCE.EXPLICIT, 'ka naam'),
+      m(/(?<=^|[.;?!]\s)Patient\s+(?=[A-Z][a-z]+\s+[A-Z][a-z]+)/, CONFIDENCE.STRONG, 'patient named'),
     ],
   },
 
@@ -62,6 +117,16 @@ export const FIELD_MARKERS = {
       m(/\b(?=\d{1,3}[\s-]*(?:years?|yrs?)[\s-]*old\b)/i, CONFIDENCE.STRONG, 'N-year-old'),
       m(/\b(?=\d{1,3}[\s-]*(?:years?|yrs?)\s+of\s+age\b)/i, CONFIDENCE.STRONG, 'N years of age'),
       m(/\bis\s+(?=\d{1,3}[\s-]*(?:years?|yrs?)\b)/i, CONFIDENCE.STRONG, 'is N years'),
+      m(/\bof\s+(?=\d{1,3}[\s-]*(?:years?|yrs?)\b)/i, CONFIDENCE.STRONG, 'is N years'),
+      // An appositive age, dictated without a preposition: "Rahul Sharma, 34 years,
+      // male". The comma before, and the comma or gender word after, are what
+      // separate it from a duration such as "for 3 years".
+      m(/(?<=,\s)(?=\d{1,3}\s*(?:years?|yrs?)\s*(?:[,.]|\s+(?:male|female|man|woman|boy|girl)\b))/i, CONFIDENCE.STRONG, 'appositive age'),
+      m(/\b(?:age\s+recorded\s+as|current\s+age\s+is)\s+/i, CONFIDENCE.EXPLICIT, 'current age is'),
+      // A bare age with no unit: "He is 52." Machine translation drops the unit that
+      // the source carried. The number must run to the end of its clause and the
+      // subject must be the patient, or this would swallow every loose number.
+      m(/\b(?:he|she|they|the\s+patient|patient)\s+is\s+(?=(?:\d{1,3})\s*(?:[.,;]|$))/i, CONFIDENCE.STRONG, 'bare age'),
       m(/\b(?=(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[\s-](?:one|two|three|four|five|six|seven|eight|nine)\b)/i, CONFIDENCE.HEDGED, 'spoken age'),
     ],
   },
@@ -71,7 +136,113 @@ export const FIELD_MARKERS = {
     postProcessor: 'gender',
     validator: 'gender',
     markers: [
-      m(/\b(?:gender|sex)\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'gender'),
+      m(/\b(?:gender|sex|biological\s+sex|gender\s+identity)\s+(?:is|recorded\s+as)?\s*/i, CONFIDENCE.EXPLICIT, 'gender'),
+      m(/\btransgender(?:\s+(?:individual|patient|person))?\b/i, CONFIDENCE.EXPLICIT, 'transgender'),
+    ],
+  },
+
+  dateOfBirth: {
+    priority: 9,
+    postProcessor: 'dateString',
+    validator: 'dateString',
+    markers: [
+      m(/\b(?:date\s+of\s+birth|dob|birth\s*date|birthdate)\s+(?:is|recorded\s+as)?\s*/i, CONFIDENCE.EXPLICIT, 'date of birth'),
+      m(/\bborn\s+on\s+/i, CONFIDENCE.EXPLICIT, 'born on'),
+      m(/\bborn\s+(?=\d{1,2}(?:st|nd|rd|th)?[\s/-])/i, CONFIDENCE.STRONG, 'born date'),
+      m(/\bpatient\s+was\s+born\s+on\s+/i, CONFIDENCE.EXPLICIT, 'patient was born on'),
+    ],
+  },
+
+  weight: {
+    priority: 8,
+    postProcessor: 'weight',
+    validator: 'weightNumber',
+    markers: [
+      m(/\b(?:weight|wt\.?|body\s+weight|measured\s+weight|recorded\s+weight)\s+(?:is|measures)?\s*/i, CONFIDENCE.EXPLICIT, 'weight is'),
+      m(/\bpatient\s+weighs\s+/i, CONFIDENCE.EXPLICIT, 'patient weighs'),
+      m(/\b(?:weighs|weighed|weighing|weigh)\s+(?:about\s+|around\s+|approximately\s+)?(?=\d)/i, CONFIDENCE.EXPLICIT, 'weighing'),
+      m(/\bwith\s+a\s+weight\s+of\s+/i, CONFIDENCE.EXPLICIT, 'with a weight of'),
+      m(/\b(?:around|about|approximately|approx\.?|nearly|roughly)\s+(?=\d{1,3}(?:\.\d+)?\s*(?:kgs?|kilograms?|kilogrammes?|kilos?)\b)/i, CONFIDENCE.STRONG, 'around N kg'),
+      m(/\bweight\s+is\s+around\s+/i, CONFIDENCE.STRONG, 'weight is around'),
+    ],
+  },
+
+  reactionManagement: {
+    priority: 8,
+    postProcessor: 'reactionManagement',
+    validator: 'nonEmptyText',
+    combine: 'sentences',
+    markers: [
+      m(/\btreatment\s+was\s+given\b/i, CONFIDENCE.EXPLICIT, 'treatment was given'),
+      m(/\bsymptoms?\s+(?:improved|subsided|resolved|settled)\b/i, CONFIDENCE.STRONG, 'symptoms improved'),
+      m(/\btreatment\s+(?:was\s+)?given\s+and\s+(?:the\s+)?symptoms?\s+(?:improved|settled|subsided)\b/i, CONFIDENCE.EXPLICIT, 'treatment given and symptoms improved'),
+      m(/\b(?:suspected\s+)?(?:medication|drug|medicine)\s+was\s+(?:stopped|withdrawn|discontinued|de-challenged|halted)\b/i, CONFIDENCE.EXPLICIT, 'medication was stopped'),
+      m(/\b(?:suspected\s+)?(?:medication|drug|medicine)\s+(?:discontinued|stopped|withdrawn|dechallenged)\b/i, CONFIDENCE.EXPLICIT, 'medication discontinued'),
+      m(/\b(?:de-?challenge\s+positive|positive\s+de-?challenge)\b/i, CONFIDENCE.STRONG, 'dechallenge positive'),
+      m(/\btreated\s+with\b/i, CONFIDENCE.STRONG, 'treated with'),
+      m(/\badministered\b/i, CONFIDENCE.STRONG, 'administered'),
+      m(/\bgiven\s+(?:iv\s+|supportive\s+)?(?:fluids|treatment|care|medication|therapy)\b/i, CONFIDENCE.STRONG, 'given treatment'),
+      m(/\bkept\s+under\s+observation\b/i, CONFIDENCE.STRONG, 'kept under observation'),
+      m(/\b(?:admitted|retained)\s+for\s+observation\b/i, CONFIDENCE.STRONG, 'admitted for observation'),
+      m(/\bmonitored\s+until\s+(?:improved|recovery)\b/i, CONFIDENCE.STRONG, 'monitored until improved'),
+      m(/\bsymptoms?\s+improved\s+after\s+treatment\b/i, CONFIDENCE.STRONG, 'symptoms improved'),
+      m(/\btreated\s+(?:symptomatically|conservatively)\b/i, CONFIDENCE.STRONG, 'treated symptomatically'),
+      m(/\b(?:symptomatic\s+relief|supportive\s+care)\s+(?:was\s+)?provided\b/i, CONFIDENCE.STRONG, 'supportive care provided'),
+      m(/\bmanaged\s+with\s+/i, CONFIDENCE.STRONG, 'managed with'),
+    ],
+  },
+
+  reactionStartDate: {
+    priority: 8,
+    postProcessor: 'dateString',
+    validator: 'reactionDate',
+    markers: [
+      m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+start\s+date\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction start date'),
+      m(/\b(?:event|reaction|adverse\s+event|adverse\s+reaction|symptoms?)\s+(?:had\s+)?commenced\s+(?:on\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction commenced on'),
+      m(/\b(?:event|reaction|adverse\s+event|adverse\s+reaction|symptoms?)\s+(?:had\s+)?start(?:ed|ing)?\s+(?:on\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction started on'),
+      m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+began\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction began on'),
+      m(/\b(?:reaction|event|adverse\s+event|adverse\s+reaction)\s+(?:triggered|originated|manifested|first\s+noticed)\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction triggered on'),
+      m(/\bcommenced\s+on\s+/i, CONFIDENCE.STRONG, 'commenced on'),
+      m(/\bhad\s+started\s+on\s+/i, CONFIDENCE.STRONG, 'had started on'),
+      m(/\bstarted\s+on\s+(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b)/i, CONFIDENCE.STRONG, 'started on date'),
+      m(/\breaction\s+date\s+is\s+/i, CONFIDENCE.STRONG, 'reaction date is'),
+      m(/\b(?:reaction\s+)?onset\s+(?:of\s+(?:the\s+)?(?:symptoms|reaction|event|adverse\s+reaction)\s+)?(?:date\s+)?(?:was|is)\s+/i, CONFIDENCE.EXPLICIT, 'onset of reaction'),
+      m(/\bonset\s+date\s+(?:was|is)\s+/i, CONFIDENCE.EXPLICIT, 'onset date'),
+
+      m(subjectAnchored(REACTION_SUBJECT, `${START_VERB_PLAIN}|${START_VERB_CONTEXTUAL}`), CONFIDENCE.EXPLICIT, 'reaction started on'),
+      m(subjectAnchored(REACTION_PRONOUN, START_VERB_PLAIN), CONFIDENCE.EXPLICIT, 'reaction started on'),
+      m(subjectAnchored(PATIENT_SUBJECT, START_VERB_CONTEXTUAL), CONFIDENCE.STRONG, 'reaction started on'),
+      m(dateGuarded(START_VERB_PLAIN), CONFIDENCE.STRONG, 'started on date'),
+      // Run-on speech puts the verb after the date.
+      m(dateThenVerb(START_VERB_PLAIN), CONFIDENCE.STRONG, 'started on date'),
+    ],
+  },
+
+  reactionStopDate: {
+    priority: 8,
+    postProcessor: 'dateString',
+    validator: 'reactionDate',
+    markers: [
+      m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+stop\s+date\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction stop date'),
+      m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+(?:finished|stopped)\s+(?:on\s+)?/i, CONFIDENCE.EXPLICIT, 'reaction stopped on'),
+      m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+(?:ended|finished)\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction ended on'),
+      m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+resolved\s+(?:on\s+)?/i, CONFIDENCE.STRONG, 'reaction resolved on'),
+      m(/\b(?:event|reaction|adverse\s+reaction|adverse\s+event|symptoms?)\s+(?:settled|subsided|abated|disappeared|cleared|finished)\s+(?:by|on)\s+/i, CONFIDENCE.STRONG, 'reaction settled by'),
+      m(new RegExp(`\\bby\\s+${DATE_AHEAD}`, 'i'), CONFIDENCE.STRONG, 'by date'),
+      m(/\b(?:resolved|ended|stopped|settled|subsided|abated|cleared|finished)\s+(?:on\s+)?(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b)/i, CONFIDENCE.STRONG, 'resolved date'),
+      m(/\b(?:subsided|settled|abated|cleared|finished)\s+(?:on|by)\s+/i, CONFIDENCE.STRONG, 'subsided on'),
+      m(/\b(?:reaction\s+)?(?:cessation|resolution|outcome)\s+date\s+(?:was|is)\s+/i, CONFIDENCE.STRONG, 'cessation date'),
+      m(/\b(?:resolved|ended|stopped)\s+on\s+/i, CONFIDENCE.STRONG, 'resolved on'),
+      m(subjectAnchored(REACTION_SUBJECT, `${STOP_VERB_PLAIN}|${STOP_VERB_CONTEXTUAL}`), CONFIDENCE.EXPLICIT, 'reaction stopped on'),
+      m(subjectAnchored(REACTION_PRONOUN, STOP_VERB_PLAIN), CONFIDENCE.EXPLICIT, 'reaction stopped on'),
+      m(subjectAnchored(PATIENT_SUBJECT, STOP_VERB_CONTEXTUAL), CONFIDENCE.STRONG, 'reaction stopped on'),
+      m(dateGuarded(STOP_VERB_PLAIN), CONFIDENCE.STRONG, 'resolved date'),
+      m(dateThenVerb(STOP_VERB_PLAIN), CONFIDENCE.STRONG, 'resolved date'),
+      // The adjective belongs here too: "started on the 10th and WAS PERFECT on the
+      // 12th" is the same elided-subject shape, and coordinated() already supplies the
+      // copula, so a state reads exactly like a verb in this position.
+      m(coordinated(`${STOP_VERB_PLAIN}|${STOP_VERB_CONTEXTUAL}|${STOP_STATE_ADJECTIVE}`), CONFIDENCE.STRONG, 'resolved date'),
+      m(stateAnchored(`${REACTION_SUBJECT}|${REACTION_PRONOUN}|${PATIENT_SUBJECT}`, STOP_STATE_ADJECTIVE), CONFIDENCE.STRONG, 'reaction stopped on'),
     ],
   },
 
@@ -83,7 +254,7 @@ export const FIELD_MARKERS = {
       m(/\b(?:residential\s+|postal\s+|home\s+)?address\s*(?:is\s*|:\s*)?/i, CONFIDENCE.EXPLICIT, 'address is'),
       m(/\b(?:resides?|residing|staying|stays)\s+(?:at|in)\s+/i, CONFIDENCE.STRONG, 'resides at'),
       m(/\bliv(?:es?|ing)\s+(?:at|in)\s+/i, CONFIDENCE.STRONG, 'lives in'),
-      m(/\bhails\s+from\s+/i, CONFIDENCE.MODERATE, 'hails from'),
+      m(/\b(?:hails\s+from|native\s+of)\s+/i, CONFIDENCE.MODERATE, 'hails from'),
       m(/\blocated\s+(?:at|in)\s+/i, CONFIDENCE.STRONG, 'located at'),
     ],
   },
@@ -93,7 +264,7 @@ export const FIELD_MARKERS = {
     postProcessor: 'pinCode',
     validator: 'pinCode',
     markers: [
-      m(/\b(?:pin\s*code|pincode|postal\s*code|zip\s*code|zip)\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'pin code'),
+      m(/\b(?:pin\s*code|pincode|postal\s*code|postal\s*pin|zip\s*code|zip)\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'pin code'),
     ],
     fallbacks: [m(/\b(\d{6})\b/, CONFIDENCE.WEAK_FALLBACK, 'bare 6-digit')],
   },
@@ -103,7 +274,7 @@ export const FIELD_MARKERS = {
     postProcessor: 'phone',
     validator: 'phone',
     markers: [
-      m(/\b(?:contact|phone|mobile|cell)\s*(?:number|no\.?)?\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'contact number'),
+      m(/\b(?:contact|phone|mobile|cell|telephone)\s*(?:number|no\.?|info)?\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'contact number'),
       m(/\b(?:can\s+be\s+)?reach(?:able|ed|es)?\s+(?:at|on)\s+/i, CONFIDENCE.STRONG, 'reachable at'),
       m(/\bnumber\s+is\s+/i, CONFIDENCE.MODERATE, 'number is'),
     ],
@@ -122,9 +293,22 @@ export const FIELD_MARKERS = {
       ),
       m(/\bc\/o\s+/i, CONFIDENCE.EXPLICIT, 'c/o'),
       m(/\bsymptoms?\s+(?:are|is|include[s]?)\s+/i, CONFIDENCE.EXPLICIT, 'symptoms are'),
-      m(/\bpresenting\s+complaints?\s+(?:are|include[s]?)?\s*/i, CONFIDENCE.EXPLICIT, 'presenting complaints'),
+      m(/\b(?:suspected\s+)?(?:reactions?|responses?)\s+(?:is|are|was|were|includes?)\s+/i, CONFIDENCE.EXPLICIT, 'reaction is'),
+      m(followedBy(), CONFIDENCE.STRONG, 'followed by'),
+      m(/\bpresenting\s+(?:complaints?|symptoms?)\s+(?:are|include[s]?)?\s*/i, CONFIDENCE.EXPLICIT, 'presenting complaints'),
+      m(/\badverse\s+(?:reactions?|events?)\s+(?:presented\s+)?(?:includes?|presented\s+as|manifested\s+as|are|is|was|were)\s*/i, CONFIDENCE.EXPLICIT, 'adverse reaction includes'),
+      m(reactionIncluded(), CONFIDENCE.EXPLICIT, 'adverse reaction includes'),
+      m(subjectPresents(), CONFIDENCE.STRONG, 'presents with'),
+      m(existential(), CONFIDENCE.MODERATE, 'there was'),
+      m(cameDownWith(), CONFIDENCE.MODERATE, 'came with'),
+      m(afterDateWith(), CONFIDENCE.MODERATE, 'with findings'),
+      m(verbFinalList(), CONFIDENCE.STRONG, 'findings developed after'),
+      m(accompaniedBy(), CONFIDENCE.STRONG, 'accompanied by'),
+      m(findingsWere(), CONFIDENCE.STRONG, 'findings were'),
+      m(coordinatedPresents(KNOWN_FINDINGS), CONFIDENCE.STRONG, 'presents with'),
+      m(symptomRun(KNOWN_FINDINGS), CONFIDENCE.STRONG, 'findings list'),
       m(
-        new RegExp(`\\bsuffering${ADVERB_GAP}\\s+from\\s+`, 'i'),
+        new RegExp(`\\bsuffer(?:s|ed|ing)${ADVERB_GAP}\\s+from\\s+`, 'i'),
         CONFIDENCE.STRONG,
         'suffering from',
       ),
@@ -144,7 +328,12 @@ export const FIELD_MARKERS = {
       m(/\bexperienc(?:es|ing|ed)\s+/i, CONFIDENCE.STRONG, 'experiencing'),
       m(/\bpresenting\s+complaint\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'presenting complaint'),
       m(/\b(?:has|have|had)\s+had\s+/i, CONFIDENCE.MODERATE, 'has had'),
-      m(/\b(?:patient\s+)?(?:has|have)\s+(?!had\b|been\b|no\b)(?:got\s+)?/i, CONFIDENCE.WEAK, 'has'),
+      m(/(?<!\bnot\s)(?<!\bnever\s)\b(?:patient\s+)?(?:has|have)\s+(?!had\b|been\b|no\b)(?:got\s+)?/i, CONFIDENCE.WEAK, 'has'),
+      // The historical guard sits on the cue, not in classifySegment: "previously had
+      // nausea" puts the marker BEFORE the cue, so it falls outside the captured
+      // segment and the classifier never sees it. Filing a past complaint as the
+      // current adverse reaction attributes it to the suspect drug.
+      m(/(?<!\bnot\s)(?<!\bnever\s)(?<!\bpreviously\s)(?<!\bformerly\s)(?<!\bearlier\s)(?<!\bonce\s)\b(?:(?:she|he|they|patient)\s+)?had\s+(?:a\s+|an\s+|the\s+)?(?:(?:severe|mild|moderate|acute|slight|marked|generalized|generalised|facial|dry|productive|persistent|intermittent|widespread|extensive)\s+){0,2}(?=(?:fever|vomiting|itching|rash|edema|oedema|nausea|cough|swelling|hive|headache|dizziness|urticaria|dyspnea|cramp|chill)(?:es|s)?\b)/i, CONFIDENCE.STRONG, 'had'),
       m(/\b(?:is|are|was|were)\s+having\s+/i, CONFIDENCE.STRONG, 'is having'),
       m(/\bhaving\s+/i, CONFIDENCE.MODERATE, 'having'),
       m(/\bdealing\s+with\s+/i, CONFIDENCE.STRONG, 'dealing with'),
@@ -152,9 +341,11 @@ export const FIELD_MARKERS = {
       m(/\bbothered\s+(?:by|with)\s+/i, CONFIDENCE.STRONG, 'bothered by'),
       m(/\b(?:is|was)\s+down\s+with\s+/i, CONFIDENCE.STRONG, 'down with'),
       m(/\b(?=denies\s+)/i, CONFIDENCE.STRONG, 'denies'),
-      m(/\bdevelop(?:s|ed|ing)\s+/i, CONFIDENCE.STRONG, 'developed'),
+      m(/\bdevelop(?:s|ed|ing)\s+(?!after\b|following\b|post\b|due\s+to\b)/i, CONFIDENCE.STRONG, 'developed'),
+      m(/(?<=^|[.;?!]\s)(?=[A-Za-z][^.;?!]{3,150}?\b(?:developed|appeared|occurred|emerged|erupted|started|began|was\s+seen|were\s+seen|was\s+noted|were\s+noted)\s+(?:after|following|post)\b)/i, CONFIDENCE.STRONG, 'findings developed after'),
       m(/\bnow\s+has\s+/i, CONFIDENCE.STRONG, 'now has'),
       m(/\b(?:has|have|'s)\s*been\s+running\s+a\s+/i, CONFIDENCE.MODERATE, 'running a fever'),
+      m(/\b(?:manifested|developed\s+signs\s+of|developed\s+symptoms\s+of)\s+/i, CONFIDENCE.STRONG, 'manifested signs'),
     ],
   },
 
@@ -182,10 +373,10 @@ export const FIELD_MARKERS = {
         CONFIDENCE.EXPLICIT,
         'no known condition',
       ),
-      m(/\bpast\s+medical\s+history\s+significant\s+for\s+/i, CONFIDENCE.EXPLICIT, 'past medical history significant for'),
+      m(/\b(?:past\s+medical\s+history|pre-existing\s+history|past\s+clinical\s+history)\s+(?:significant\s+for|of|includes?)?\s*/i, CONFIDENCE.EXPLICIT, 'past medical history significant for'),
       m(/\b(?:medical|past)\s+history\s+(?:of|is|includes?|significant\s+for)?\s*/i, CONFIDENCE.EXPLICIT, 'medical history of'),
       m(/\bh\/o\s+/i, CONFIDENCE.EXPLICIT, 'h/o'),
-      m(/\bhistory\s+(?:of|is|includes?)?\s*/i, CONFIDENCE.STRONG, 'history of'),
+      m(/\b(?:history|known\s+history)\s+(?:of|is|includes?)?\s*/i, CONFIDENCE.STRONG, 'history of'),
       m(/\bknown\s+case\s+of\s+/i, CONFIDENCE.STRONG, 'known case of'),
       m(/\bbackground\s+of\s+/i, CONFIDENCE.STRONG, 'background of'),
       m(/\bpreviously\s+treated\s+for\s+/i, CONFIDENCE.STRONG, 'previously treated for'),
@@ -194,7 +385,7 @@ export const FIELD_MARKERS = {
       m(/\bpreviously\s+diagnosed\s+with\s+/i, CONFIDENCE.EXPLICIT, 'previously diagnosed with'),
       m(/\bsuffers\s+from\s+/i, CONFIDENCE.MODERATE, 'suffers from'),
       m(/\b(?=known\s+(?:diabetic|hypertensive|asthmatic|epileptic))/i, CONFIDENCE.MODERATE, 'known diabetic'),
-      m(/\bcomorbid(?:ities)?\s+(?:are|include[s]?)?\s*/i, CONFIDENCE.MODERATE, 'comorbidities'),
+      m(/\b(?:comorbidities|underlying\s+conditions)\s+(?:are|include[s]?)?\s*/i, CONFIDENCE.MODERATE, 'comorbidities'),
       m(
         new RegExp(
           `\\b(?:is|a)?\\s*(?=(?:known\\s+)?(?:${CLINICAL_CONDITIONS})\\b)`,
@@ -211,7 +402,7 @@ export const FIELD_MARKERS = {
     postProcessor: 'diagnosis',
     validator: 'nonEmptyText',
     markers: [
-      m(/\b(?:provisional\s+|final\s+)?diagnosis\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'diagnosis is'),
+      m(/\b(?:provisional\s+|final\s+|working\s+|differential\s+)?diagnosis\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'diagnosis is'),
       m(/\bdiagnosed\s+(?:with|as)\s+/i, CONFIDENCE.EXPLICIT, 'diagnosed with'),
       m(/\b(?:clinical\s+)?impression\s+(?:is\s+|suggests\s+)?/i, CONFIDENCE.EXPLICIT, 'impression'),
       m(/\bappears\s+to\s+be\s+/i, CONFIDENCE.HEDGED, 'appears to be'),
@@ -222,6 +413,7 @@ export const FIELD_MARKERS = {
       m(/\b(?:probably|most\s+likely|likely)\s+/i, CONFIDENCE.WEAK, 'probably'),
       m(/\b(?:findings?\s+(?:are|is)\s+)?suggestive\s+of\s+/i, CONFIDENCE.STRONG, 'suggestive of'),
       m(/\b(?:presentation\s+(?:is\s+)?)?consistent\s+with\s+/i, CONFIDENCE.STRONG, 'consistent with'),
+      m(/\b(?:evaluating\s+for|suspected\s+case\s+of)\s+/i, CONFIDENCE.HEDGED, 'evaluating for'),
       m(/\bsuspected\s+/i, CONFIDENCE.HEDGED, 'suspected'),
       m(/\bworking\s+diagnosis\s+(?:is\s+)?/i, CONFIDENCE.EXPLICIT, 'working diagnosis'),
       m(/\bdiagnosis\s+(?=[\w\s]+lag\s+raha\s+hai)/i, CONFIDENCE.EXPLICIT, 'lag raha hai'),
@@ -249,14 +441,13 @@ export const FIELD_MARKERS = {
         'no medication',
       ),
       m(/\b(?=advice\s+only\b)/i, CONFIDENCE.EXPLICIT, 'advice only'),
-      m(/\bprescription\s+notes?\s*(?:include[s]?|are|is|:)?\s*/i, CONFIDENCE.EXPLICIT, 'prescription notes'),
+      m(/\b(?:prescription\s+notes?|pharmacotherapy|medication\s+regimen)\s*(?:include[s]?|are|is|:)?\s*/i, CONFIDENCE.EXPLICIT, 'prescription notes'),
       m(/\bprescri(?:bed|bing|be|ption)\s+(?:is|with)?\s*/i, CONFIDENCE.EXPLICIT, 'prescribed'),
       m(/\brx\s+/i, CONFIDENCE.EXPLICIT, 'Rx'),
-      m(/\bmedication\s+prescribed\s+includes?\s+/i, CONFIDENCE.EXPLICIT, 'medication prescribed includes'),
+      m(/\b(?:medications?|drugs?)\s+prescribed\s+(?:includes?|are|is)\s+/i, CONFIDENCE.EXPLICIT, 'medication prescribed includes'),
       m(/\bmedications?\s+(?:are|is)?\s*/i, CONFIDENCE.STRONG, 'medication'),
       m(/\b(?:put|putting|start(?:ed|ing)?)\s+(?:her|him|them|the\s+patient)\s*on\s+/i, CONFIDENCE.STRONG, 'started on'),
       m(/\b(?:start|give|administer|prescribe)\s+(?:her|him|them\s+)?(?=[\w-]+\s+\d+\s*(?:milligrams?|millilitres?|milliliters?|mg|ml|mcg|g)\b)/i, CONFIDENCE.STRONG, 'start <drug> <dose>'),
-      // the intent unambiguous.
       m(/\bgive\s+(?:her|him|them)\s+/i, CONFIDENCE.STRONG, 'give her'),
       m(/\btreatment\s+(?:is\s+)?/i, CONFIDENCE.MODERATE, 'treatment'),
       m(/\bi'?ll\s+prescribe\s+/i, CONFIDENCE.EXPLICIT, "I'll prescribe"),
@@ -269,7 +460,7 @@ export const FIELD_MARKERS = {
     postProcessor: 'text',
     validator: 'nonEmptyText',
     markers: [
-      m(/\b(?:additional\s+)?remarks?\s*(?:are|is|:)?\s*/i, CONFIDENCE.EXPLICIT, 'remarks'),
+      m(/\b(?:additional\s+)?(?:remarks?|notes|advice|clinical\s+notes)\s*(?:are|is|:)?\s*/i, CONFIDENCE.EXPLICIT, 'remarks'),
       m(/\bobservations?\s*(?:are|is)?\s*/i, CONFIDENCE.STRONG, 'observation'),
       m(/\bnotes?\s*(?:are|is|:)?\s*/i, CONFIDENCE.MODERATE, 'note'),
       m(/\badvice\s*(?::|is)?\s*(?:to\s+)?/i, CONFIDENCE.EXPLICIT, 'advice is to'),
@@ -281,7 +472,7 @@ export const FIELD_MARKERS = {
       m(/\b(?=come\s+back\s+(?:for\s+review|after)\b)/i, CONFIDENCE.MODERATE, 'come back for review'),
       m(/\b(?=review\s+after\b)/i, CONFIDENCE.MODERATE, 'review after'),
       m(/\binvestigations?\s+advised\s*:?\s*/i, CONFIDENCE.EXPLICIT, 'investigations advised'),
-      m(/\brecommendations?\s*(?:are|is|:)?\s*/i, CONFIDENCE.STRONG, 'recommendation'),
+      m(/\b(?:recommendations?|special\s+instructions)\s*(?:are|is|:)?\s*/i, CONFIDENCE.STRONG, 'recommendation'),
       m(/\b(?=return\s+after\b)/i, CONFIDENCE.MODERATE, 'return after'),
     ],
   },

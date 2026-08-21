@@ -1,26 +1,7 @@
 import { FILLER_PATTERN } from '../../constants/fieldMarkers.js';
 
-/**
- * Stage 1 — normalize the transcript for matching.
- *
- * Removing fillers and collapsing whitespace shifts every character position,
- * so any offset recorded against the normalized string points somewhere else
- * in the original. Those bad offsets look perfectly valid, which makes them
- * worse than having none at all.
- *
- * This therefore emits an index map alongside the normalized text:
- * `indexMap[i]` is the position in the ORIGINAL transcript of the character at
- * position `i` in the normalized one. Every offset the pipeline reports is
- * translated back through it.
- *
- * @param {string} transcript
- * @returns {{ text: string, indexMap: number[], original: string }}
- */
 export function normalizeTranscript(transcript) {
   const original = typeof transcript === 'string' ? transcript : '';
-
-  // Mark filler spans first; drop them character-by-character below so the
-  // index map stays exact.
   const dropped = new Array(original.length).fill(false);
   FILLER_PATTERN.lastIndex = 0;
   let match = FILLER_PATTERN.exec(original);
@@ -33,7 +14,7 @@ export function normalizeTranscript(transcript) {
 
   let text = '';
   const indexMap = [];
-  let lastWasSpace = true; // trims leading whitespace
+  let lastWasSpace = true;
 
   for (let i = 0; i < original.length; i += 1) {
     if (dropped[i]) {
@@ -44,7 +25,6 @@ export function normalizeTranscript(transcript) {
     const isSpace = /\s/.test(char);
 
     if (isSpace) {
-      // Collapse runs of whitespace to a single space.
       if (lastWasSpace) {
         continue;
       }
@@ -59,7 +39,6 @@ export function normalizeTranscript(transcript) {
     lastWasSpace = false;
   }
 
-  // Drop a single trailing space produced by the collapse above.
   if (text.endsWith(' ')) {
     text = text.slice(0, -1);
     indexMap.pop();
@@ -68,10 +47,6 @@ export function normalizeTranscript(transcript) {
   return { text, indexMap, original };
 }
 
-/**
- * Translates a [start, end) range in normalized space back to the original
- * transcript. `end` is exclusive, so it maps via the last included character.
- */
 export function toOriginalRange(indexMap, start, end) {
   if (!indexMap.length) {
     return { start: 0, end: 0 };

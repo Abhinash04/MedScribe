@@ -10,6 +10,7 @@ import com.medscribe.audio.AudioCapturePackage
 import com.medscribe.audio.AudioCuePackage
 import com.medscribe.audio.SharedMicPackage
 import com.medscribe.config.AppConfigPackage
+import com.medscribe.overlay.DictationOverlayPackage
 import com.medscribe.pdf.PdfExporterPackage
 
 class MainApplication : Application(), ReactApplication {
@@ -23,6 +24,7 @@ class MainApplication : Application(), ReactApplication {
           add(AudioCuePackage())
           add(SharedMicPackage())
           add(AppConfigPackage())
+          add(DictationOverlayPackage())
           if (BuildConfig.DEBUG) {
             add(AudioCapturePackage())
           }

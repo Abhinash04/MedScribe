@@ -1,0 +1,59 @@
+Sample 1 — Standard ADR Dictation
+Initial case. Patient name is Rahul Sharma. Age is 34 years. Gender is male. Weight is 70 kilograms. The patient developed fever, generalized itching, and a skin rash after taking the suspected medicine. The reaction started on 10 August 2026 and resolved on 12 August 2026. The suspected medication was stopped and the patient was treated with an antihistamine. Symptoms improved after treatment.
+
+Sample 2 — Diagnosis/Reaction First / Random Order
+The suspected reaction is nausea, vomiting, and dizziness. The reaction began on 11 August 2026 and ended on 13 August 2026. Patient name is Priya Verma. She is 27 years old and female. Her weight is 58 kilograms. The medicine was stopped and she was given supportive treatment. The symptoms settled after observation. This is an initial ADR case.
+
+Sample 3 — Conversational Speech
+Okay, this is Amit Kumar. He is 42 years old, male, and weighs about 76 kilograms. He started having severe itching, hives, and swelling around his face after taking the medicine. The reaction actually started on 8 August 2026 and by 10 August 2026 the symptoms had resolved. We stopped the suspected medication, gave him antihistamine treatment, and kept him under observation. This is an initial case.
+
+Sample 4 — Symptoms First
+The patient complains of severe stomach pain, nausea, loose motion, and weakness since yesterday. Her name is Neha Singh. She is 31 years old and female, with a weight of 62 kilograms. The adverse reaction started on 15 August 2026 and stopped on 16 August 2026. She was given supportive care and oral fluids, and her symptoms improved. This is an initial case.
+
+Sample 5 — Indian Doctor Speaking Style
+Patient name Arjun Patel. Age 38 years. Male patient. Weight 74 kilos. Developed fever, cough, generalized rash, and itching after the suspected medicine. Reaction started 9 August 2026 and stopped 11 August 2026. Suspected medicine discontinued. Given antihistamine and supportive treatment. Patient improved. Initial case.
+
+Sample 6 — Pronoun-Based Gender
+The patient's name is Sneha Gupta. She is 29 years old and weighs 55 kilograms. She developed facial swelling, urticaria, and difficulty in breathing. The reaction began on 12 August 2026 and resolved on 13 August 2026. The suspected drug was stopped and she received emergency supportive treatment and antihistamines. This is a follow-up case.
+
+Sample 7 — Male Pronoun Inference
+Patient name is Rohit Mehta. He is 46 years old and weighs 82 kilograms. He developed severe dizziness, vomiting, and weakness after the suspected medication. The symptoms started on 7 August 2026 and resolved on 9 August 2026. The medicine was discontinued and he was monitored until he improved. This is an initial ADR report.
+
+Sample 8 — Reaction Management First
+The suspected medication was withdrawn and the patient was kept under observation. Antihistamine treatment was given and the reaction improved. Patient name is Kavita Rao. She is 36 years old, female, and weighs 61.5 kilograms. She had fever, vomiting, generalized itching, and facial edema. The reaction started on 5 August 2026 and ended on 7 August 2026. This is an initial case.
+
+Sample 9 — Patient Information First
+Patient name is Sanjay Yadav. He is 55 years old, male, and weighs 79 kilograms. He developed headache, dizziness, weakness, and a generalized skin eruption. The adverse reaction began on 6 August 2026 and resolved on 8 August 2026. The suspected medication was stopped and symptomatic treatment was provided. The patient was monitored and improved.
+
+Sample 10 — Free-Flowing Dictation
+This is Pooja Nair, she is 25 years old and female, around 52 kilograms. She came in with severe itching, hives, facial swelling, and mild breathing difficulty after taking the suspected medicine. The reaction started on 14 August 2026 and the symptoms resolved on 16 August 2026. We discontinued the suspected drug, gave antihistamines and supportive care, and observed her until she improved. Follow-up case.
+
+Sample 11 — Self-Correction
+Patient name is Mohit Jain. Age is 45 years, sorry, correction, age is 35 years. Gender is male and weight is 68 kilograms. He developed nausea, vomiting, and dizziness. The reaction started on 10 August 2026 and ended on 11 August 2026. The suspected medication was stopped and he was treated symptomatically. This is an initial case.
+
+Sample 12 — Formal Clinical Style
+Patient identified as Anjali Das. Gender female. Age 40 years. Weight 63 kilograms. Presenting adverse reaction includes fever, productive cough, generalized rash, and facial swelling. The reaction commenced on 4 August 2026 and resolved on 6 August 2026. The suspected medication was withdrawn. Antihistamine treatment and supportive management were provided, with subsequent clinical improvement. Initial ADR case.
+
+Sample 13 — Casual Doctor Speech
+Okay, this is Deepak Mishra. He is 33 years old, male, and weighs 71 kilograms. He has been having fever, itching, hives, and some swelling of the lips. It started on 13 August 2026 and settled by 15 August 2026. We stopped the suspected medicine, gave him an antihistamine, and watched him for a few hours. He improved. This is an initial case.
+
+Sample 14 — Negation Challenge
+Patient name is Riya Kapoor. She is 24 years old and female. Her weight is 57 kilograms. She has fever, headache, sore throat, and dry cough following the suspected medication. She has no chest pain and no breathing difficulty. The reaction started on 16 August 2026 and resolved on 17 August 2026. The suspected medication was discontinued and supportive treatment was given. Initial case.
+
+Sample 15 — Comprehensive Real-World Dictation
+The patient's name is Vikram Joshi. He is a 48-year-old male weighing 84 kilograms. He presented with severe itching, dry skin rash, facial edema, dizziness, and mild shortness of breath after taking the suspected medicine. The reaction started on 10 August 2026 and the symptoms resolved on 13 August 2026. We stopped the suspected medication immediately, treated him with antihistamines and supportive care, and kept him under observation. His condition improved. This is an initial ADR report.
+
+Sample 16 — Poor Punctuation / Continuous Speech
+patient name is Meera Shah age 32 years female weight 60 kilograms she developed fever cough generalized itching skin rash and weakness reaction started on 9 August 2026 reaction stopped on 11 August 2026 suspected medicine discontinued antihistamine given patient monitored and symptoms improved initial case
+
+Sample 17 — Information Completely Out of Order
+Follow-up case. The reaction resolved on 14 August 2026. The patient was given antihistamines and supportive treatment. The reaction had started on 12 August 2026. Patient name is Aman Gupta. He is 30 years old and male. His weight is 73 kilograms. He developed sneezing, runny nose, mild fever, and generalized itching after the suspected medicine. The symptoms improved after the medicine was stopped.
+
+Sample 18 — Synonym-Heavy Natural Dictation
+The patient is Nisha Verma. She is a 37-year-old woman and weighs 59 kilograms. She developed pruritus, urticaria, facial edema, nausea, and mild dyspnea. The adverse event commenced on 8 August 2026 and the symptoms subsided on 10 August 2026. The suspected drug was discontinued and she received antihistamine therapy with supportive care. She was monitored until her condition improved. This is an initial case.
+
+Sample 19 — History vs Reaction Context
+Patient name is Rajesh Kumar. Age is 52 years. Gender male. Weight is 77 kilograms. He is a known diabetic and has a history of high blood pressure, but today he developed severe itching, vomiting, and facial swelling after the suspected medicine. The current reaction started on 15 August 2026 and resolved on 17 August 2026. The suspected medication was stopped and he was treated with antihistamines. He improved after observation. Initial ADR case.
+
+Sample 20 — Repetition Without Correction
+Patient name is Simran Kaur. She is 28 years old and female, weighing 56 kilograms. She complains of fever, dry cough, generalized itching, and skin rash for two days. The reaction started on 12 August 2026 and resolved on 14 August 2026. Her suspected medication was stopped and she was treated with antihistamines and supportive care. For confirmation, patient name is Simran Kaur, age 28 years, female, weight 56 kilograms, reaction started on 12 August 2026 and resolved on 14 August 2026. This is an initial case.

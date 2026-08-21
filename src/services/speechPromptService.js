@@ -1,8 +1,9 @@
-import { synthesize } from './anuvadini/speechClient';
-import { DEFAULT_LANGUAGE } from './anuvadini/language';
-import { getAnuvadiniToken } from './appConfigService';
-import audioFeedbackService from './audioFeedbackService';
-import { missingFieldPrompt } from './missingFieldPrompt';
+import { synthesize } from './anuvadini/speechClient.js';
+import { DEFAULT_LANGUAGE } from './anuvadini/language.js';
+import { ERROR_KIND } from './anuvadini/proxyContract.js';
+import { getAnuvadiniToken } from './appConfigService.js';
+import audioFeedbackService from './audioFeedbackService.js';
+import { missingFieldPrompt } from './missingFieldPrompt.js';
 
 let inFlight = null;
 let speaking = false;
@@ -25,9 +26,15 @@ export async function stopPrompt() {
 }
 
 export async function speakMissingFields(fields, options = {}) {
-  const { language = DEFAULT_LANGUAGE, token = getAnuvadiniToken() } = options;
+  const {
+    language = DEFAULT_LANGUAGE,
+    token = getAnuvadiniToken(),
+    fallbackLanguage = null,
+    transport,
+    url,
+  } = options;
 
-  const text = missingFieldPrompt(fields);
+  const text = missingFieldPrompt(fields, language);
   if (!text) {
     return { spoken: false, reason: 'nothing_missing' };
   }
@@ -43,7 +50,30 @@ export async function speakMissingFields(fields, options = {}) {
 
   let result;
   try {
-    result = await synthesize({ text, language, token, signal: controller.signal });
+    result = await synthesize({
+      text,
+      language,
+      token,
+      transport,
+      url,
+      signal: controller.signal,
+    });
+
+    if (
+      !result.ok &&
+      result.errorKind === ERROR_KIND.UNSUPPORTED_LANGUAGE &&
+      fallbackLanguage &&
+      fallbackLanguage !== language
+    ) {
+      result = await synthesize({
+        text: missingFieldPrompt(fields, fallbackLanguage),
+        language: fallbackLanguage,
+        token,
+        transport,
+        url,
+        signal: controller.signal,
+      });
+    }
   } catch {
     result = { ok: false, errorKind: 'network' };
   }

@@ -17,7 +17,7 @@ export const checkMicPermission = () => check(MIC_PERMISSION);
 
 export const requestMicPermission = () => request(MIC_PERMISSION);
 
-export const openAppSettings = () => openSettings();
+export const openAppSettings = () => openSettings().catch(() => false);
 
 export const isGranted = result =>
   result === RESULTS.GRANTED || result === RESULTS.LIMITED;

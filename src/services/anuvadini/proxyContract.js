@@ -22,6 +22,11 @@ export const ERROR_KIND = {
   EMPTY_TRANSCRIPTION: 'empty_transcription',
   NO_TEXT: 'no_text',
   EMPTY_SPEECH: 'empty_speech',
+  UNAUTHORIZED: 'unauthorized',
+  QUOTA_EXCEEDED: 'quota_exceeded',
+  TEXT_TOO_LARGE: 'text_too_large',
+  EMPTY_TRANSLATION: 'empty_translation',
+  COUNT_MISMATCH: 'count_mismatch',
 };
 
 export function buildRequestBody(audioBase64, normalizedLanguage) {

@@ -8,14 +8,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
+import AnuvadiniMark from '../components/AnuvadiniMark';
 import BottomDock, { useDockClearance } from '../components/BottomDock';
 import { initialsOf, tintFor } from '../components/ReportListRow';
-import ScreenContainer from '../components/ScreenContainer';
 import useReportsStore from '../store/useReportsStore';
 import { colors } from '../theme';
 import { formatRelativeDateTime } from '../utils/datetime';
-import styles from './styles/PatientsScreen.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import useScaledStyles from '../hooks/useScaledStyles';
+import createStyles from './styles/PatientsScreen.styles';
 
 const UNNAMED = 'Unnamed patient';
 
@@ -56,6 +59,8 @@ function groupByPatient(reports) {
 }
 
 const PatientsScreen = ({ navigation }) => {
+  const styles = useScaledStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const reports = useReportsStore(state => state.reports);
   const loading = useReportsStore(state => state.loading);
   const loaded = useReportsStore(state => state.loaded);
@@ -127,29 +132,50 @@ const PatientsScreen = ({ navigation }) => {
         </Pressable>
       );
     },
-    [handleOpen],
+    [handleOpen, styles],
   );
 
   const header = (
-    <View>
-      <Text style={styles.heading}>Patients</Text>
-      <Text style={styles.subheading}>
-        Everyone you have dictated a consultation for.
-      </Text>
+    <>
+      <LinearGradient
+        colors={['#6c63ff', '#8b5cf6', '#a78bfa']}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={[styles.heroHeader, { paddingTop: insets.top + 16 }]}
+      >
+        <View style={styles.heroDecorCircle1} />
+        <View style={styles.heroDecorCircle2} />
+        <View style={styles.heroDecorCircle3} />
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroTitleColumn}>
+            <Text style={styles.brandTitle}>Patients</Text>
+            <Text style={styles.brandSub}>
+              Everyone you have dictated a consultation for.
+            </Text>
+          </View>
+          <View style={styles.brandBadge}>
+            <AnuvadiniMark size={32} />
+          </View>
+        </View>
+        <View style={styles.searchBar}>
+          <Icon name="search" size={18} color="rgba(255,255,255,0.7)" />
+          <TextInput
+            style={styles.searchText}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search by patient name"
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            accessibilityLabel="Search patients"
+          />
+        </View>
+      </LinearGradient>
 
-      <TextInput
-        style={styles.search}
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search by patient name"
-        placeholderTextColor={colors.textMuted}
-        accessibilityLabel="Search patients"
-      />
-
-      <Text style={styles.countLine}>
-        {patients.length} {patients.length === 1 ? 'patient' : 'patients'}
-      </Text>
-    </View>
+      <View style={styles.contentContainer}>
+        <Text style={styles.countLine}>
+          {patients.length} {patients.length === 1 ? 'patient' : 'patients'}
+        </Text>
+      </View>
+    </>
   );
 
   const empty =
@@ -171,21 +197,19 @@ const PatientsScreen = ({ navigation }) => {
     );
 
   return (
-    <>
-      <ScreenContainer>
-        <FlatList
-          data={patients}
-          keyExtractor={item => item.key}
-          renderItem={renderItem}
-          ListHeaderComponent={header}
-          ListEmptyComponent={empty}
-          contentContainerStyle={{ paddingBottom: clearance }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        />
-      </ScreenContainer>
+    <View style={styles.pageBackground}>
+      <FlatList
+        data={patients}
+        keyExtractor={item => item.key}
+        renderItem={renderItem}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        contentContainerStyle={{ paddingBottom: clearance }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      />
       <BottomDock active="Patients" />
-    </>
+    </View>
   );
 };
 
